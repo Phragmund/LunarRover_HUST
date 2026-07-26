@@ -1,0 +1,140 @@
+--- a/include/common_lib.h
++++ b/include/common_lib.h
+@@ -15,7 +15,7 @@
+ #define USE_IKFOM
+ 
+ #define PI_M (3.14159265358)
+-#define G_m_s2 (9.81)         // Gravaty const in GuangDong/China
++static double G_m_s2 = 9.80665;
+ #define DIM_STATE (18)        // Dimension of states (Let Dim(SO(3)) = 3)
+ #define DIM_PROC_N (12)       // Dimension of process noise (Let Dim(SO(3)) = 3)
+ #define CUBE_LEN  (6.0)
+--- a/src/laserMapping.cpp
++++ b/src/laserMapping.cpp
+@@ -77,7 +77,10 @@
+ /**************************/
+ 
+ float res_last[100000] = {0.0};
++bool publish_tf_en = false;
+ float DET_RANGE = 300.0f;
++string lio_odom_frame = "odom";
++string lio_body_frame = "livox_imu_frame";
+ const float MOV_THRESHOLD = 1.5f;
+ double time_diff_lidar_to_imu = 0.0;
+ 
+@@ -505,7 +508,7 @@
+         pcl::toROSMsg(*laserCloudWorld, laserCloudmsg);
+         // laserCloudmsg.header.stamp = ros::Time().fromSec(lidar_end_time);
+         laserCloudmsg.header.stamp = get_ros_time(lidar_end_time);
+-        laserCloudmsg.header.frame_id = "camera_init";
++        laserCloudmsg.header.frame_id = lio_odom_frame;
+         pubLaserCloudFull->publish(laserCloudmsg);
+         publish_count -= PUBFRAME_PERIOD;
+     }
+@@ -557,7 +560,7 @@
+     sensor_msgs::msg::PointCloud2 laserCloudmsg;
+     pcl::toROSMsg(*laserCloudIMUBody, laserCloudmsg);
+     laserCloudmsg.header.stamp = get_ros_time(lidar_end_time);
+-    laserCloudmsg.header.frame_id = "body";
++    laserCloudmsg.header.frame_id = lio_body_frame;
+     pubLaserCloudFull_body->publish(laserCloudmsg);
+     publish_count -= PUBFRAME_PERIOD;
+ }
+@@ -574,7 +577,7 @@
+     sensor_msgs::msg::PointCloud2 laserCloudFullRes3;
+     pcl::toROSMsg(*laserCloudWorld, laserCloudFullRes3);
+     laserCloudFullRes3.header.stamp = get_ros_time(lidar_end_time);
+-    laserCloudFullRes3.header.frame_id = "camera_init";
++    laserCloudFullRes3.header.frame_id = lio_odom_frame;
+     pubLaserCloudEffect->publish(laserCloudFullRes3);
+ }
+ 
+@@ -596,13 +599,13 @@
+     pcl::toROSMsg(*pcl_wait_pub, laserCloudmsg);
+     // laserCloudmsg.header.stamp = ros::Time().fromSec(lidar_end_time);
+     laserCloudmsg.header.stamp = get_ros_time(lidar_end_time);
+-    laserCloudmsg.header.frame_id = "camera_init";
++    laserCloudmsg.header.frame_id = lio_odom_frame;
+     pubLaserCloudMap->publish(laserCloudmsg);
+ 
+     // sensor_msgs::msg::PointCloud2 laserCloudMap;
+     // pcl::toROSMsg(*featsFromMap, laserCloudMap);
+     // laserCloudMap.header.stamp = get_ros_time(lidar_end_time);
+-    // laserCloudMap.header.frame_id = "camera_init";
++    // laserCloudMap.header.frame_id = lio_odom_frame;
+     // pubLaserCloudMap->publish(laserCloudMap);
+ }
+ 
+@@ -627,8 +630,8 @@
+ 
+ void publish_odometry(const rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pubOdomAftMapped, std::unique_ptr<tf2_ros::TransformBroadcaster> & tf_br)
+ {
+-    odomAftMapped.header.frame_id = "camera_init";
+-    odomAftMapped.child_frame_id = "body";
++    odomAftMapped.header.frame_id = lio_odom_frame;
++    odomAftMapped.child_frame_id = lio_body_frame;
+     odomAftMapped.header.stamp = get_ros_time(lidar_end_time);
+     set_posestamp(odomAftMapped.pose);
+     pubOdomAftMapped->publish(odomAftMapped);
+@@ -645,8 +648,8 @@
+     }
+ 
+     geometry_msgs::msg::TransformStamped trans;
+-    trans.header.frame_id = "camera_init";
+-    trans.child_frame_id = "body";
++    trans.header.frame_id = lio_odom_frame;
++    trans.child_frame_id = lio_body_frame;
+     trans.header.stamp = get_ros_time(lidar_end_time);
+     trans.transform.translation.x = odomAftMapped.pose.pose.position.x;
+     trans.transform.translation.y = odomAftMapped.pose.pose.position.y;
+@@ -655,14 +658,17 @@
+     trans.transform.rotation.x = odomAftMapped.pose.pose.orientation.x;
+     trans.transform.rotation.y = odomAftMapped.pose.pose.orientation.y;
+     trans.transform.rotation.z = odomAftMapped.pose.pose.orientation.z;
+-    tf_br->sendTransform(trans);
++    if (publish_tf_en)
++    {
++        tf_br->sendTransform(trans);
++    }
+ }
+ 
+ void publish_path(rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pubPath)
+ {
+     set_posestamp(msg_body_pose);
+     msg_body_pose.header.stamp = get_ros_time(lidar_end_time); // ros::Time().fromSec(lidar_end_time);
+-    msg_body_pose.header.frame_id = "camera_init";
++    msg_body_pose.header.frame_id = lio_odom_frame;
+ 
+     /*** if path is too large, the rvis will crash ***/
+     static int jjj = 0;
+@@ -798,6 +804,10 @@
+ public:
+     LaserMappingNode(const rclcpp::NodeOptions& options = rclcpp::NodeOptions()) : Node("laser_mapping", options)
+     {
++        this->declare_parameter<double>("common.gravity_magnitude", 9.80665);
++        this->declare_parameter<bool>("publish.tf_en", false);
++        this->declare_parameter<string>("publish.odom_frame", "odom");
++        this->declare_parameter<string>("publish.body_frame", "livox_imu_frame");
+         this->declare_parameter<bool>("publish.path_en", true);
+         this->declare_parameter<bool>("publish.effect_map_en", false);
+         this->declare_parameter<bool>("publish.map_en", false);
+@@ -834,6 +844,10 @@
+         this->declare_parameter<vector<double>>("mapping.extrinsic_T", vector<double>());
+         this->declare_parameter<vector<double>>("mapping.extrinsic_R", vector<double>());
+ 
++        this->get_parameter_or<double>("common.gravity_magnitude", G_m_s2, 9.80665);
++        this->get_parameter_or<bool>("publish.tf_en", publish_tf_en, false);
++        this->get_parameter_or<string>("publish.odom_frame", lio_odom_frame, "odom");
++        this->get_parameter_or<string>("publish.body_frame", lio_body_frame, "livox_imu_frame");
+         this->get_parameter_or<bool>("publish.path_en", path_en, true);
+         this->get_parameter_or<bool>("publish.effect_map_en", effect_pub_en, false);
+         this->get_parameter_or<bool>("publish.map_en", map_pub_en, false);
+@@ -873,7 +887,7 @@
+         RCLCPP_INFO(this->get_logger(), "p_pre->lidar_type %d", p_pre->lidar_type);
+ 
+         path.header.stamp = this->get_clock()->now();
+-        path.header.frame_id ="camera_init";
++        path.header.frame_id =lio_odom_frame;
+ 
+         // /*** variables definition ***/
+         // int effect_feat_num = 0, frame_num = 0;

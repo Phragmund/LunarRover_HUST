@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<library path="lunar_rover_control_controllers">
+  <class
+    name="lunar_rover_control/RoverController"
+    type="lunar_rover_control::RoverController"
+    base_class_type="controller_interface::ControllerInterface">
+    <description>
+      Four-wheel-steering and six-wheel-drive TwistStamped controller.
+    </description>
+  </class>
+  <class
+    name="lunar_rover_control/RockerDifferentialController"
+    type="lunar_rover_control::RockerDifferentialController"
+    base_class_type="controller_interface::ControllerInterface">
+    <description>
+      Effort controller enforcing a damped differential relation between the two rockers.
+    </description>
+  </class>
+</library>

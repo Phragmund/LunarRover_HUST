@@ -1,0 +1,45 @@
+terrain_perception:
+  ros__parameters:
+    use_sim_time: true
+    publish_frequency: 5.0
+
+    frames:
+      output: odom
+      robot: base_footprint
+
+    topics:
+      lidar_points: /livox/points
+      depth_points: /camera/depth_registered/points
+      grid_map: /terrain/grid_map
+      traversability: /terrain/traversability
+      ground: /terrain/ground
+      obstacles: /terrain/obstacles
+
+    sensors:
+      lidar_weight: 1.0
+      depth_weight: 0.70
+
+    filters:
+      minimum_z: -1.0
+      maximum_z: 1.5
+      minimum_range: 0.20
+      maximum_range: 20.0
+      transform_timeout: 0.10
+      maximum_points_per_cloud: 60000
+
+    map:
+      resolution: 0.10
+      length_x: 10.0
+      length_y: 10.0
+      max_point_age: 1.5
+      required_point_weight: 3.0
+      maximum_stored_cells: 200000
+
+    thresholds:
+      caution_step_height: 0.05
+      lethal_step_height: 0.07
+      caution_slope_degrees: 15.0
+      lethal_slope_degrees: 22.0
+      caution_roughness: 0.025
+      lethal_roughness: 0.060
+      minimum_confidence: 0.35

@@ -1,0 +1,2837 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <world name="reachable_maze">
+    <gravity>0 0 -9.80665</gravity>
+    <physics name="physics" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <plugin filename="libignition-gazebo-physics-system.so" name="ignition::gazebo::systems::Physics"/>
+    <plugin filename="libignition-gazebo-user-commands-system.so" name="ignition::gazebo::systems::UserCommands"/>
+    <plugin filename="libignition-gazebo-scene-broadcaster-system.so" name="ignition::gazebo::systems::SceneBroadcaster"/>
+    <plugin filename="libignition-gazebo-sensors-system.so" name="ignition::gazebo::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="libignition-gazebo-imu-system.so" name="ignition::gazebo::systems::Imu"/>
+    <plugin filename="libignition-gazebo-contact-system.so" name="ignition::gazebo::systems::Contact"/>
+
+    <scene>
+      <ambient>0.36 0.36 0.35 1</ambient>
+      <background>0.08 0.09 0.11 1</background>
+      <shadows>true</shadows>
+    </scene>
+    <light name="sun" type="directional">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.92 0.91 0.86 1</diffuse>
+      <specular>0.20 0.20 0.18 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.45 0.25 -0.86</direction>
+    </light>
+
+    <include>
+      <uri>model://lunar_ground</uri>
+    </include>
+
+    <model name="generated_reachable_maze">
+      <static>true</static>
+      <link name="maze_link">
+        <collision name="maze_wall_000_collision">
+          <pose>-4.480 0.000 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 5.720 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_000_visual">
+          <pose>-4.480 0.000 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 5.720 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_001_collision">
+          <pose>-3.360 -2.240 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_001_visual">
+          <pose>-3.360 -2.240 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_002_collision">
+          <pose>-3.360 0.560 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 2.360 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_002_visual">
+          <pose>-3.360 0.560 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 2.360 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_003_collision">
+          <pose>-2.240 -0.560 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 2.360 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_003_visual">
+          <pose>-2.240 -0.560 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 2.360 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_004_collision">
+          <pose>-1.120 1.120 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_004_visual">
+          <pose>-1.120 1.120 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_005_collision">
+          <pose>0.000 -0.560 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 2.360 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_005_visual">
+          <pose>0.000 -0.560 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 2.360 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_006_collision">
+          <pose>1.120 -2.240 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_006_visual">
+          <pose>1.120 -2.240 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_007_collision">
+          <pose>2.240 -1.120 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_007_visual">
+          <pose>2.240 -1.120 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_008_collision">
+          <pose>3.360 0.000 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_008_visual">
+          <pose>3.360 0.000 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_009_collision">
+          <pose>4.480 0.000 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 5.720 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_009_visual">
+          <pose>4.480 0.000 0.500 0 0 0</pose>
+          <geometry><box><size>0.120 5.720 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_010_collision">
+          <pose>0.000 -2.800 0.500 0 0 0</pose>
+          <geometry><box><size>9.080 0.120 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_010_visual">
+          <pose>0.000 -2.800 0.500 0 0 0</pose>
+          <geometry><box><size>9.080 0.120 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_011_collision">
+          <pose>-1.680 -1.680 0.500 0 0 0</pose>
+          <geometry><box><size>1.240 0.120 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_011_visual">
+          <pose>-1.680 -1.680 0.500 0 0 0</pose>
+          <geometry><box><size>1.240 0.120 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_012_collision">
+          <pose>2.240 -1.680 0.500 0 0 0</pose>
+          <geometry><box><size>2.360 0.120 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_012_visual">
+          <pose>2.240 -1.680 0.500 0 0 0</pose>
+          <geometry><box><size>2.360 0.120 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_013_collision">
+          <pose>-3.920 -0.560 0.500 0 0 0</pose>
+          <geometry><box><size>1.240 0.120 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_013_visual">
+          <pose>-3.920 -0.560 0.500 0 0 0</pose>
+          <geometry><box><size>1.240 0.120 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_014_collision">
+          <pose>0.000 -0.560 0.500 0 0 0</pose>
+          <geometry><box><size>2.360 0.120 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_014_visual">
+          <pose>0.000 -0.560 0.500 0 0 0</pose>
+          <geometry><box><size>2.360 0.120 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_015_collision">
+          <pose>-1.680 0.560 0.500 0 0 0</pose>
+          <geometry><box><size>1.240 0.120 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_015_visual">
+          <pose>-1.680 0.560 0.500 0 0 0</pose>
+          <geometry><box><size>1.240 0.120 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_016_collision">
+          <pose>2.240 0.560 0.500 0 0 0</pose>
+          <geometry><box><size>4.600 0.120 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_016_visual">
+          <pose>2.240 0.560 0.500 0 0 0</pose>
+          <geometry><box><size>4.600 0.120 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_017_collision">
+          <pose>0.000 1.680 0.500 0 0 0</pose>
+          <geometry><box><size>6.840 0.120 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_017_visual">
+          <pose>0.000 1.680 0.500 0 0 0</pose>
+          <geometry><box><size>6.840 0.120 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+
+        <collision name="maze_wall_018_collision">
+          <pose>0.000 2.800 0.500 0 0 0</pose>
+          <geometry><box><size>9.080 0.120 1.000</size></box></geometry>
+        </collision>
+        <visual name="maze_wall_018_visual">
+          <pose>0.000 2.800 0.500 0 0 0</pose>
+          <geometry><box><size>9.080 0.120 1.000</size></box></geometry>
+          <material>
+            <ambient>0.30 0.31 0.30 1</ambient>
+            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <specular>0.08 0.08 0.07 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="maze_random_hemispheres">
+      <static>true</static>
+      <link name="obstacles_link">
+        <collision name="hemisphere_obstacle_000_collision">
+          <pose>-2.340 0.273 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_000_visual">
+          <pose>-2.340 0.273 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_001_collision">
+          <pose>4.001 0.938 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_001_visual">
+          <pose>4.001 0.938 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_002_collision">
+          <pose>-2.144 -1.495 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_002_visual">
+          <pose>-2.144 -1.495 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_003_collision">
+          <pose>-1.583 0.143 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_003_visual">
+          <pose>-1.583 0.143 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_004_collision">
+          <pose>-1.317 -1.870 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_004_visual">
+          <pose>-1.317 -1.870 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_005_collision">
+          <pose>2.968 -1.049 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_005_visual">
+          <pose>2.968 -1.049 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_006_collision">
+          <pose>-2.140 1.917 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_006_visual">
+          <pose>-2.140 1.917 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_007_collision">
+          <pose>0.202 0.919 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_007_visual">
+          <pose>0.202 0.919 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_008_collision">
+          <pose>3.864 -1.193 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_008_visual">
+          <pose>3.864 -1.193 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_009_collision">
+          <pose>2.566 2.481 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_009_visual">
+          <pose>2.566 2.481 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_010_collision">
+          <pose>-1.934 1.774 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_010_visual">
+          <pose>-1.934 1.774 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_011_collision">
+          <pose>-4.024 -1.734 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_011_visual">
+          <pose>-4.024 -1.734 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_012_collision">
+          <pose>2.687 2.123 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_012_visual">
+          <pose>2.687 2.123 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_013_collision">
+          <pose>3.069 -0.103 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_013_visual">
+          <pose>3.069 -0.103 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_014_collision">
+          <pose>1.913 -1.109 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_014_visual">
+          <pose>1.913 -1.109 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_015_collision">
+          <pose>1.576 0.891 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_015_visual">
+          <pose>1.576 0.891 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_016_collision">
+          <pose>0.635 2.148 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_016_visual">
+          <pose>0.635 2.148 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_017_collision">
+          <pose>3.180 -1.396 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_017_visual">
+          <pose>3.180 -1.396 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_018_collision">
+          <pose>-4.000 -2.459 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_018_visual">
+          <pose>-4.000 -2.459 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_019_collision">
+          <pose>0.463 -0.186 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_019_visual">
+          <pose>0.463 -0.186 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_020_collision">
+          <pose>-2.095 -2.502 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_020_visual">
+          <pose>-2.095 -2.502 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_021_collision">
+          <pose>1.855 -0.266 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_021_visual">
+          <pose>1.855 -0.266 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_022_collision">
+          <pose>1.656 2.368 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_022_visual">
+          <pose>1.656 2.368 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_023_collision">
+          <pose>0.477 1.036 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_023_visual">
+          <pose>0.477 1.036 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_024_collision">
+          <pose>-3.964 2.273 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_024_visual">
+          <pose>-3.964 2.273 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_025_collision">
+          <pose>0.147 2.243 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_025_visual">
+          <pose>0.147 2.243 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_026_collision">
+          <pose>2.900 0.232 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_026_visual">
+          <pose>2.900 0.232 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_027_collision">
+          <pose>-1.994 -1.554 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_027_visual">
+          <pose>-1.994 -1.554 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_028_collision">
+          <pose>-3.293 1.678 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_028_visual">
+          <pose>-3.293 1.678 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_029_collision">
+          <pose>-0.054 -0.084 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_029_visual">
+          <pose>-0.054 -0.084 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_030_collision">
+          <pose>1.752 -0.682 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_030_visual">
+          <pose>1.752 -0.682 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_031_collision">
+          <pose>3.057 0.352 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_031_visual">
+          <pose>3.057 0.352 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_032_collision">
+          <pose>-2.082 -0.142 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_032_visual">
+          <pose>-2.082 -0.142 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_033_collision">
+          <pose>-0.994 -1.211 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_033_visual">
+          <pose>-0.994 -1.211 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_034_collision">
+          <pose>1.391 1.017 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_034_visual">
+          <pose>1.391 1.017 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_035_collision">
+          <pose>-2.368 -2.407 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_035_visual">
+          <pose>-2.368 -2.407 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_036_collision">
+          <pose>-1.062 -1.260 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_036_visual">
+          <pose>-1.062 -1.260 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_037_collision">
+          <pose>2.868 2.235 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_037_visual">
+          <pose>2.868 2.235 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_038_collision">
+          <pose>-3.098 -1.597 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_038_visual">
+          <pose>-3.098 -1.597 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_039_collision">
+          <pose>0.716 0.225 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_039_visual">
+          <pose>0.716 0.225 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_040_collision">
+          <pose>-1.548 1.678 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_040_visual">
+          <pose>-1.548 1.678 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_041_collision">
+          <pose>-0.339 0.849 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_041_visual">
+          <pose>-0.339 0.849 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_042_collision">
+          <pose>-4.024 1.640 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_042_visual">
+          <pose>-4.024 1.640 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_043_collision">
+          <pose>-1.470 1.491 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_043_visual">
+          <pose>-1.470 1.491 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_044_collision">
+          <pose>0.592 0.344 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_044_visual">
+          <pose>0.592 0.344 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_045_collision">
+          <pose>1.153 1.728 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_045_visual">
+          <pose>1.153 1.728 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_046_collision">
+          <pose>0.305 -1.054 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_046_visual">
+          <pose>0.305 -1.054 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_047_collision">
+          <pose>2.169 -1.141 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_047_visual">
+          <pose>2.169 -1.141 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_048_collision">
+          <pose>3.037 -1.626 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_048_visual">
+          <pose>3.037 -1.626 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_049_collision">
+          <pose>-3.194 -2.515 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_049_visual">
+          <pose>-3.194 -2.515 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_050_collision">
+          <pose>-2.659 -1.632 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_050_visual">
+          <pose>-2.659 -1.632 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_051_collision">
+          <pose>-2.404 -1.158 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_051_visual">
+          <pose>-2.404 -1.158 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_052_collision">
+          <pose>-0.809 1.348 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_052_visual">
+          <pose>-0.809 1.348 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_053_collision">
+          <pose>3.072 0.555 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_053_visual">
+          <pose>3.072 0.555 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_054_collision">
+          <pose>4.076 -1.156 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_054_visual">
+          <pose>4.076 -1.156 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_055_collision">
+          <pose>-3.043 -1.768 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_055_visual">
+          <pose>-3.043 -1.768 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_056_collision">
+          <pose>2.134 2.523 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_056_visual">
+          <pose>2.134 2.523 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_057_collision">
+          <pose>-0.797 -2.354 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_057_visual">
+          <pose>-0.797 -2.354 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_058_collision">
+          <pose>4.001 -2.517 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_058_visual">
+          <pose>4.001 -2.517 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_059_collision">
+          <pose>3.620 -0.711 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_059_visual">
+          <pose>3.620 -0.711 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_060_collision">
+          <pose>1.135 1.743 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_060_visual">
+          <pose>1.135 1.743 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_061_collision">
+          <pose>4.146 -1.275 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_061_visual">
+          <pose>4.146 -1.275 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_062_collision">
+          <pose>-0.595 -1.942 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_062_visual">
+          <pose>-0.595 -1.942 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_063_collision">
+          <pose>2.582 -0.318 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_063_visual">
+          <pose>2.582 -0.318 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_064_collision">
+          <pose>-1.524 0.459 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_064_visual">
+          <pose>-1.524 0.459 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_065_collision">
+          <pose>-1.489 0.815 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_065_visual">
+          <pose>-1.489 0.815 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_066_collision">
+          <pose>-1.887 1.590 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_066_visual">
+          <pose>-1.887 1.590 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_067_collision">
+          <pose>3.642 0.634 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_067_visual">
+          <pose>3.642 0.634 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_068_collision">
+          <pose>1.353 -0.819 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_068_visual">
+          <pose>1.353 -0.819 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_069_collision">
+          <pose>-0.941 0.412 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_069_visual">
+          <pose>-0.941 0.412 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_070_collision">
+          <pose>1.845 0.364 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_070_visual">
+          <pose>1.845 0.364 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_071_collision">
+          <pose>-3.919 -1.052 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_071_visual">
+          <pose>-3.919 -1.052 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_072_collision">
+          <pose>-0.310 1.107 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_072_visual">
+          <pose>-0.310 1.107 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_073_collision">
+          <pose>3.877 -2.101 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_073_visual">
+          <pose>3.877 -2.101 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_074_collision">
+          <pose>-1.849 0.438 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_074_visual">
+          <pose>-1.849 0.438 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_075_collision">
+          <pose>1.636 1.934 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_075_visual">
+          <pose>1.636 1.934 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_076_collision">
+          <pose>-3.714 -1.068 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_076_visual">
+          <pose>-3.714 -1.068 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_077_collision">
+          <pose>2.199 -1.327 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_077_visual">
+          <pose>2.199 -1.327 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_078_collision">
+          <pose>4.078 -1.125 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_078_visual">
+          <pose>4.078 -1.125 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_079_collision">
+          <pose>-4.088 -2.325 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_079_visual">
+          <pose>-4.088 -2.325 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_080_collision">
+          <pose>4.193 -0.623 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_080_visual">
+          <pose>4.193 -0.623 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_081_collision">
+          <pose>3.361 -1.140 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_081_visual">
+          <pose>3.361 -1.140 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_082_collision">
+          <pose>-1.490 1.302 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_082_visual">
+          <pose>-1.490 1.302 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_083_collision">
+          <pose>0.510 1.438 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_083_visual">
+          <pose>0.510 1.438 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_084_collision">
+          <pose>0.301 -0.442 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_084_visual">
+          <pose>0.301 -0.442 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_085_collision">
+          <pose>2.481 -0.944 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_085_visual">
+          <pose>2.481 -0.944 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_086_collision">
+          <pose>3.408 -2.115 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_086_visual">
+          <pose>3.408 -2.115 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_087_collision">
+          <pose>-0.186 1.609 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_087_visual">
+          <pose>-0.186 1.609 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_088_collision">
+          <pose>1.600 -0.035 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_088_visual">
+          <pose>1.600 -0.035 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_089_collision">
+          <pose>-1.901 1.453 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_089_visual">
+          <pose>-1.901 1.453 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_090_collision">
+          <pose>4.159 1.848 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_090_visual">
+          <pose>4.159 1.848 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_091_collision">
+          <pose>3.930 2.300 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_091_visual">
+          <pose>3.930 2.300 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_092_collision">
+          <pose>2.319 -1.083 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_092_visual">
+          <pose>2.319 -1.083 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_093_collision">
+          <pose>0.440 -1.977 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_093_visual">
+          <pose>0.440 -1.977 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_094_collision">
+          <pose>2.905 0.464 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_094_visual">
+          <pose>2.905 0.464 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_095_collision">
+          <pose>0.213 -0.925 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_095_visual">
+          <pose>0.213 -0.925 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_096_collision">
+          <pose>3.492 -2.341 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_096_visual">
+          <pose>3.492 -2.341 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_097_collision">
+          <pose>2.491 2.038 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_097_visual">
+          <pose>2.491 2.038 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_098_collision">
+          <pose>0.950 2.247 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_098_visual">
+          <pose>0.950 2.247 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_099_collision">
+          <pose>-1.526 0.382 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_099_visual">
+          <pose>-1.526 0.382 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_100_collision">
+          <pose>-1.638 -0.416 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_100_visual">
+          <pose>-1.638 -0.416 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_101_collision">
+          <pose>-2.595 -2.261 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_101_visual">
+          <pose>-2.595 -2.261 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_102_collision">
+          <pose>4.046 -1.071 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_102_visual">
+          <pose>4.046 -1.071 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_103_collision">
+          <pose>-1.491 0.582 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_103_visual">
+          <pose>-1.491 0.582 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_104_collision">
+          <pose>-0.963 -1.033 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_104_visual">
+          <pose>-0.963 -1.033 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_105_collision">
+          <pose>3.308 0.090 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_105_visual">
+          <pose>3.308 0.090 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_106_collision">
+          <pose>-0.602 -0.548 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_106_visual">
+          <pose>-0.602 -0.548 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_107_collision">
+          <pose>2.909 -0.607 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_107_visual">
+          <pose>2.909 -0.607 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_108_collision">
+          <pose>4.066 2.133 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_108_visual">
+          <pose>4.066 2.133 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_109_collision">
+          <pose>0.378 0.607 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_109_visual">
+          <pose>0.378 0.607 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_110_collision">
+          <pose>2.378 -0.190 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_110_visual">
+          <pose>2.378 -0.190 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_111_collision">
+          <pose>-2.711 -1.977 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_111_visual">
+          <pose>-2.711 -1.977 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_112_collision">
+          <pose>4.071 -0.796 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_112_visual">
+          <pose>4.071 -0.796 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_113_collision">
+          <pose>-0.958 1.125 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_113_visual">
+          <pose>-0.958 1.125 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_114_collision">
+          <pose>-0.809 1.781 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_114_visual">
+          <pose>-0.809 1.781 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_115_collision">
+          <pose>3.472 -1.061 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_115_visual">
+          <pose>3.472 -1.061 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_116_collision">
+          <pose>-0.197 1.060 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_116_visual">
+          <pose>-0.197 1.060 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_117_collision">
+          <pose>-0.123 -2.226 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_117_visual">
+          <pose>-0.123 -2.226 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_118_collision">
+          <pose>-3.919 -0.751 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_118_visual">
+          <pose>-3.919 -0.751 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_119_collision">
+          <pose>-2.419 -0.211 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_119_visual">
+          <pose>-2.419 -0.211 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_120_collision">
+          <pose>-2.657 -0.238 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_120_visual">
+          <pose>-2.657 -0.238 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_121_collision">
+          <pose>-1.936 -0.569 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_121_visual">
+          <pose>-1.936 -0.569 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_122_collision">
+          <pose>1.661 2.404 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_122_visual">
+          <pose>1.661 2.404 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_123_collision">
+          <pose>-0.472 1.734 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_123_visual">
+          <pose>-0.472 1.734 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_124_collision">
+          <pose>0.366 0.929 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_124_visual">
+          <pose>0.366 0.929 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_125_collision">
+          <pose>-0.214 -0.099 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_125_visual">
+          <pose>-0.214 -0.099 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_126_collision">
+          <pose>3.488 1.119 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_126_visual">
+          <pose>3.488 1.119 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_127_collision">
+          <pose>1.673 -2.069 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_127_visual">
+          <pose>1.673 -2.069 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_128_collision">
+          <pose>2.104 -0.246 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_128_visual">
+          <pose>2.104 -0.246 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_129_collision">
+          <pose>-3.649 1.469 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_129_visual">
+          <pose>-3.649 1.469 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_130_collision">
+          <pose>1.977 1.086 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_130_visual">
+          <pose>1.977 1.086 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_131_collision">
+          <pose>1.673 0.860 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_131_visual">
+          <pose>1.673 0.860 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_132_collision">
+          <pose>-0.076 0.054 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_132_visual">
+          <pose>-0.076 0.054 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_133_collision">
+          <pose>-2.336 -0.486 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_133_visual">
+          <pose>-2.336 -0.486 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_134_collision">
+          <pose>3.017 -0.745 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_134_visual">
+          <pose>3.017 -0.745 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_135_collision">
+          <pose>1.073 -1.633 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_135_visual">
+          <pose>1.073 -1.633 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_136_collision">
+          <pose>0.269 0.045 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_136_visual">
+          <pose>0.269 0.045 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_137_collision">
+          <pose>-3.708 -1.617 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_137_visual">
+          <pose>-3.708 -1.617 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_138_collision">
+          <pose>-2.988 0.065 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_138_visual">
+          <pose>-2.988 0.065 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_139_collision">
+          <pose>1.374 0.658 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_139_visual">
+          <pose>1.374 0.658 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_140_collision">
+          <pose>-4.159 2.448 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_140_visual">
+          <pose>-4.159 2.448 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_141_collision">
+          <pose>1.429 2.353 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_141_visual">
+          <pose>1.429 2.353 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_142_collision">
+          <pose>-3.176 -2.182 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_142_visual">
+          <pose>-3.176 -2.182 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_143_collision">
+          <pose>-4.070 -0.833 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_143_visual">
+          <pose>-4.070 -0.833 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_144_collision">
+          <pose>0.017 1.552 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_144_visual">
+          <pose>0.017 1.552 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_145_collision">
+          <pose>1.854 -1.412 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_145_visual">
+          <pose>1.854 -1.412 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_146_collision">
+          <pose>-3.622 -1.646 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_146_visual">
+          <pose>-3.622 -1.646 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_147_collision">
+          <pose>-3.182 0.840 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_147_visual">
+          <pose>-3.182 0.840 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_148_collision">
+          <pose>-1.960 1.633 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_148_visual">
+          <pose>-1.960 1.633 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_149_collision">
+          <pose>-2.028 -0.892 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_149_visual">
+          <pose>-2.028 -0.892 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_150_collision">
+          <pose>1.517 -0.131 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_150_visual">
+          <pose>1.517 -0.131 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_151_collision">
+          <pose>-1.969 1.462 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_151_visual">
+          <pose>-1.969 1.462 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_152_collision">
+          <pose>2.713 2.191 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_152_visual">
+          <pose>2.713 2.191 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_153_collision">
+          <pose>-1.511 0.476 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_153_visual">
+          <pose>-1.511 0.476 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_154_collision">
+          <pose>2.203 0.953 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_154_visual">
+          <pose>2.203 0.953 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_155_collision">
+          <pose>3.840 -2.458 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_155_visual">
+          <pose>3.840 -2.458 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_156_collision">
+          <pose>0.393 0.915 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_156_visual">
+          <pose>0.393 0.915 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_157_collision">
+          <pose>3.907 -0.538 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_157_visual">
+          <pose>3.907 -0.538 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_158_collision">
+          <pose>1.879 0.035 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_158_visual">
+          <pose>1.879 0.035 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_159_collision">
+          <pose>-0.840 -2.444 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_159_visual">
+          <pose>-0.840 -2.444 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_160_collision">
+          <pose>2.230 -2.237 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_160_visual">
+          <pose>2.230 -2.237 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_161_collision">
+          <pose>0.871 -1.853 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_161_visual">
+          <pose>0.871 -1.853 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_162_collision">
+          <pose>-1.636 -1.302 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_162_visual">
+          <pose>-1.636 -1.302 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_163_collision">
+          <pose>-0.269 0.792 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_163_visual">
+          <pose>-0.269 0.792 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_164_collision">
+          <pose>2.369 -1.408 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_164_visual">
+          <pose>2.369 -1.408 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_165_collision">
+          <pose>0.119 0.203 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_165_visual">
+          <pose>0.119 0.203 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_166_collision">
+          <pose>-2.723 0.661 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_166_visual">
+          <pose>-2.723 0.661 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_167_collision">
+          <pose>3.782 1.555 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_167_visual">
+          <pose>3.782 1.555 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_168_collision">
+          <pose>-0.328 2.272 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_168_visual">
+          <pose>-0.328 2.272 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_169_collision">
+          <pose>-1.902 0.913 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_169_visual">
+          <pose>-1.902 0.913 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_170_collision">
+          <pose>-0.697 -0.064 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_170_visual">
+          <pose>-0.697 -0.064 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_171_collision">
+          <pose>3.858 0.735 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_171_visual">
+          <pose>3.858 0.735 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_172_collision">
+          <pose>0.404 0.406 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_172_visual">
+          <pose>0.404 0.406 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_173_collision">
+          <pose>1.493 -1.840 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_173_visual">
+          <pose>1.493 -1.840 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_174_collision">
+          <pose>-0.819 2.243 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_174_visual">
+          <pose>-0.819 2.243 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_175_collision">
+          <pose>3.916 -1.103 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_175_visual">
+          <pose>3.916 -1.103 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_176_collision">
+          <pose>-4.065 2.376 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_176_visual">
+          <pose>-4.065 2.376 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_177_collision">
+          <pose>-0.110 2.199 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_177_visual">
+          <pose>-0.110 2.199 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_178_collision">
+          <pose>-0.445 2.139 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_178_visual">
+          <pose>-0.445 2.139 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+
+        <collision name="hemisphere_obstacle_179_collision">
+          <pose>-0.749 2.030 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+        </collision>
+        <visual name="hemisphere_obstacle_179_visual">
+          <pose>-0.749 2.030 0.000 0 0 0</pose>
+          <geometry><sphere><radius>0.100</radius></sphere></geometry>
+          <material>
+            <ambient>0.25 0.25 0.24 1</ambient>
+            <diffuse>0.37 0.36 0.33 1</diffuse>
+            <specular>0.05 0.05 0.04 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>

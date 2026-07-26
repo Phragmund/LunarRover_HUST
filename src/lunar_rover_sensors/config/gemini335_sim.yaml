@@ -1,0 +1,14 @@
+gemini_depth_noise:
+  ros__parameters:
+    use_sim_time: true
+    input_topic: /sim/camera/depth/image_raw
+    output_topic: /camera/depth/image_raw
+    sigma_base: 0.002
+    sigma_quadratic: 0.0015
+    dropout_probability: 0.01
+    edge_dropout_probability: 0.15
+    edge_threshold: 0.05
+    min_depth: 0.13
+    max_depth: 10.0
+    random_seed: 335
+

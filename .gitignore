@@ -1,0 +1,16 @@
+build/
+install/
+log/
+.cache/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.db
+*.bag
+*.pcd
+*.log
+metrics/*.json
+third_party/
+.deps/
+.vscode/
+

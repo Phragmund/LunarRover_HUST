@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="lunar_rock_medium">
+    <static>true</static>
+    <link name="rock_link">
+      <collision name="core_collision">
+        <pose>0 0 0.12 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.15</radius>
+          </sphere>
+        </geometry>
+      </collision>
+      <collision name="lobe_a_collision">
+        <pose>0.11 0.02 0.09 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.105</radius>
+          </sphere>
+        </geometry>
+      </collision>
+      <collision name="lobe_b_collision">
+        <pose>-0.08 -0.08 0.075 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.095</radius>
+          </sphere>
+        </geometry>
+      </collision>
+      <visual name="core_visual">
+        <pose>0 0 0.12 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.15</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0.22 0.21 0.20 1</ambient>
+          <diffuse>0.31 0.30 0.28 1</diffuse>
+        </material>
+      </visual>
+      <visual name="lobe_a_visual">
+        <pose>0.11 0.02 0.09 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.105</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0.21 0.20 0.19 1</ambient>
+          <diffuse>0.30 0.29 0.27 1</diffuse>
+        </material>
+      </visual>
+      <visual name="lobe_b_visual">
+        <pose>-0.08 -0.08 0.075 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.095</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0.20 0.19 0.18 1</ambient>
+          <diffuse>0.29 0.28 0.26 1</diffuse>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

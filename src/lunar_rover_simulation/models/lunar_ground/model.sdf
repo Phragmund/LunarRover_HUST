@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="lunar_ground">
+    <static>true</static>
+    <link name="ground_link">
+      <collision name="ground_collision">
+        <geometry>
+          <plane>
+            <normal>0 0 1</normal>
+            <size>30 30</size>
+          </plane>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1.0</mu>
+              <mu2>0.85</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>10000000</kp>
+              <kd>100</kd>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <visual name="ground_visual">
+        <geometry>
+          <plane>
+            <normal>0 0 1</normal>
+            <size>30 30</size>
+          </plane>
+        </geometry>
+        <material>
+          <ambient>0.34 0.33 0.31 1</ambient>
+          <diffuse>0.48 0.47 0.44 1</diffuse>
+          <specular>0.03 0.03 0.03 1</specular>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

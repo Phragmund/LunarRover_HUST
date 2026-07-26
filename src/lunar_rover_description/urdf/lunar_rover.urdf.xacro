@@ -1,0 +1,679 @@
+<?xml version="1.0"?>
+<robot name="lunar_rover" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="use_sim" default="true"/>
+  <xacro:arg name="sensor_noise" default="true"/>
+  <xacro:arg name="controller_config" default=""/>
+  <xacro:arg
+    name="ros2_control_hardware_plugin"
+    default="gz_ros2_control/GazeboSimSystem"/>
+
+  <!-- Compact rover envelope: 0.54 m long x 0.40 m wide including wheels. -->
+  <xacro:property name="track" value="0.345"/>
+  <xacro:property name="front_x" value="0.195"/>
+  <xacro:property name="rear_x" value="-0.195"/>
+  <xacro:property name="middle_x" value="0.00"/>
+  <xacro:property name="rocker_y" value="0.135"/>
+  <xacro:property name="wheel_radius" value="0.075"/>
+  <xacro:property name="wheel_width" value="0.055"/>
+  <xacro:property name="wheel_mass" value="0.70"/>
+  <xacro:property name="wheel_center_z" value="-0.12"/>
+  <xacro:property name="steering_limit" value="${pi / 3.0}"/>
+
+  <material name="regolith_gray">
+    <color rgba="0.42 0.44 0.45 1.0"/>
+  </material>
+  <material name="chassis_white">
+    <color rgba="0.78 0.81 0.82 1.0"/>
+  </material>
+  <material name="suspension_dark">
+    <color rgba="0.16 0.18 0.19 1.0"/>
+  </material>
+  <material name="sensor_gold">
+    <color rgba="0.72 0.52 0.12 1.0"/>
+  </material>
+  <material name="camera_black">
+    <color rgba="0.04 0.05 0.05 1.0"/>
+  </material>
+
+  <xacro:macro name="box_inertial" params="mass x y z">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${mass * (y * y + z * z) / 12.0}"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="${mass * (x * x + z * z) / 12.0}"
+        iyz="0.0"
+        izz="${mass * (x * x + y * y) / 12.0}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="wheel_inertial" params="mass radius width">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="${mass}"/>
+      <inertia
+        ixx="${mass * (3.0 * radius * radius + width * width) / 12.0}"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="${0.5 * mass * radius * radius}"
+        iyz="0.0"
+        izz="${mass * (3.0 * radius * radius + width * width) / 12.0}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="wheel_link" params="name">
+    <link name="${name}_wheel_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi / 2.0} 0 0"/>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+        <material name="regolith_gray"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="${pi / 2.0} 0 0"/>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+      </collision>
+      <xacro:wheel_inertial
+        mass="${wheel_mass}"
+        radius="${wheel_radius}"
+        width="${wheel_width}"/>
+    </link>
+    <gazebo reference="${name}_wheel_link">
+      <mu1>1.20</mu1>
+      <mu2>0.85</mu2>
+      <kp>1000000.0</kp>
+      <kd>100.0</kd>
+      <minDepth>0.001</minDepth>
+      <maxVel>0.10</maxVel>
+      <selfCollide>false</selfCollide>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:macro
+    name="steered_wheel"
+    params="name parent x y z">
+    <link name="${name}_steering_link">
+      <visual>
+        <geometry>
+          <box size="0.044 0.044 0.060"/>
+        </geometry>
+        <material name="suspension_dark"/>
+      </visual>
+      <collision>
+        <geometry>
+          <box size="0.044 0.044 0.060"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial mass="0.16" x="0.044" y="0.044" z="0.060"/>
+    </link>
+    <joint name="${name}_steering_joint" type="revolute">
+      <parent link="${parent}"/>
+      <child link="${name}_steering_link"/>
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
+      <axis xyz="0 0 1"/>
+      <limit
+        lower="${-steering_limit}"
+        upper="${steering_limit}"
+        effort="40.0"
+        velocity="1.2"/>
+      <dynamics damping="0.8" friction="0.2"/>
+    </joint>
+    <xacro:wheel_link name="${name}"/>
+    <joint name="${name}_wheel_joint" type="continuous">
+      <parent link="${name}_steering_link"/>
+      <child link="${name}_wheel_link"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <!-- Positive angular velocity produces motion along base_link +X. -->
+      <axis xyz="0 1 0"/>
+      <limit effort="35.0" velocity="12.0"/>
+      <dynamics damping="0.08" friction="0.03"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="fixed_steer_wheel" params="name parent x y z">
+    <xacro:wheel_link name="${name}"/>
+    <joint name="${name}_wheel_joint" type="continuous">
+      <parent link="${parent}"/>
+      <child link="${name}_wheel_link"/>
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
+      <!-- Positive angular velocity produces motion along base_link +X. -->
+      <axis xyz="0 1 0"/>
+      <limit effort="35.0" velocity="12.0"/>
+      <dynamics damping="0.08" friction="0.03"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="suspension_side" params="side sign">
+    <link name="${side}_rocker_link">
+      <visual>
+        <origin xyz="-0.055 0 -0.040" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.305 0.030 0.028"/>
+        </geometry>
+        <material name="suspension_dark"/>
+      </visual>
+      <visual>
+        <origin xyz="-0.055 0 -0.005" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.235 0.020 0.020"/>
+        </geometry>
+        <material name="suspension_dark"/>
+      </visual>
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi / 2.0} 0 0"/>
+        <geometry>
+          <cylinder radius="0.024" length="0.055"/>
+        </geometry>
+        <material name="suspension_dark"/>
+      </visual>
+      <collision>
+        <origin xyz="-0.055 0 -0.040" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.305 0.030 0.028"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial mass="0.85" x="0.305" y="0.030" z="0.028"/>
+    </link>
+    <joint name="${side}_rocker_joint" type="revolute">
+      <parent link="base_link"/>
+      <child link="${side}_rocker_link"/>
+      <origin xyz="0 ${sign * rocker_y} -0.04" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="${-0.45}" upper="0.45" effort="180.0" velocity="1.5"/>
+      <dynamics damping="5.0" friction="0.5"/>
+    </joint>
+
+    <link name="${side}_bogie_link">
+      <visual>
+        <origin xyz="0.045 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.235 0.028 0.026"/>
+        </geometry>
+        <material name="suspension_dark"/>
+      </visual>
+      <visual>
+        <origin xyz="0.045 0 0.032" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.175 0.018 0.018"/>
+        </geometry>
+        <material name="suspension_dark"/>
+      </visual>
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi / 2.0} 0 0"/>
+        <geometry>
+          <cylinder radius="0.020" length="0.050"/>
+        </geometry>
+        <material name="suspension_dark"/>
+      </visual>
+      <collision>
+        <origin xyz="0.045 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.235 0.028 0.026"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertial mass="0.60" x="0.235" y="0.028" z="0.026"/>
+    </link>
+    <joint name="${side}_bogie_joint" type="revolute">
+      <parent link="${side}_rocker_link"/>
+      <child link="${side}_bogie_link"/>
+      <origin xyz="0.065 0 -0.04" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit lower="${-0.61}" upper="0.61" effort="120.0" velocity="1.8"/>
+      <dynamics damping="3.0" friction="0.35"/>
+    </joint>
+
+    <xacro:steered_wheel
+      name="${side}_front"
+      parent="${side}_bogie_link"
+      x="${front_x - 0.065}"
+      y="${sign * (track / 2.0 - rocker_y)}"
+      z="-0.04"/>
+    <xacro:fixed_steer_wheel
+      name="${side}_middle"
+      parent="${side}_bogie_link"
+      x="${middle_x - 0.065}"
+      y="${sign * (track / 2.0 - rocker_y)}"
+      z="-0.04"/>
+    <xacro:steered_wheel
+      name="${side}_rear"
+      parent="${side}_rocker_link"
+      x="${rear_x}"
+      y="${sign * (track / 2.0 - rocker_y)}"
+      z="-0.08"/>
+  </xacro:macro>
+
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.36 0.20 0.10"/>
+      </geometry>
+      <material name="chassis_white"/>
+    </visual>
+    <collision name="base_link_chassis_collision">
+      <geometry>
+        <box size="0.36 0.20 0.10"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial mass="6.5" x="0.36" y="0.20" z="0.10"/>
+  </link>
+  <xacro:suspension_side side="left" sign="1.0"/>
+  <xacro:suspension_side side="right" sign="-1.0"/>
+
+  <link name="sensor_mast_link">
+    <visual>
+      <origin xyz="0 0 0.0775" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.012" length="0.155"/>
+      </geometry>
+      <material name="suspension_dark"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.0775" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.012" length="0.155"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial mass="0.12" x="0.024" y="0.024" z="0.155"/>
+  </link>
+  <joint name="sensor_mast_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="sensor_mast_link"/>
+    <origin xyz="0.06 0 0.05" rpy="0 0 0"/>
+  </joint>
+
+  <link name="mid360_link">
+    <visual>
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.06"/>
+      </geometry>
+      <material name="sensor_gold"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.045" length="0.06"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial mass="0.265" x="0.09" y="0.09" z="0.06"/>
+  </link>
+  <joint name="mid360_joint" type="fixed">
+    <parent link="sensor_mast_link"/>
+    <child link="mid360_link"/>
+    <origin xyz="0 0 0.155" rpy="0 ${pi / 4.0} 0"/>
+  </joint>
+  <link name="livox_frame"/>
+  <joint name="livox_frame_joint" type="fixed">
+    <parent link="mid360_link"/>
+    <child link="livox_frame"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+  <link name="livox_imu_frame"/>
+  <joint name="livox_imu_frame_joint" type="fixed">
+    <parent link="mid360_link"/>
+    <child link="livox_imu_frame"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="gemini335_link">
+    <visual>
+      <geometry>
+        <box size="0.035 0.12 0.032"/>
+      </geometry>
+      <material name="camera_black"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.035 0.12 0.032"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertial mass="0.30" x="0.035" y="0.12" z="0.032"/>
+  </link>
+  <joint name="gemini335_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="gemini335_link"/>
+    <origin xyz="0.1975 0 0.005" rpy="0 0 0"/>
+  </joint>
+
+  <link name="gemini335_color_optical_frame"/>
+  <joint name="gemini335_color_optical_joint" type="fixed">
+    <parent link="gemini335_link"/>
+    <child link="gemini335_color_optical_frame"/>
+    <origin xyz="0.0175 0 0" rpy="${-pi / 2.0} 0 ${-pi / 2.0}"/>
+  </joint>
+  <link name="gemini335_depth_optical_frame"/>
+  <joint name="gemini335_depth_optical_joint" type="fixed">
+    <parent link="gemini335_color_optical_frame"/>
+    <child link="gemini335_depth_optical_frame"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+  <!-- Orbbec SDK v2 defaults retained as fixed aliases for real-sensor topics. -->
+  <link name="camera_color_optical_frame"/>
+  <joint name="camera_color_optical_alias_joint" type="fixed">
+    <parent link="gemini335_color_optical_frame"/>
+    <child link="camera_color_optical_frame"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+  <link name="camera_depth_optical_frame"/>
+  <joint name="camera_depth_optical_alias_joint" type="fixed">
+    <parent link="gemini335_depth_optical_frame"/>
+    <child link="camera_depth_optical_frame"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <ros2_control name="LunarRoverSystem" type="system">
+    <hardware>
+      <plugin>$(arg ros2_control_hardware_plugin)</plugin>
+    </hardware>
+
+    <joint name="left_front_steering_joint">
+      <command_interface name="position">
+        <param name="min">${-steering_limit}</param>
+        <param name="max">${steering_limit}</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_front_steering_joint">
+      <command_interface name="position">
+        <param name="min">${-steering_limit}</param>
+        <param name="max">${steering_limit}</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_rear_steering_joint">
+      <command_interface name="position">
+        <param name="min">${-steering_limit}</param>
+        <param name="max">${steering_limit}</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_rear_steering_joint">
+      <command_interface name="position">
+        <param name="min">${-steering_limit}</param>
+        <param name="max">${steering_limit}</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <joint name="left_front_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-12.0</param>
+        <param name="max">12.0</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_middle_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-12.0</param>
+        <param name="max">12.0</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_rear_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-12.0</param>
+        <param name="max">12.0</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_front_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-12.0</param>
+        <param name="max">12.0</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_middle_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-12.0</param>
+        <param name="max">12.0</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_rear_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-12.0</param>
+        <param name="max">12.0</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <joint name="left_rocker_joint">
+      <command_interface name="effort">
+        <param name="min">-180.0</param>
+        <param name="max">180.0</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_rocker_joint">
+      <command_interface name="effort">
+        <param name="min">-180.0</param>
+        <param name="max">180.0</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_bogie_joint">
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_bogie_joint">
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+  <xacro:if value="$(arg use_sim)">
+    <gazebo>
+      <plugin
+        filename="gz_ros2_control-system"
+        name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+        <parameters>$(arg controller_config)</parameters>
+      </plugin>
+      <plugin
+        filename="libignition-gazebo-odometry-publisher-system.so"
+        name="ignition::gazebo::systems::OdometryPublisher">
+        <odom_frame>world</odom_frame>
+        <robot_base_frame>base_link</robot_base_frame>
+        <odom_publish_frequency>50</odom_publish_frequency>
+        <odom_topic>/simulation/ground_truth/odometry</odom_topic>
+        <odom_covariance_topic>/simulation/ground_truth/odometry_with_covariance</odom_covariance_topic>
+        <tf_topic>/simulation/ground_truth/tf</tf_topic>
+        <dimensions>3</dimensions>
+        <gaussian_noise>0.0</gaussian_noise>
+      </plugin>
+      <plugin
+        filename="libignition-gazebo-touchplugin-system.so"
+        name="ignition::gazebo::systems::TouchPlugin">
+        <target>rock</target>
+        <namespace>simulation/rock_collision</namespace>
+        <time>0.001</time>
+        <enabled>true</enabled>
+      </plugin>
+      <plugin
+        filename="libignition-gazebo-touchplugin-system.so"
+        name="ignition::gazebo::systems::TouchPlugin">
+        <target>step</target>
+        <namespace>simulation/step_collision</namespace>
+        <time>0.001</time>
+        <enabled>true</enabled>
+      </plugin>
+    </gazebo>
+
+    <gazebo reference="base_link">
+      <sensor name="chassis_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <topic>/simulation/chassis_contacts</topic>
+        <contact>
+          <collision>base_link_chassis_collision</collision>
+        </contact>
+      </sensor>
+    </gazebo>
+
+    <gazebo reference="mid360_link">
+      <sensor name="mid360_gpu_lidar" type="gpu_lidar">
+        <always_on>true</always_on>
+        <visualize>true</visualize>
+        <update_rate>10</update_rate>
+        <topic>/mid360/scan</topic>
+        <gz_frame_id>livox_frame</gz_frame_id>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>1800</samples>
+              <resolution>1</resolution>
+              <min_angle>${-pi}</min_angle>
+              <max_angle>${pi}</max_angle>
+            </horizontal>
+            <vertical>
+              <samples>11</samples>
+              <resolution>1</resolution>
+              <min_angle>${-7.0 * pi / 180.0}</min_angle>
+              <max_angle>${52.0 * pi / 180.0}</max_angle>
+            </vertical>
+          </scan>
+          <range>
+            <min>0.10</min>
+            <max>40.0</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <!-- Range-dependent noise and dropout are added by mid360_sim_adapter. -->
+            <stddev>0.0</stddev>
+          </noise>
+        </lidar>
+      </sensor>
+      <sensor name="mid360_imu" type="imu">
+        <always_on>true</always_on>
+        <update_rate>200</update_rate>
+        <topic>/mid360/imu</topic>
+        <gz_frame_id>livox_imu_frame</gz_frame_id>
+        <imu>
+          <angular_velocity>
+            <x>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <xacro:if value="$(arg sensor_noise)">
+                  <stddev>0.0007</stddev>
+                </xacro:if>
+                <xacro:unless value="$(arg sensor_noise)">
+                  <stddev>0.0</stddev>
+                </xacro:unless>
+              </noise>
+            </x>
+            <y>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <xacro:if value="$(arg sensor_noise)">
+                  <stddev>0.0007</stddev>
+                </xacro:if>
+                <xacro:unless value="$(arg sensor_noise)">
+                  <stddev>0.0</stddev>
+                </xacro:unless>
+              </noise>
+            </y>
+            <z>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <xacro:if value="$(arg sensor_noise)">
+                  <stddev>0.0007</stddev>
+                </xacro:if>
+                <xacro:unless value="$(arg sensor_noise)">
+                  <stddev>0.0</stddev>
+                </xacro:unless>
+              </noise>
+            </z>
+          </angular_velocity>
+          <linear_acceleration>
+            <x>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <xacro:if value="$(arg sensor_noise)">
+                  <stddev>0.02</stddev>
+                </xacro:if>
+                <xacro:unless value="$(arg sensor_noise)">
+                  <stddev>0.0</stddev>
+                </xacro:unless>
+              </noise>
+            </x>
+            <y>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <xacro:if value="$(arg sensor_noise)">
+                  <stddev>0.02</stddev>
+                </xacro:if>
+                <xacro:unless value="$(arg sensor_noise)">
+                  <stddev>0.0</stddev>
+                </xacro:unless>
+              </noise>
+            </y>
+            <z>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <xacro:if value="$(arg sensor_noise)">
+                  <stddev>0.02</stddev>
+                </xacro:if>
+                <xacro:unless value="$(arg sensor_noise)">
+                  <stddev>0.0</stddev>
+                </xacro:unless>
+              </noise>
+            </z>
+          </linear_acceleration>
+        </imu>
+      </sensor>
+    </gazebo>
+
+    <gazebo reference="gemini335_link">
+      <sensor name="gemini335_rgbd" type="rgbd_camera">
+        <always_on>true</always_on>
+        <visualize>true</visualize>
+        <update_rate>15</update_rate>
+        <topic>/gemini335</topic>
+        <gz_frame_id>gemini335_color_optical_frame</gz_frame_id>
+        <camera>
+          <optical_frame_id>gemini335_color_optical_frame</optical_frame_id>
+          <horizontal_fov>${90.0 * pi / 180.0}</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>400</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.10</near>
+            <far>10.0</far>
+          </clip>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <xacro:if value="$(arg sensor_noise)">
+              <stddev>0.003</stddev>
+            </xacro:if>
+            <xacro:unless value="$(arg sensor_noise)">
+              <stddev>0.0</stddev>
+            </xacro:unless>
+          </noise>
+        </camera>
+      </sensor>
+    </gazebo>
+  </xacro:if>
+</robot>

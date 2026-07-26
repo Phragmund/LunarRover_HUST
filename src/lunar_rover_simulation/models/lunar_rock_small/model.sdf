@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="lunar_rock_small">
+    <static>true</static>
+    <link name="rock_link">
+      <collision name="core_collision">
+        <pose>0 0 0.055 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.075</radius>
+          </sphere>
+        </geometry>
+      </collision>
+      <collision name="lobe_collision">
+        <pose>0.055 -0.025 0.045 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.055</radius>
+          </sphere>
+        </geometry>
+      </collision>
+      <visual name="core_visual">
+        <pose>0 0 0.055 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.075</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0.25 0.24 0.23 1</ambient>
+          <diffuse>0.34 0.33 0.31 1</diffuse>
+        </material>
+      </visual>
+      <visual name="lobe_visual">
+        <pose>0.055 -0.025 0.045 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.055</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0.24 0.23 0.22 1</ambient>
+          <diffuse>0.33 0.32 0.30 1</diffuse>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

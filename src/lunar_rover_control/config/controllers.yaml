@@ -1,0 +1,51 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100
+    use_sim_time: true
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    rover_controller:
+      type: lunar_rover_control/RoverController
+
+    rocker_differential_controller:
+      type: lunar_rover_control/RockerDifferentialController
+
+rover_controller:
+  ros__parameters:
+    steering_joints:
+      - left_front_steering_joint
+      - right_front_steering_joint
+      - left_rear_steering_joint
+      - right_rear_steering_joint
+    # The wheel order is FL, FR, ML, MR, RL, RR.
+    wheel_joints:
+      - left_front_wheel_joint
+      - right_front_wheel_joint
+      - left_middle_wheel_joint
+      - right_middle_wheel_joint
+      - left_rear_wheel_joint
+      - right_rear_wheel_joint
+    wheel_radius: 0.075
+    wheelbase: 0.39
+    track_width: 0.345
+    max_steering_angle: 1.0471975512
+    max_wheel_angular_velocity: 8.0
+    command_topic: /chassis/cmd_vel
+    command_timeout: 0.25
+    steering_alignment_tolerance: 0.08
+    max_steering_rate: 1.2
+    max_wheel_angular_acceleration: 10.0
+    stop_wheels_until_steered: true
+
+rocker_differential_controller:
+  ros__parameters:
+    left_rocker_joint: left_rocker_joint
+    right_rocker_joint: right_rocker_joint
+    # With opposite URDF joint axes set this to -1.0.
+    coupling_sign: 1.0
+    equilibrium_offset: 0.0
+    stiffness: 120.0
+    damping: 18.0
+    max_effort: 120.0

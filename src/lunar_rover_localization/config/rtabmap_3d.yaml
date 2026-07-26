@@ -1,0 +1,33 @@
+rtabmap:
+  ros__parameters:
+    frame_id: base_link
+    map_frame_id: map
+    odom_frame_id: odom
+    publish_tf: true
+    subscribe_rgbd: true
+    subscribe_scan_cloud: true
+    approx_sync: true
+    queue_size: 30
+    qos: 2
+    wait_for_transform: 0.3
+    use_action_for_goal: false
+    map_always_update: true
+    cloud_output_voxelized: true
+    map_empty_ray_tracing: true
+    RGBD/NeighborLinkRefining: "true"
+    RGBD/ProximityBySpace: "true"
+    RGBD/ProximityPathMaxNeighbors: "3"
+    RGBD/CreateOccupancyGrid: "true"
+    Reg/Strategy: "2"
+    Reg/Force3DoF: "false"
+    Grid/FromDepth: "true"
+    Grid/3D: "true"
+    Grid/CellSize: "0.08"
+    Grid/RangeMax: "12.0"
+    Grid/RayTracing: "true"
+    Grid/MaxObstacleHeight: "2.0"
+    Grid/MinGroundHeight: "-0.25"
+    Grid/MaxGroundHeight: "0.20"
+    Grid/NormalsSegmentation: "false"
+    Mem/IncrementalMemory: "true"
+    Mem/InitWMWithAllNodes: "false"
