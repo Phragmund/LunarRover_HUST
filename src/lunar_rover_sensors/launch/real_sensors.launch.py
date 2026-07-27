@@ -1,3 +1,17 @@
+# Copyright 2026 Lunar Rover Maintainers
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
@@ -17,9 +31,10 @@ def generate_launch_description():
                 executable="livox_ros_driver2_node",
                 name="livox_lidar_publisher",
                 output="screen",
+                remappings=[("/livox/lidar", "/livox/points")],
                 parameters=[
                     {
-                        "xfer_format": 1,
+                        "xfer_format": 0,
                         "multi_topic": 0,
                         "data_src": 0,
                         "publish_freq": 10.0,
@@ -28,17 +43,6 @@ def generate_launch_description():
                         "user_config_path": str(
                             share / "config" / "livox_mid360.json"
                         ),
-                    }
-                ],
-            ),
-            Node(
-                package="lunar_rover_sensors",
-                executable="livox_custom_to_pointcloud",
-                output="screen",
-                parameters=[
-                    {
-                        "input_topic": "/livox/lidar",
-                        "output_topic": "/livox/points",
                     }
                 ],
             ),

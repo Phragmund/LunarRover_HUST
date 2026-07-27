@@ -219,8 +219,8 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument(
                 "sensor_noise",
-                default_value="true",
-                description="Enable Gaussian sensor noise.",
+                default_value="false",
+                description="Enable only Gazebo's built-in sensor noise model.",
             ),
             DeclareLaunchArgument(
                 "controller_config",

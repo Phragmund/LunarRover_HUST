@@ -1,4 +1,4 @@
-"""Start rover ros2_control plugins, wheel odometry, and simulated chassis state."""
+"""Start the simulated chassis and rocker controllers without odometry."""
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
@@ -15,27 +15,25 @@ def generate_launch_description():
         "spawn_joint_state_broadcaster"
     )
     controllers_file = LaunchConfiguration("controllers_file")
-    odometry_file = LaunchConfiguration("odometry_file")
 
     return LaunchDescription(
         [
             DeclareLaunchArgument("use_sim_time", default_value="true"),
-            DeclareLaunchArgument("controller_manager", default_value="/controller_manager"),
+            DeclareLaunchArgument(
+                "controller_manager", default_value="/controller_manager"
+            ),
             DeclareLaunchArgument(
                 "spawn_joint_state_broadcaster",
                 default_value="false",
-                description="Spawn JSC here only when the parent simulation does not.",
             ),
             DeclareLaunchArgument(
                 "controllers_file",
                 default_value=PathJoinSubstitution(
-                    [FindPackageShare("lunar_rover_control"), "config", "controllers.yaml"]
-                ),
-            ),
-            DeclareLaunchArgument(
-                "odometry_file",
-                default_value=PathJoinSubstitution(
-                    [FindPackageShare("lunar_rover_control"), "config", "odometry.yaml"]
+                    [
+                        FindPackageShare("lunar_rover_control"),
+                        "config",
+                        "controllers.yaml",
+                    ]
                 ),
             ),
             Node(
@@ -89,14 +87,8 @@ def generate_launch_description():
             ),
             Node(
                 package="lunar_rover_control",
-                executable="wheel_odometry_node",
-                parameters=[odometry_file, {"use_sim_time": use_sim_time}],
-                output="screen",
-            ),
-            Node(
-                package="lunar_rover_control",
                 executable="sim_chassis_state_node",
-                parameters=[odometry_file, {"use_sim_time": use_sim_time}],
+                parameters=[{"use_sim_time": use_sim_time}],
                 output="screen",
             ),
         ]

@@ -1,7 +1,0 @@
-frame_id: map
-waypoints:
-  - {x: 2.0, y: 0.0, yaw: 0.0, dwell: 1.0}
-  - {x: 4.0, y: 1.5, yaw: 0.4, dwell: 0.0}
-  - {x: 7.0, y: -1.0, yaw: -0.2, dwell: 0.0}
-  - {x: 9.0, y: 0.0, yaw: 0.0, dwell: 0.0}
-

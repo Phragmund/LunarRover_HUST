@@ -4,8 +4,8 @@ validate:
 	python3 tools/validate_workspace.py
 
 test: validate
-	PYTHONPATH=src/lunar_rover_localization pytest -q src/lunar_rover_localization/test
+	colcon test --event-handlers console_direct+
+	colcon test-result --verbose
 
 build:
 	./scripts/build.sh
-

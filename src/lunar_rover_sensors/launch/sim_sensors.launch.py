@@ -1,39 +1,26 @@
-from pathlib import Path
+# Copyright 2026 Lunar Rover Maintainers
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-from ament_index_python.packages import get_package_share_directory
+"""Expose only raw simulated sensor topics and a basic depth point-cloud view."""
+
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
-    share = Path(get_package_share_directory("lunar_rover_sensors"))
-    sensor_noise = ParameterValue(
-        LaunchConfiguration("sensor_noise"), value_type=bool
-    )
     return LaunchDescription(
         [
-            DeclareLaunchArgument("sensor_noise", default_value="true"),
-            Node(
-                package="lunar_rover_sensors",
-                executable="mid360_sim_adapter",
-                output="screen",
-                parameters=[
-                    str(share / "config" / "mid360_sim.yaml"),
-                    {"noise_enabled": sensor_noise},
-                ],
-            ),
-            Node(
-                package="lunar_rover_sensors",
-                executable="depth_noise_node",
-                output="screen",
-                parameters=[
-                    str(share / "config" / "gemini335_sim.yaml"),
-                    {"noise_enabled": sensor_noise},
-                ],
-            ),
             Node(
                 package="depth_image_proc",
                 executable="point_cloud_xyz_node",

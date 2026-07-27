@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a deterministic reachable maze world for SLAM testing."""
+"""Generate a deterministic reachable maze world for sensor research."""
 
 from __future__ import annotations
 
