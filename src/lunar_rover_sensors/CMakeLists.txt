@@ -26,6 +26,7 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME}
 )
 install(PROGRAMS
+  scripts/imu_covariance_node.py
   scripts/depth_colormap_node.py
   DESTINATION lib/${PROJECT_NAME}
 )

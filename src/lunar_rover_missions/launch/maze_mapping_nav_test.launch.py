@@ -14,7 +14,7 @@ def generate_launch_description():
     bringup_launch = (
         Path(get_package_share_directory("lunar_rover_bringup"))
         / "launch"
-        / "icp_slam_3d_test.launch.py"
+        / "wheel_imu_slam_3d_test.launch.py"
     )
 
     return LaunchDescription(

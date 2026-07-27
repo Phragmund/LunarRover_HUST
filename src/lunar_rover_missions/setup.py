@@ -25,6 +25,7 @@ setup(
             "metrics_recorder = lunar_rover_missions.metrics_recorder:main",
             "step_climb_mission = lunar_rover_missions.step_climb_mission:main",
             "maze_mapping_mission = lunar_rover_missions.maze_mapping_mission:main",
+            "shuttle_mapping_mission = lunar_rover_missions.shuttle_mapping_mission:main",
         ],
     },
 )
