@@ -11,6 +11,40 @@
 namespace lunar_rover_control
 {
 
+RockerDifferentialCommand compute_rocker_differential_effort(
+  const double left_position,
+  const double right_position,
+  const double left_velocity,
+  const double right_velocity,
+  const double coupling_sign,
+  const double equilibrium_offset,
+  const double stiffness,
+  const double damping,
+  const double max_effort)
+{
+  const bool valid =
+    std::isfinite(left_position) && std::isfinite(right_position) &&
+    std::isfinite(left_velocity) && std::isfinite(right_velocity) &&
+    std::isfinite(coupling_sign) &&
+    std::abs(std::abs(coupling_sign) - 1.0) < 1.0e-9 &&
+    std::isfinite(equilibrium_offset) &&
+    std::isfinite(stiffness) && stiffness >= 0.0 &&
+    std::isfinite(damping) && damping >= 0.0 &&
+    std::isfinite(max_effort) && max_effort > 0.0;
+  if (!valid) {
+    return {};
+  }
+
+  const double error = left_position + coupling_sign * right_position -
+    equilibrium_offset;
+  const double error_rate = left_velocity + coupling_sign * right_velocity;
+  const double left_effort = std::clamp(
+    -stiffness * error - damping * error_rate, -max_effort, max_effort);
+  const double right_effort = std::clamp(
+    coupling_sign * left_effort, -max_effort, max_effort);
+  return {left_effort, right_effort, true};
+}
+
 controller_interface::CallbackReturn RockerDifferentialController::on_init()
 {
   try {
@@ -102,26 +136,23 @@ controller_interface::CallbackReturn RockerDifferentialController::on_deactivate
 controller_interface::return_type RockerDifferentialController::update(
   const rclcpp::Time &, const rclcpp::Duration &)
 {
-  const double left_position = state_interfaces_[0].get_value();
-  const double right_position = state_interfaces_[1].get_value();
-  const double left_velocity = state_interfaces_[2].get_value();
-  const double right_velocity = state_interfaces_[3].get_value();
-  if (!std::isfinite(left_position) || !std::isfinite(right_position) ||
-    !std::isfinite(left_velocity) || !std::isfinite(right_velocity))
-  {
+  const RockerDifferentialCommand command = compute_rocker_differential_effort(
+    state_interfaces_[0].get_value(),
+    state_interfaces_[1].get_value(),
+    state_interfaces_[2].get_value(),
+    state_interfaces_[3].get_value(),
+    coupling_sign_,
+    equilibrium_offset_,
+    stiffness_,
+    damping_,
+    max_effort_);
+  if (!command.valid) {
     halt();
     return controller_interface::return_type::ERROR;
   }
 
-  const double error =
-    left_position + coupling_sign_ * right_position - equilibrium_offset_;
-  const double error_rate = left_velocity + coupling_sign_ * right_velocity;
-  const double left_effort = std::clamp(
-    -stiffness_ * error - damping_ * error_rate, -max_effort_, max_effort_);
-  const double right_effort = std::clamp(
-    coupling_sign_ * left_effort, -max_effort_, max_effort_);
-  command_interfaces_[0].set_value(left_effort);
-  command_interfaces_[1].set_value(right_effort);
+  command_interfaces_[0].set_value(command.left_effort);
+  command_interfaces_[1].set_value(command.right_effort);
   return controller_interface::return_type::OK;
 }
 

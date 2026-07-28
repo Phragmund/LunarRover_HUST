@@ -110,6 +110,25 @@ def check_contracts():
             errors.append(
                 f"World gravity is not standard Earth gravity: {path.relative_to(ROOT)}"
             )
+        physics = ET.parse(path).getroot().find(".//physics")
+        if physics is None:
+            errors.append(f"World physics block is missing: {path.relative_to(ROOT)}")
+            continue
+        expected_physics = {
+            "max_step_size": "0.001",
+            "real_time_factor": "1.0",
+            "real_time_update_rate": "1000",
+        }
+        for tag, expected in expected_physics.items():
+            value = physics.findtext(tag)
+            if value is None or value.strip() != expected:
+                errors.append(
+                    f"World physics {tag} must be {expected}: {path.relative_to(ROOT)}"
+                )
+
+    check_controller_config(ROOT / "src/lunar_rover_control/config/controllers.yaml")
+    check_controller_config(ROOT / "src/lunar_rover_simulation/config/controllers.yaml")
+    check_simulation_closed_loop_launch()
 
     source_root = ROOT / "src"
     source_text = "\n".join(
@@ -130,6 +149,62 @@ def check_contracts():
     for token in forbidden:
         if token in source_text:
             errors.append(f"Removed algorithm reference remains: {token}")
+
+
+def check_controller_config(path):
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    relative = path.relative_to(ROOT)
+    manager = data.get("controller_manager", {}).get("ros__parameters", {})
+    if manager.get("update_rate") != 100:
+        errors.append(f"Controller manager update_rate must be 100 Hz: {relative}")
+
+    expected_types = {
+        "joint_state_broadcaster": "joint_state_broadcaster/JointStateBroadcaster",
+        "rover_controller": "lunar_rover_control/RoverController",
+        "rocker_differential_controller":
+            "lunar_rover_control/RockerDifferentialController",
+    }
+    for name, expected_type in expected_types.items():
+        configured = manager.get(name, {}).get("type")
+        if configured != expected_type:
+            errors.append(
+                f"{relative} must declare {name} as {expected_type}"
+            )
+
+    rover = data.get("rover_controller", {}).get("ros__parameters", {})
+    rocker = data.get("rocker_differential_controller", {}).get("ros__parameters", {})
+    if rover.get("command_topic") != "/chassis/cmd_vel":
+        errors.append(f"{relative} rover_controller must subscribe to /chassis/cmd_vel")
+    if rocker.get("left_rocker_joint") != "left_rocker_joint":
+        errors.append(f"{relative} rocker controller left joint mismatch")
+    if rocker.get("right_rocker_joint") != "right_rocker_joint":
+        errors.append(f"{relative} rocker controller right joint mismatch")
+
+
+def check_simulation_closed_loop_launch():
+    launch_path = ROOT / "src/lunar_rover_simulation/launch/simulation.launch.py"
+    text = launch_path.read_text(encoding="utf-8")
+    relative = launch_path.relative_to(ROOT)
+    required_tokens = (
+        "joint_state_broadcaster",
+        "rocker_differential_controller",
+        "rover_controller",
+        "sim_chassis_state_node",
+        "OnProcessExit(target_action=spawn_rover",
+        "--param-file",
+        "controller_config",
+    )
+    for token in required_tokens:
+        if token not in text:
+            errors.append(f"Closed-loop simulation launch missing {token}: {relative}")
+    if 'DeclareLaunchArgument("spawn_x", default_value="-3.92")' not in text:
+        errors.append(
+            f"Default spawn_x must stay at the reachable-maze start cell center: {relative}"
+        )
+    if 'DeclareLaunchArgument("spawn_y", default_value="0.0")' not in text:
+        errors.append(
+            f"Default spawn_y must stay at the reachable-maze start cell center: {relative}"
+        )
 
 
 def main():

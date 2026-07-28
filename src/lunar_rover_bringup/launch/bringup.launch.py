@@ -40,17 +40,6 @@ def _launch_setup(context):
                     ),
                 },
             ),
-            _include(
-                "lunar_rover_control",
-                "control.launch.py",
-                {
-                    "use_sim_time": "true",
-                    "spawn_joint_state_broadcaster": "false",
-                    "controllers_file": str(
-                        control_share / "config" / "controllers.yaml"
-                    ),
-                },
-            ),
             _include("lunar_rover_sensors", "sim_sensors.launch.py", {}),
         ]
 

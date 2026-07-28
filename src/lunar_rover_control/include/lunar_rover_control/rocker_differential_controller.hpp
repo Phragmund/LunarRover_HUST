@@ -8,6 +8,24 @@
 namespace lunar_rover_control
 {
 
+struct RockerDifferentialCommand
+{
+  double left_effort{0.0};
+  double right_effort{0.0};
+  bool valid{false};
+};
+
+RockerDifferentialCommand compute_rocker_differential_effort(
+  double left_position,
+  double right_position,
+  double left_velocity,
+  double right_velocity,
+  double coupling_sign,
+  double equilibrium_offset,
+  double stiffness,
+  double damping,
+  double max_effort);
+
 class RockerDifferentialController : public controller_interface::ControllerInterface
 {
 public:

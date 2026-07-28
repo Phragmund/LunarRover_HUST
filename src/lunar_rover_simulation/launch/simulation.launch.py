@@ -127,15 +127,63 @@ def _launch_setup(context):
         executable="spawner",
         arguments=[
             "joint_state_broadcaster",
+            "--controller-type",
+            "joint_state_broadcaster/JointStateBroadcaster",
             "--controller-manager",
             "/controller_manager",
             "--controller-manager-timeout",
             "60",
+            "--param-file",
+            controller_config,
         ],
         output="screen",
     )
-    spawn_joint_states_after_robot = RegisterEventHandler(
+    rocker_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "rocker_differential_controller",
+            "--controller-type",
+            "lunar_rover_control/RockerDifferentialController",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "60",
+            "--param-file",
+            controller_config,
+        ],
+        output="screen",
+    )
+    rover_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "rover_controller",
+            "--controller-type",
+            "lunar_rover_control/RoverController",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "60",
+            "--param-file",
+            controller_config,
+        ],
+        output="screen",
+    )
+    sim_chassis_state = Node(
+        package="lunar_rover_control",
+        executable="sim_chassis_state_node",
+        parameters=[{"use_sim_time": True}],
+        output="screen",
+    )
+    spawn_controllers_after_robot = RegisterEventHandler(
         OnProcessExit(target_action=spawn_rover, on_exit=[joint_state_spawner])
+    )
+    spawn_rocker_after_joint_states = RegisterEventHandler(
+        OnProcessExit(target_action=joint_state_spawner, on_exit=[rocker_spawner])
+    )
+    spawn_rover_after_rocker = RegisterEventHandler(
+        OnProcessExit(target_action=rocker_spawner, on_exit=[rover_spawner])
     )
 
     bridge = Node(
@@ -171,7 +219,10 @@ def _launch_setup(context):
         bridge,
         robot_state_publisher,
         spawn_rover,
-        spawn_joint_states_after_robot,
+        spawn_controllers_after_robot,
+        spawn_rocker_after_joint_states,
+        spawn_rover_after_rocker,
+        sim_chassis_state,
         rviz,
     ]
 
@@ -229,7 +280,7 @@ def generate_launch_description():
                 ),
                 description="Controller-manager parameter file loaded by gz_ros2_control.",
             ),
-            DeclareLaunchArgument("spawn_x", default_value="-3.5"),
+            DeclareLaunchArgument("spawn_x", default_value="-3.92"),
             DeclareLaunchArgument("spawn_y", default_value="0.0"),
             DeclareLaunchArgument("spawn_z", default_value="0.22"),
             DeclareLaunchArgument("spawn_yaw", default_value="0.0"),

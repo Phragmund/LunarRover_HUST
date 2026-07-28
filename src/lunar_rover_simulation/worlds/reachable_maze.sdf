@@ -5,6 +5,7 @@
     <physics name="physics" type="ignored">
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
     </physics>
     <plugin filename="libignition-gazebo-physics-system.so" name="ignition::gazebo::systems::Physics"/>
     <plugin filename="libignition-gazebo-user-commands-system.so" name="ignition::gazebo::systems::UserCommands"/>
@@ -49,10 +50,11 @@
           <pose>-4.480 0.000 0.500 0 0 0</pose>
           <geometry><box><size>0.120 5.720 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_001_collision">
@@ -63,10 +65,11 @@
           <pose>-3.360 -2.240 0.500 0 0 0</pose>
           <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_002_collision">
@@ -77,10 +80,11 @@
           <pose>-3.360 0.560 0.500 0 0 0</pose>
           <geometry><box><size>0.120 2.360 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_003_collision">
@@ -91,10 +95,11 @@
           <pose>-2.240 -0.560 0.500 0 0 0</pose>
           <geometry><box><size>0.120 2.360 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_004_collision">
@@ -105,10 +110,11 @@
           <pose>-1.120 1.120 0.500 0 0 0</pose>
           <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_005_collision">
@@ -119,10 +125,11 @@
           <pose>0.000 -0.560 0.500 0 0 0</pose>
           <geometry><box><size>0.120 2.360 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_006_collision">
@@ -133,10 +140,11 @@
           <pose>1.120 -2.240 0.500 0 0 0</pose>
           <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_007_collision">
@@ -147,10 +155,11 @@
           <pose>2.240 -1.120 0.500 0 0 0</pose>
           <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_008_collision">
@@ -161,10 +170,11 @@
           <pose>3.360 0.000 0.500 0 0 0</pose>
           <geometry><box><size>0.120 1.240 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_009_collision">
@@ -175,10 +185,11 @@
           <pose>4.480 0.000 0.500 0 0 0</pose>
           <geometry><box><size>0.120 5.720 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_010_collision">
@@ -189,10 +200,11 @@
           <pose>0.000 -2.800 0.500 0 0 0</pose>
           <geometry><box><size>9.080 0.120 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_011_collision">
@@ -203,10 +215,11 @@
           <pose>-1.680 -1.680 0.500 0 0 0</pose>
           <geometry><box><size>1.240 0.120 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_012_collision">
@@ -217,10 +230,11 @@
           <pose>2.240 -1.680 0.500 0 0 0</pose>
           <geometry><box><size>2.360 0.120 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_013_collision">
@@ -231,10 +245,11 @@
           <pose>-3.920 -0.560 0.500 0 0 0</pose>
           <geometry><box><size>1.240 0.120 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_014_collision">
@@ -245,10 +260,11 @@
           <pose>0.000 -0.560 0.500 0 0 0</pose>
           <geometry><box><size>2.360 0.120 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_015_collision">
@@ -259,10 +275,11 @@
           <pose>-1.680 0.560 0.500 0 0 0</pose>
           <geometry><box><size>1.240 0.120 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_016_collision">
@@ -273,10 +290,11 @@
           <pose>2.240 0.560 0.500 0 0 0</pose>
           <geometry><box><size>4.600 0.120 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_017_collision">
@@ -287,10 +305,11 @@
           <pose>0.000 1.680 0.500 0 0 0</pose>
           <geometry><box><size>6.840 0.120 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
 
         <collision name="maze_wall_018_collision">
@@ -301,10 +320,11 @@
           <pose>0.000 2.800 0.500 0 0 0</pose>
           <geometry><box><size>9.080 0.120 1.000</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>0.70</transparency>
         </visual>
       </link>
     </model>

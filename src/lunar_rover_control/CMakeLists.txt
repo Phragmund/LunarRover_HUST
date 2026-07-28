@@ -85,7 +85,11 @@ install(
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   ament_add_gtest(test_kinematics test/test_kinematics.cpp)
-  target_link_libraries(test_kinematics ${PROJECT_NAME}_kinematics)
+  target_link_libraries(
+    test_kinematics
+    ${PROJECT_NAME}_kinematics
+    ${PROJECT_NAME}_controllers
+  )
   target_include_directories(test_kinematics PRIVATE include)
 endif()
 

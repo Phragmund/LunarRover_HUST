@@ -7,6 +7,7 @@
 #include "gtest/gtest.h"
 
 #include "lunar_rover_control/kinematics.hpp"
+#include "lunar_rover_control/rocker_differential_controller.hpp"
 
 namespace lunar_rover_control
 {
@@ -132,6 +133,42 @@ TEST(RoverKinematics, NonFiniteCommandFailsClosed)
   for (const double speed : command.wheel_angular_velocities) {
     EXPECT_DOUBLE_EQ(speed, 0.0);
   }
+}
+
+TEST(RockerDifferentialController, HoldsOppositeRockerAnglesAtEquilibrium)
+{
+  const RockerDifferentialCommand command = compute_rocker_differential_effort(
+    0.12, -0.12, 0.0, 0.0, 1.0, 0.0, 120.0, 18.0, 120.0);
+
+  ASSERT_TRUE(command.valid);
+  EXPECT_NEAR(command.left_effort, 0.0, kTolerance);
+  EXPECT_NEAR(command.right_effort, 0.0, kTolerance);
+}
+
+TEST(RockerDifferentialController, AppliesEqualEffortForSameAxisDifferential)
+{
+  const RockerDifferentialCommand command = compute_rocker_differential_effort(
+    0.10, 0.05, 0.02, 0.01, 1.0, 0.0, 100.0, 10.0, 120.0);
+
+  ASSERT_TRUE(command.valid);
+  EXPECT_LT(command.left_effort, 0.0);
+  EXPECT_NEAR(command.right_effort, command.left_effort, kTolerance);
+}
+
+TEST(RockerDifferentialController, SaturatesAndRejectsInvalidState)
+{
+  const RockerDifferentialCommand saturated = compute_rocker_differential_effort(
+    2.0, 2.0, 0.0, 0.0, 1.0, 0.0, 120.0, 18.0, 30.0);
+  ASSERT_TRUE(saturated.valid);
+  EXPECT_DOUBLE_EQ(saturated.left_effort, -30.0);
+  EXPECT_DOUBLE_EQ(saturated.right_effort, -30.0);
+
+  const RockerDifferentialCommand invalid = compute_rocker_differential_effort(
+    std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0, 0.0, 1.0, 0.0,
+    120.0, 18.0, 30.0);
+  EXPECT_FALSE(invalid.valid);
+  EXPECT_DOUBLE_EQ(invalid.left_effort, 0.0);
+  EXPECT_DOUBLE_EQ(invalid.right_effort, 0.0);
 }
 
 }  // namespace

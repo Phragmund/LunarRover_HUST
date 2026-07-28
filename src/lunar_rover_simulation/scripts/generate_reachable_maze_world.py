@@ -13,6 +13,7 @@ ROWS = 5
 CELL_PITCH = 1.12
 WALL_THICKNESS = 0.12
 WALL_HEIGHT = 1.0
+WALL_TRANSPARENCY = 0.70
 OBSTACLE_RADIUS = 0.10
 OBSTACLE_COUNT = 180
 SEED = 360335
@@ -124,10 +125,11 @@ def wall_xml(segment: WallSegment, idx: int) -> str:
           <pose>{cx:.3f} {cy:.3f} {WALL_HEIGHT / 2.0:.3f} 0 0 0</pose>
           <geometry><box><size>{sx:.3f} {sy:.3f} {WALL_HEIGHT:.3f}</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 1</ambient>
-            <diffuse>0.44 0.45 0.42 1</diffuse>
+            <ambient>0.30 0.31 0.30 0.30</ambient>
+            <diffuse>0.44 0.45 0.42 0.30</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
+          <transparency>{WALL_TRANSPARENCY:.2f}</transparency>
         </visual>"""
 
 
@@ -186,6 +188,7 @@ def build_world() -> str:
     <physics name="physics" type="ignored">
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
     </physics>
     <plugin filename="libignition-gazebo-physics-system.so" name="ignition::gazebo::systems::Physics"/>
     <plugin filename="libignition-gazebo-user-commands-system.so" name="ignition::gazebo::systems::UserCommands"/>
