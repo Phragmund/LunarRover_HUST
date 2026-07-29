@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Keyboard teleop for the rover chassis TwistStamped interface.
+"""Direct keyboard teleop for the rover chassis TwistStamped interface.
 
-The default backend reads from the focused terminal.  A Linux /dev/input/event*
-backend is kept as an optional diagnostic mode, but it needs elevated input
-device permissions on this machine and is therefore not used by default.
+This node listens to Linux /dev/input/event* keyboard press/release events.
+The old focused-terminal stdin backend was intentionally removed because long
+key holds can lag and key release events cannot be observed reliably.
 """
 
 import glob
@@ -12,9 +12,7 @@ import re
 import select
 import struct
 import sys
-import termios
 import time
-import tty
 
 import rclpy
 from geometry_msgs.msg import TwistStamped
@@ -28,11 +26,9 @@ Lunar rover keyboard teleop
   A/D : in-place left / right rotation
   W/S + A/D : Ackermann-style turning while driving
   SPACE : stop
-  Q or Ctrl-C : quit in terminal backend
-  Ctrl-C : quit in direct backend by default
+  Ctrl-C : quit
 
 Direct input backend listens to physical keyboard press/release events.
-Terminal backend requires this terminal to stay focused.
 """
 
 EV_KEY = 0x01
@@ -186,34 +182,16 @@ class KeyboardRoverTeleop(Node):
             self.declare_parameter("spin_angular_speed", 0.36).value
         )
         self.publish_rate = float(self.declare_parameter("publish_rate", 20.0).value)
-        self.key_timeout = float(self.declare_parameter("key_timeout", 0.45).value)
-        self.input_backend = self.declare_parameter("input_backend", "terminal").value
+        self.input_backend = self.declare_parameter("input_backend", "direct").value
         self.input_device = self.declare_parameter("input_device", "").value
         self.direct_quit_key_enabled = bool(
             self.declare_parameter("direct_quit_key_enabled", False).value
         )
 
         self.publisher = self.create_publisher(TwistStamped, self.command_topic, 1)
-        self.last_seen = {}
         self.held_keys = set()
-        self.use_direct_keys = False
         self.last_mode = ""
         self.last_print = 0.0
-
-    def set_direct_mode(self, enabled):
-        self.use_direct_keys = enabled
-        if enabled:
-            self.last_seen.clear()
-        else:
-            self.held_keys.clear()
-
-    def note_key(self, key):
-        key = key.lower()
-        now = time.monotonic()
-        if key in ("w", "a", "s", "d"):
-            self.last_seen[key] = now
-        elif key == " ":
-            self.last_seen.clear()
 
     def set_key_state(self, key, pressed):
         key = key.lower()
@@ -226,15 +204,7 @@ class KeyboardRoverTeleop(Node):
             self.held_keys.clear()
 
     def active_keys(self):
-        if self.use_direct_keys:
-            return set(self.held_keys)
-
-        now = time.monotonic()
-        return {
-            key
-            for key, stamp in self.last_seen.items()
-            if now - stamp <= self.key_timeout
-        }
+        return set(self.held_keys)
 
     def compute_command(self):
         keys = self.active_keys()
@@ -283,16 +253,8 @@ class KeyboardRoverTeleop(Node):
             self.last_print = now
 
 
-def read_available_key():
-    readable, _, _ = select.select([sys.stdin], [], [], 0.0)
-    if not readable:
-        return None
-    return sys.stdin.read(1)
-
-
 def run_direct_backend(node):
     reader = LinuxInputKeyboardReader(node.input_device)
-    node.set_direct_mode(True)
     period = 1.0 / node.publish_rate
     print(HELP)
     print("input backend: direct /dev/input")
@@ -320,61 +282,26 @@ def run_direct_backend(node):
         reader.close()
 
 
-def run_terminal_backend(node):
-    node.set_direct_mode(False)
-    old_settings = termios.tcgetattr(sys.stdin)
-    period = 1.0 / node.publish_rate
-
-    print(HELP)
-    print("input backend: terminal fallback")
-    try:
-        tty.setcbreak(sys.stdin.fileno())
-        while rclpy.ok():
-            start = time.monotonic()
-            key = read_available_key()
-            if key in ("q", "Q", "\x03"):
-                break
-            if key is not None:
-                node.note_key(key)
-
-            node.publish_command()
-            rclpy.spin_once(node, timeout_sec=0.0)
-            elapsed = time.monotonic() - start
-            if elapsed < period:
-                time.sleep(period - elapsed)
-    finally:
-        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
-
-
 def main():
     rclpy.init()
     node = KeyboardRoverTeleop()
 
     backend = str(node.input_backend).strip().lower()
-    if backend not in ("auto", "event", "direct", "terminal"):
+    if backend not in ("auto", "event", "direct"):
         node.get_logger().warn(
-            f"unknown input_backend={node.input_backend!r}; falling back to auto"
+            f"unsupported input_backend={node.input_backend!r}; using direct"
         )
-        backend = "auto"
+    elif backend == "auto":
+        node.get_logger().info("input_backend=auto resolves to direct /dev/input")
 
     try:
-        if backend in ("event", "direct", "auto"):
-            try:
-                run_direct_backend(node)
-            except DirectKeyboardError as exc:
-                if backend in ("event", "direct"):
-                    raise
-                node.get_logger().warn(str(exc))
-                run_terminal_backend(node)
-        else:
-            run_terminal_backend(node)
+        run_direct_backend(node)
     except KeyboardInterrupt:
         pass
     except DirectKeyboardError as exc:
         node.get_logger().error(str(exc))
         raise SystemExit(2) from exc
     finally:
-        node.last_seen.clear()
         node.held_keys.clear()
         if rclpy.ok():
             for _ in range(5):

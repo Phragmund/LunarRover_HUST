@@ -1,8 +1,8 @@
 # Direct Keyboard Teleop
 
-The terminal backend can lag after a long key hold because terminal auto-repeat
-fills stdin and the script cannot observe key release events. Use the direct
-`/dev/input/event*` backend for low-latency press/release control.
+The keyboard controller now uses only the direct `/dev/input/event*` backend.
+The old focused-terminal stdin backend was removed because terminal auto-repeat
+can lag after a long key hold and cannot observe key release events reliably.
 
 ## Agent Startup Checklist
 
@@ -39,20 +39,20 @@ devices:
 mode=stop             v=+0.000 m/s wz=+0.000 rad/s
 ```
 
-If the node prints `input backend: terminal fallback`, it is not using physical
-key release events and long key holds can lag. Stop it and fix `/dev/input`
-permissions or device selection before driving.
+If the direct backend cannot read keyboard devices, it exits with an error.
+Fix `/dev/input` permissions or device selection before driving; there is no
+terminal fallback.
 
 Do not use these commands for the real direct backend:
 
 ```bash
 sudo ros2 run lunar_rover_navigation keyboard_rover_teleop.py
-ros2 run lunar_rover_navigation keyboard_rover_teleop.py
+ros2 run lunar_rover_navigation keyboard_rover_teleop.py --ros-args -p input_backend:=terminal
 ```
 
 The first runs ROS as root and can miss the user's ROS environment. The second
-defaults to the terminal backend unless `input_backend:=direct` is supplied and
-the event devices are readable.
+requests the removed terminal backend. Use the helper script so the workspace is
+sourced, keyboard devices are discovered, and the node runs as the normal user.
 
 ## Quick Probe
 
@@ -203,3 +203,13 @@ On the tested laptop, these were the relevant keyboard event targets:
 
 The helper script discovers equivalent `/dev/input/by-id/*event-kbd` and
 `/dev/input/by-path/*event-kbd` symlinks automatically.
+
+## Policy
+
+For this project, all future keyboard driving should use:
+
+```bash
+scripts/run_direct_keyboard_teleop.sh
+```
+
+Do not reintroduce or use focused-terminal stdin teleop for rover driving.
