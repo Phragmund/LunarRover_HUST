@@ -31,7 +31,7 @@ enum WheelIndex : std::size_t
 
 struct RoverGeometry
 {
-  double wheel_radius{0.09};
+  double wheel_radius{0.0625};
   double wheelbase{0.52};
   double track_width{0.50};
   double max_steering_angle{1.0471975511965976};

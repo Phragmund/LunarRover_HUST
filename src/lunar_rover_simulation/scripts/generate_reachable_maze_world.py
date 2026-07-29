@@ -13,7 +13,7 @@ ROWS = 5
 CELL_PITCH = 1.12
 WALL_THICKNESS = 0.12
 WALL_HEIGHT = 1.0
-WALL_TRANSPARENCY = 0.70
+WALL_TRANSPARENCY = 0.30
 OBSTACLE_RADIUS = 0.10
 OBSTACLE_COUNT = 180
 SEED = 360335
@@ -125,8 +125,8 @@ def wall_xml(segment: WallSegment, idx: int) -> str:
           <pose>{cx:.3f} {cy:.3f} {WALL_HEIGHT / 2.0:.3f} 0 0 0</pose>
           <geometry><box><size>{sx:.3f} {sy:.3f} {WALL_HEIGHT:.3f}</size></box></geometry>
           <material>
-            <ambient>0.30 0.31 0.30 0.30</ambient>
-            <diffuse>0.44 0.45 0.42 0.30</diffuse>
+            <ambient>0.30 0.31 0.30 0.70</ambient>
+            <diffuse>0.44 0.45 0.42 0.70</diffuse>
             <specular>0.08 0.08 0.07 1</specular>
           </material>
           <transparency>{WALL_TRANSPARENCY:.2f}</transparency>

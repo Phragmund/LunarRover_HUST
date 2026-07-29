@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static checks for the algorithm-free base workspace."""
+"""Static checks for the lunar rover simulation, mapping, and navigation workspace."""
 
 import json
 import py_compile
@@ -84,7 +84,6 @@ def check_packages():
     removed = {
         "lunar_rover_localization",
         "lunar_rover_perception",
-        "lunar_rover_navigation",
         "lunar_rover_missions",
     }
     present = sorted(removed & names)
@@ -142,7 +141,6 @@ def check_contracts():
         "rtabmap",
         "robot_localization",
         "icp_odometry",
-        "nav2_",
         "terrain_perception",
         "wheel_odometry",
     )

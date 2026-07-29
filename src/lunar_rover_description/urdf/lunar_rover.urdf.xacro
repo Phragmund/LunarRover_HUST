@@ -13,7 +13,7 @@
   <xacro:property name="rear_x" value="-0.195"/>
   <xacro:property name="middle_x" value="0.00"/>
   <xacro:property name="rocker_y" value="0.135"/>
-  <xacro:property name="wheel_radius" value="0.075"/>
+  <xacro:property name="wheel_radius" value="0.0625"/>
   <xacro:property name="wheel_width" value="0.055"/>
   <xacro:property name="wheel_mass" value="0.70"/>
   <xacro:property name="wheel_center_z" value="-0.12"/>

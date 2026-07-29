@@ -12,11 +12,14 @@
   <depend>geometry_msgs</depend>
   <depend>hardware_interface</depend>
   <depend>lunar_rover_msgs</depend>
+  <depend>nav_msgs</depend>
   <depend>pluginlib</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_lifecycle</depend>
   <depend>realtime_tools</depend>
+  <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>tf2_ros</depend>
 
   <exec_depend>controller_manager</exec_depend>
   <exec_depend>joint_state_broadcaster</exec_depend>

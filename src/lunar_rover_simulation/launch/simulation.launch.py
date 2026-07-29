@@ -31,6 +31,8 @@ SUPPORTED_WORLDS = (
     "mixed",
     "stairs_maze",
     "reachable_maze",
+    "lava_tube",
+    "image_cave",
 )
 
 
@@ -250,7 +252,7 @@ def generate_launch_description():
                 "world",
                 default_value="mixed",
                 description=(
-                    "One of: flat, steps, rocks, mixed, stairs_maze, reachable_maze."
+                    "One of: flat, steps, rocks, mixed, stairs_maze, reachable_maze, lava_tube, image_cave."
                 ),
             ),
             DeclareLaunchArgument(
@@ -282,7 +284,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("spawn_x", default_value="-3.92"),
             DeclareLaunchArgument("spawn_y", default_value="0.0"),
-            DeclareLaunchArgument("spawn_z", default_value="0.22"),
+            DeclareLaunchArgument("spawn_z", default_value="0.20"),
             DeclareLaunchArgument("spawn_yaw", default_value="0.0"),
             DeclareLaunchArgument(
                 "seed",

@@ -1,0 +1,13 @@
+capture_time: 20260729_015253
+csv: /home/phragmund/LunarRover/docs/odometry_eval/square_fused_tuned_paths_20260729_015253.csv
+ekf_tuning: odom0 x/y/vx + imu yaw/yaw_rate
+truth_points: 7184
+truth_final: x=-0.242512, y=0.341744, yaw_deg=-32.470, path_length=3.957133, closure_distance=0.419048
+wheel_points: 8518
+wheel_final: x=-0.319925, y=0.866529, yaw_deg=-67.755, path_length=3.952000, closure_distance=0.923702
+fused_points: 7182
+fused_final: x=-0.319925, y=0.866529, yaw_deg=-22.262, path_length=3.988260, closure_distance=0.923702
+wheel_final_error_vs_truth: xy=0.530464, yaw_deg=-35.285
+wheel_time_aligned_error: xy_mean=0.216236, xy_rms=0.331375, xy_max=0.530614, yaw_mean_abs_deg=14.457146, yaw_rms_deg=21.914838, yaw_max_abs_deg=35.285198
+fused_final_error_vs_truth: xy=0.530464, yaw_deg=10.208
+fused_time_aligned_error: xy_mean=0.255904, xy_rms=0.360450, xy_max=0.531497, yaw_mean_abs_deg=6.935989, yaw_rms_deg=9.892706, yaw_max_abs_deg=24.037681

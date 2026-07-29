@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>lunar_rover_mapping</name>
+  <version>0.1.0</version>
+  <description>Simulation mapping launch stack for the lunar rover chassis.</description>
+  <maintainer email="maintainer@example.com">Lunar Rover Team</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>nav_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_sensor_msgs</depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>lunar_rover_control</exec_depend>
+  <exec_depend>lunar_rover_simulation</exec_depend>
+  <exec_depend>lunar_rover_sensors</exec_depend>
+  <exec_depend>octomap_server</exec_depend>
+  <exec_depend>robot_localization</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

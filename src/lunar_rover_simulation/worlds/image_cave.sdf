@@ -1,0 +1,1828 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <world name="image_cave">
+    <gravity>0 0 -9.80665</gravity>
+    <physics name="physics" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+    <plugin filename="libignition-gazebo-physics-system.so" name="ignition::gazebo::systems::Physics"/>
+    <plugin filename="libignition-gazebo-user-commands-system.so" name="ignition::gazebo::systems::UserCommands"/>
+    <plugin filename="libignition-gazebo-scene-broadcaster-system.so" name="ignition::gazebo::systems::SceneBroadcaster"/>
+    <plugin filename="libignition-gazebo-sensors-system.so" name="ignition::gazebo::systems::Sensors"><render_engine>ogre2</render_engine></plugin>
+    <plugin filename="libignition-gazebo-imu-system.so" name="ignition::gazebo::systems::Imu"/>
+    <plugin filename="libignition-gazebo-contact-system.so" name="ignition::gazebo::systems::Contact"/>
+    <scene>
+      <ambient>0.15 0.15 0.16 1</ambient>
+      <background>0.035 0.038 0.043 1</background>
+      <shadows>true</shadows>
+    </scene>
+    <light name="cave_top_light" type="directional">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.90 0.86 0.74 1</diffuse>
+      <specular>0.16 0.14 0.10 1</specular>
+      <direction>-0.35 0.30 -0.89</direction>
+    </light>
+    <include>
+      <uri>model://lunar_ground</uri>
+    </include>
+    
+    <model name="image_cave_spawn_marker">
+      <static>true</static>
+      <link name="spawn_marker_link">
+        <visual name="spawn_marker_visual">
+          <pose>-3.920 0.000 0.006 0 0 0</pose>
+          <geometry><cylinder><radius>0.28</radius><length>0.012</length></cylinder></geometry>
+          <material><ambient>0.08 0.32 0.12 0.45</ambient><diffuse>0.12 0.60 0.18 0.45</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+          <transparency>0.35</transparency>
+        </visual>
+      </link>
+    </model>
+    <model name="generated_image_cave_walls">
+      <static>true</static>
+      <link name="walls_link">
+        <collision name="image_cave_wall_000_collision">
+          <pose>10.219 13.452 0.475 0 0 -2.975177</pose>
+          <geometry><box><size>0.911 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_000_visual">
+          <pose>10.219 13.452 0.475 0 0 -2.975177</pose>
+          <geometry><box><size>0.911 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_001_collision">
+          <pose>10.723 12.831 0.475 0 0 -1.407055</pose>
+          <geometry><box><size>1.512 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_001_visual">
+          <pose>10.723 12.831 0.475 0 0 -1.407055</pose>
+          <geometry><box><size>1.512 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_002_collision">
+          <pose>9.879 12.755 0.475 0 0 -1.492110</pose>
+          <geometry><box><size>1.387 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_002_visual">
+          <pose>9.879 12.755 0.475 0 0 -1.492110</pose>
+          <geometry><box><size>1.387 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_003_collision">
+          <pose>3.025 11.923 0.475 0 0 -2.575463</pose>
+          <geometry><box><size>1.014 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_003_visual">
+          <pose>3.025 11.923 0.475 0 0 -2.575463</pose>
+          <geometry><box><size>1.014 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_004_collision">
+          <pose>4.218 10.835 0.475 0 0 -1.019482</pose>
+          <geometry><box><size>3.238 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_004_visual">
+          <pose>4.218 10.835 0.475 0 0 -1.019482</pose>
+          <geometry><box><size>3.238 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_005_collision">
+          <pose>4.242 10.748 0.475 0 0 -1.034768</pose>
+          <geometry><box><size>3.412 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_005_visual">
+          <pose>4.242 10.748 0.475 0 0 -1.034768</pose>
+          <geometry><box><size>3.412 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_006_collision">
+          <pose>11.696 12.079 0.475 0 0 -0.075592</pose>
+          <geometry><box><size>1.844 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_006_visual">
+          <pose>11.696 12.079 0.475 0 0 -0.075592</pose>
+          <geometry><box><size>1.844 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_007_collision">
+          <pose>9.907 11.998 0.475 0 0 -1.743242</pose>
+          <geometry><box><size>0.374 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_007_visual">
+          <pose>9.907 11.998 0.475 0 0 -1.743242</pose>
+          <geometry><box><size>0.374 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_008_collision">
+          <pose>12.979 11.730 0.475 0 0 -0.592106</pose>
+          <geometry><box><size>1.140 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_008_visual">
+          <pose>12.979 11.730 0.475 0 0 -0.592106</pose>
+          <geometry><box><size>1.140 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_009_collision">
+          <pose>9.051 11.337 0.475 0 0 -2.569873</pose>
+          <geometry><box><size>2.104 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_009_visual">
+          <pose>9.051 11.337 0.475 0 0 -2.569873</pose>
+          <geometry><box><size>2.104 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_010_collision">
+          <pose>9.083 11.320 0.475 0 0 -2.537852</pose>
+          <geometry><box><size>2.069 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_010_visual">
+          <pose>9.083 11.320 0.475 0 0 -2.537852</pose>
+          <geometry><box><size>2.069 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_011_collision">
+          <pose>3.421 10.397 0.475 0 0 -1.029231</pose>
+          <geometry><box><size>3.123 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_011_visual">
+          <pose>3.421 10.397 0.475 0 0 -1.029231</pose>
+          <geometry><box><size>3.123 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_012_collision">
+          <pose>13.569 11.028 0.475 0 0 -1.188295</pose>
+          <geometry><box><size>1.019 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_012_visual">
+          <pose>13.569 11.028 0.475 0 0 -1.188295</pose>
+          <geometry><box><size>1.019 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_013_collision">
+          <pose>11.508 11.113 0.475 0 0 -0.023112</pose>
+          <geometry><box><size>1.548 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_013_visual">
+          <pose>11.508 11.113 0.475 0 0 -0.023112</pose>
+          <geometry><box><size>1.548 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_014_collision">
+          <pose>10.554 11.075 0.475 0 0 -2.918879</pose>
+          <geometry><box><size>0.613 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_014_visual">
+          <pose>10.554 11.075 0.475 0 0 -2.918879</pose>
+          <geometry><box><size>0.613 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_015_collision">
+          <pose>12.551 10.730 0.475 0 0 -0.839656</pose>
+          <geometry><box><size>1.104 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_015_visual">
+          <pose>12.551 10.730 0.475 0 0 -0.839656</pose>
+          <geometry><box><size>1.104 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_016_collision">
+          <pose>9.679 10.658 0.475 0 0 -2.622417</pose>
+          <geometry><box><size>1.581 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_016_visual">
+          <pose>9.679 10.658 0.475 0 0 -2.622417</pose>
+          <geometry><box><size>1.581 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_017_collision">
+          <pose>7.909 9.857 0.475 0 0 -1.886325</pose>
+          <geometry><box><size>2.103 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_017_visual">
+          <pose>7.909 9.857 0.475 0 0 -1.886325</pose>
+          <geometry><box><size>2.103 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_018_collision">
+          <pose>7.941 9.841 0.475 0 0 -1.922455</pose>
+          <geometry><box><size>2.093 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_018_visual">
+          <pose>7.941 9.841 0.475 0 0 -1.922455</pose>
+          <geometry><box><size>2.093 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_019_collision">
+          <pose>13.821 9.779 0.475 0 0 -1.470194</pose>
+          <geometry><box><size>1.793 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_019_visual">
+          <pose>13.821 9.779 0.475 0 0 -1.470194</pose>
+          <geometry><box><size>1.793 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_020_collision">
+          <pose>12.930 9.508 0.475 0 0 -1.511569</pose>
+          <geometry><box><size>1.833 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_020_visual">
+          <pose>12.930 9.508 0.475 0 0 -1.511569</pose>
+          <geometry><box><size>1.833 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_021_collision">
+          <pose>12.965 9.514 0.475 0 0 -1.469767</pose>
+          <geometry><box><size>1.828 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_021_visual">
+          <pose>12.965 9.514 0.475 0 0 -1.469767</pose>
+          <geometry><box><size>1.828 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_022_collision">
+          <pose>8.771 9.422 0.475 0 0 -1.874780</pose>
+          <geometry><box><size>1.950 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_022_visual">
+          <pose>8.771 9.422 0.475 0 0 -1.874780</pose>
+          <geometry><box><size>1.950 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_023_collision">
+          <pose>5.059 9.420 0.475 0 0 -1.302013</pose>
+          <geometry><box><size>0.300 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_023_visual">
+          <pose>5.059 9.420 0.475 0 0 -1.302013</pose>
+          <geometry><box><size>0.300 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_024_collision">
+          <pose>5.220 9.235 0.475 0 0 -0.622479</pose>
+          <geometry><box><size>0.456 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_024_visual">
+          <pose>5.220 9.235 0.475 0 0 -0.622479</pose>
+          <geometry><box><size>0.456 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_025_collision">
+          <pose>6.265 8.913 0.475 0 0 -0.240978</pose>
+          <geometry><box><size>1.992 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_025_visual">
+          <pose>6.265 8.913 0.475 0 0 -0.240978</pose>
+          <geometry><box><size>1.992 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_026_collision">
+          <pose>4.176 8.954 0.475 0 0 -1.695436</pose>
+          <geometry><box><size>0.434 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_026_visual">
+          <pose>4.176 8.954 0.475 0 0 -1.695436</pose>
+          <geometry><box><size>0.434 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_027_collision">
+          <pose>14.357 8.346 0.475 0 0 -0.925465</pose>
+          <geometry><box><size>1.623 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_027_visual">
+          <pose>14.357 8.346 0.475 0 0 -0.925465</pose>
+          <geometry><box><size>1.623 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_028_collision">
+          <pose>7.388 8.802 0.475 0 0 -2.656978</pose>
+          <geometry><box><size>0.603 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_028_visual">
+          <pose>7.388 8.802 0.475 0 0 -2.656978</pose>
+          <geometry><box><size>0.603 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_029_collision">
+          <pose>3.497 8.275 0.475 0 0 -2.470714</pose>
+          <geometry><box><size>1.804 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_029_visual">
+          <pose>3.497 8.275 0.475 0 0 -2.470714</pose>
+          <geometry><box><size>1.804 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_030_collision">
+          <pose>13.670 7.630 0.475 0 0 -0.977957</pose>
+          <geometry><box><size>2.588 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_030_visual">
+          <pose>13.670 7.630 0.475 0 0 -0.977957</pose>
+          <geometry><box><size>2.588 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_031_collision">
+          <pose>13.706 7.635 0.475 0 0 -1.004657</pose>
+          <geometry><box><size>2.559 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_031_visual">
+          <pose>13.706 7.635 0.475 0 0 -1.004657</pose>
+          <geometry><box><size>2.559 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_032_collision">
+          <pose>19.878 7.718 0.475 0 0 -1.120163</pose>
+          <geometry><box><size>1.042 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_032_visual">
+          <pose>19.878 7.718 0.475 0 0 -1.120163</pose>
+          <geometry><box><size>1.042 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_033_collision">
+          <pose>18.704 7.501 0.475 0 0 -2.565852</pose>
+          <geometry><box><size>2.440 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_033_visual">
+          <pose>18.704 7.501 0.475 0 0 -2.565852</pose>
+          <geometry><box><size>2.440 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_034_collision">
+          <pose>4.957 8.083 0.475 0 0 -2.963250</pose>
+          <geometry><box><size>0.589 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_034_visual">
+          <pose>4.957 8.083 0.475 0 0 -2.963250</pose>
+          <geometry><box><size>0.589 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_035_collision">
+          <pose>6.095 7.900 0.475 0 0 -0.242184</pose>
+          <geometry><box><size>1.989 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_035_visual">
+          <pose>6.095 7.900 0.475 0 0 -0.242184</pose>
+          <geometry><box><size>1.989 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_036_collision">
+          <pose>4.232 7.625 0.475 0 0 -2.442933</pose>
+          <geometry><box><size>1.413 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_036_visual">
+          <pose>4.232 7.625 0.475 0 0 -2.442933</pose>
+          <geometry><box><size>1.413 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_037_collision">
+          <pose>2.617 6.964 0.475 0 0 -1.843541</pose>
+          <geometry><box><size>1.755 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_037_visual">
+          <pose>2.617 6.964 0.475 0 0 -1.843541</pose>
+          <geometry><box><size>1.755 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_038_collision">
+          <pose>2.656 6.974 0.475 0 0 -1.799861</pose>
+          <geometry><box><size>1.716 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_038_visual">
+          <pose>2.656 6.974 0.475 0 0 -1.799861</pose>
+          <geometry><box><size>1.716 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_039_collision">
+          <pose>15.004 7.381 0.475 0 0 -1.080339</pose>
+          <geometry><box><size>0.949 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_039_visual">
+          <pose>15.004 7.381 0.475 0 0 -1.080339</pose>
+          <geometry><box><size>0.949 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_040_collision">
+          <pose>7.233 7.539 0.475 0 0 -0.533708</pose>
+          <geometry><box><size>0.658 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_040_visual">
+          <pose>7.233 7.539 0.475 0 0 -0.533708</pose>
+          <geometry><box><size>0.658 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_041_collision">
+          <pose>9.120 7.005 0.475 0 0 -0.735913</pose>
+          <geometry><box><size>1.598 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_041_visual">
+          <pose>9.120 7.005 0.475 0 0 -0.735913</pose>
+          <geometry><box><size>1.598 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_042_collision">
+          <pose>7.683 7.097 0.475 0 0 -0.949813</pose>
+          <geometry><box><size>0.870 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_042_visual">
+          <pose>7.683 7.097 0.475 0 0 -0.949813</pose>
+          <geometry><box><size>0.870 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_043_collision">
+          <pose>19.070 6.636 0.475 0 0 -2.558434</pose>
+          <geometry><box><size>2.539 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_043_visual">
+          <pose>19.070 6.636 0.475 0 0 -2.558434</pose>
+          <geometry><box><size>2.539 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_044_collision">
+          <pose>3.614 6.719 0.475 0 0 -1.815775</pose>
+          <geometry><box><size>1.130 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_044_visual">
+          <pose>3.614 6.719 0.475 0 0 -1.815775</pose>
+          <geometry><box><size>1.130 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_045_collision">
+          <pose>15.330 6.905 0.475 0 0 -0.699702</pose>
+          <geometry><box><size>0.461 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_045_visual">
+          <pose>15.330 6.905 0.475 0 0 -0.699702</pose>
+          <geometry><box><size>0.461 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_046_collision">
+          <pose>17.081 6.892 0.475 0 0 -0.033920</pose>
+          <geometry><box><size>1.421 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_046_visual">
+          <pose>17.081 6.892 0.475 0 0 -0.033920</pose>
+          <geometry><box><size>1.421 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_047_collision">
+          <pose>15.945 6.854 0.475 0 0 -3.020364</pose>
+          <geometry><box><size>1.097 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_047_visual">
+          <pose>15.945 6.854 0.475 0 0 -3.020364</pose>
+          <geometry><box><size>1.097 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_048_collision">
+          <pose>14.360 6.384 0.475 0 0 -1.570796</pose>
+          <geometry><box><size>0.564 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_048_visual">
+          <pose>14.360 6.384 0.475 0 0 -1.570796</pose>
+          <geometry><box><size>0.564 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_049_collision">
+          <pose>9.856 5.996 0.475 0 0 -1.218466</pose>
+          <geometry><box><size>1.213 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_049_visual">
+          <pose>9.856 5.996 0.475 0 0 -1.218466</pose>
+          <geometry><box><size>1.213 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_050_collision">
+          <pose>9.897 6.000 0.475 0 0 -1.148132</pose>
+          <geometry><box><size>1.237 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_050_visual">
+          <pose>9.897 6.000 0.475 0 0 -1.148132</pose>
+          <geometry><box><size>1.237 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_051_collision">
+          <pose>2.718 5.585 0.475 0 0 -1.073020</pose>
+          <geometry><box><size>1.466 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_051_visual">
+          <pose>2.718 5.585 0.475 0 0 -1.073020</pose>
+          <geometry><box><size>1.466 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_052_collision">
+          <pose>2.757 5.595 0.475 0 0 -1.132173</pose>
+          <geometry><box><size>1.449 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_052_visual">
+          <pose>2.757 5.595 0.475 0 0 -1.132173</pose>
+          <geometry><box><size>1.449 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_053_collision">
+          <pose>3.701 5.836 0.475 0 0 -1.082309</pose>
+          <geometry><box><size>1.011 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_053_visual">
+          <pose>3.701 5.836 0.475 0 0 -1.082309</pose>
+          <geometry><box><size>1.011 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_054_collision">
+          <pose>14.116 5.646 0.475 0 0 -2.012225</pose>
+          <geometry><box><size>1.263 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_054_visual">
+          <pose>14.116 5.646 0.475 0 0 -2.012225</pose>
+          <geometry><box><size>1.263 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_055_collision">
+          <pose>17.277 5.997 0.475 0 0 -0.033290</pose>
+          <geometry><box><size>1.688 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_055_visual">
+          <pose>17.277 5.997 0.475 0 0 -0.033290</pose>
+          <geometry><box><size>1.688 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_056_collision">
+          <pose>16.008 5.909 0.475 0 0 -2.910502</pose>
+          <geometry><box><size>1.117 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_056_visual">
+          <pose>16.008 5.909 0.475 0 0 -2.910502</pose>
+          <geometry><box><size>1.117 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_057_collision">
+          <pose>15.341 5.699 0.475 0 0 -2.660969</pose>
+          <geometry><box><size>0.532 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_057_visual">
+          <pose>15.341 5.699 0.475 0 0 -2.660969</pose>
+          <geometry><box><size>0.532 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_058_collision">
+          <pose>10.071 4.925 0.475 0 0 -1.523907</pose>
+          <geometry><box><size>1.239 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_058_visual">
+          <pose>10.071 4.925 0.475 0 0 -1.523907</pose>
+          <geometry><box><size>1.239 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_059_collision">
+          <pose>10.112 4.928 0.475 0 0 -1.596159</pose>
+          <geometry><box><size>1.245 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_059_visual">
+          <pose>10.112 4.928 0.475 0 0 -1.596159</pose>
+          <geometry><box><size>1.245 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_060_collision">
+          <pose>4.438 5.197 0.475 0 0 -0.435497</pose>
+          <geometry><box><size>1.284 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_060_visual">
+          <pose>4.438 5.197 0.475 0 0 -0.435497</pose>
+          <geometry><box><size>1.284 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_061_collision">
+          <pose>9.119 4.876 0.475 0 0 -1.592215</pose>
+          <geometry><box><size>1.145 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_061_visual">
+          <pose>9.119 4.876 0.475 0 0 -1.592215</pose>
+          <geometry><box><size>1.145 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_062_collision">
+          <pose>13.838 4.244 0.475 0 0 -1.609024</pose>
+          <geometry><box><size>1.892 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_062_visual">
+          <pose>13.838 4.244 0.475 0 0 -1.609024</pose>
+          <geometry><box><size>1.892 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_063_collision">
+          <pose>3.261 4.777 0.475 0 0 -0.774655</pose>
+          <geometry><box><size>0.741 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_063_visual">
+          <pose>3.261 4.777 0.475 0 0 -0.774655</pose>
+          <geometry><box><size>0.741 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_064_collision">
+          <pose>4.010 4.367 0.475 0 0 -0.350385</pose>
+          <geometry><box><size>1.242 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_064_visual">
+          <pose>4.010 4.367 0.475 0 0 -0.350385</pose>
+          <geometry><box><size>1.242 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_065_collision">
+          <pose>9.066 4.261 0.475 0 0 -1.958640</pose>
+          <geometry><box><size>0.341 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_065_visual">
+          <pose>9.066 4.261 0.475 0 0 -1.958640</pose>
+          <geometry><box><size>0.341 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_066_collision">
+          <pose>11.039 4.136 0.475 0 0 -0.239315</pose>
+          <geometry><box><size>2.058 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_066_visual">
+          <pose>11.039 4.136 0.475 0 0 -0.239315</pose>
+          <geometry><box><size>2.058 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_067_collision">
+          <pose>11.093 4.117 0.475 0 0 -0.152715</pose>
+          <geometry><box><size>1.990 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_067_visual">
+          <pose>11.093 4.117 0.475 0 0 -0.152715</pose>
+          <geometry><box><size>1.990 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_068_collision">
+          <pose>11.075 4.083 0.475 0 0 -0.192672</pose>
+          <geometry><box><size>1.965 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_068_visual">
+          <pose>11.075 4.083 0.475 0 0 -0.192672</pose>
+          <geometry><box><size>1.965 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_069_collision">
+          <pose>4.806 3.913 0.475 0 0 -0.772170</pose>
+          <geometry><box><size>0.871 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_069_visual">
+          <pose>4.806 3.913 0.475 0 0 -0.772170</pose>
+          <geometry><box><size>0.871 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_070_collision">
+          <pose>8.240 3.840 0.475 0 0 -2.756102</pose>
+          <geometry><box><size>1.814 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_070_visual">
+          <pose>8.240 3.840 0.475 0 0 -2.756102</pose>
+          <geometry><box><size>1.814 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_071_collision">
+          <pose>6.848 3.847 0.475 0 0 -0.683359</pose>
+          <geometry><box><size>0.887 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_071_visual">
+          <pose>6.848 3.847 0.475 0 0 -0.683359</pose>
+          <geometry><box><size>0.887 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_072_collision">
+          <pose>12.671 3.385 0.475 0 0 -0.734415</pose>
+          <geometry><box><size>1.882 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_072_visual">
+          <pose>12.671 3.385 0.475 0 0 -0.734415</pose>
+          <geometry><box><size>1.882 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_073_collision">
+          <pose>12.652 3.350 0.475 0 0 -0.690827</pose>
+          <geometry><box><size>1.865 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_073_visual">
+          <pose>12.652 3.350 0.475 0 0 -0.690827</pose>
+          <geometry><box><size>1.865 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_074_collision">
+          <pose>7.300 3.563 0.475 0 0 -0.261465</pose>
+          <geometry><box><size>0.440 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_074_visual">
+          <pose>7.300 3.563 0.475 0 0 -0.261465</pose>
+          <geometry><box><size>0.440 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_075_collision">
+          <pose>13.694 3.119 0.475 0 0 -1.999493</pose>
+          <geometry><box><size>0.648 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_075_visual">
+          <pose>13.694 3.119 0.475 0 0 -1.999493</pose>
+          <geometry><box><size>0.648 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_076_collision">
+          <pose>9.658 3.174 0.475 0 0 -3.074894</pose>
+          <geometry><box><size>0.639 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_076_visual">
+          <pose>9.658 3.174 0.475 0 0 -3.074894</pose>
+          <geometry><box><size>0.639 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_077_collision">
+          <pose>10.742 3.092 0.475 0 0 -0.120086</pose>
+          <geometry><box><size>1.782 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_077_visual">
+          <pose>10.742 3.092 0.475 0 0 -0.120086</pose>
+          <geometry><box><size>1.782 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_078_collision">
+          <pose>14.683 2.759 0.475 0 0 -1.848784</pose>
+          <geometry><box><size>0.938 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_078_visual">
+          <pose>14.683 2.759 0.475 0 0 -1.848784</pose>
+          <geometry><box><size>0.938 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_079_collision">
+          <pose>8.545 2.836 0.475 0 0 -2.781433</pose>
+          <geometry><box><size>1.944 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_079_visual">
+          <pose>8.545 2.836 0.475 0 0 -2.781433</pose>
+          <geometry><box><size>1.944 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_080_collision">
+          <pose>6.379 2.817 0.475 0 0 -1.433952</pose>
+          <geometry><box><size>0.425 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_080_visual">
+          <pose>6.379 2.817 0.475 0 0 -1.433952</pose>
+          <geometry><box><size>0.425 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_081_collision">
+          <pose>12.242 2.390 0.475 0 0 -0.729055</pose>
+          <geometry><box><size>1.930 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_081_visual">
+          <pose>12.242 2.390 0.475 0 0 -0.729055</pose>
+          <geometry><box><size>1.930 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_082_collision">
+          <pose>13.455 2.837 0.475 0 0 -2.828080</pose>
+          <geometry><box><size>0.393 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_082_visual">
+          <pose>13.455 2.837 0.475 0 0 -2.828080</pose>
+          <geometry><box><size>0.393 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_083_collision">
+          <pose>6.064 1.958 0.475 0 0 -2.013621</pose>
+          <geometry><box><size>1.688 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_083_visual">
+          <pose>6.064 1.958 0.475 0 0 -2.013621</pose>
+          <geometry><box><size>1.688 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_084_collision">
+          <pose>7.541 2.408 0.475 0 0 -2.529571</pose>
+          <geometry><box><size>0.489 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_084_visual">
+          <pose>7.541 2.408 0.475 0 0 -2.529571</pose>
+          <geometry><box><size>0.489 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_085_collision">
+          <pose>14.606 2.120 0.475 0 0 -1.426859</pose>
+          <geometry><box><size>0.616 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_085_visual">
+          <pose>14.606 2.120 0.475 0 0 -1.426859</pose>
+          <geometry><box><size>0.616 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_086_collision">
+          <pose>7.065 1.645 0.475 0 0 -2.030015</pose>
+          <geometry><box><size>1.586 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_086_visual">
+          <pose>7.065 1.645 0.475 0 0 -2.030015</pose>
+          <geometry><box><size>1.586 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_087_collision">
+          <pose>15.420 1.414 0.475 0 0 -0.534843</pose>
+          <geometry><box><size>1.931 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_087_visual">
+          <pose>15.420 1.414 0.475 0 0 -0.534843</pose>
+          <geometry><box><size>1.931 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_088_collision">
+          <pose>13.427 1.395 0.475 0 0 -0.654321</pose>
+          <geometry><box><size>1.407 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_088_visual">
+          <pose>13.427 1.395 0.475 0 0 -0.654321</pose>
+          <geometry><box><size>1.407 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_089_collision">
+          <pose>5.598 1.091 0.475 0 0 -2.255783</pose>
+          <geometry><box><size>0.528 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_089_visual">
+          <pose>5.598 1.091 0.475 0 0 -2.255783</pose>
+          <geometry><box><size>0.528 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_090_collision">
+          <pose>6.796 0.857 0.475 0 0 -1.170930</pose>
+          <geometry><box><size>0.406 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_090_visual">
+          <pose>6.796 0.857 0.475 0 0 -1.170930</pose>
+          <geometry><box><size>0.406 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_091_collision">
+          <pose>14.751 0.534 0.475 0 0 -0.523652</pose>
+          <geometry><box><size>1.998 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_091_visual">
+          <pose>14.751 0.534 0.475 0 0 -0.523652</pose>
+          <geometry><box><size>1.998 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_092_collision">
+          <pose>16.463 0.626 0.475 0 0 -0.891240</pose>
+          <geometry><box><size>0.959 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_092_visual">
+          <pose>16.463 0.626 0.475 0 0 -0.891240</pose>
+          <geometry><box><size>0.959 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_093_collision">
+          <pose>1.440 0.891 0.475 0 0 -2.934427</pose>
+          <geometry><box><size>0.996 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_093_visual">
+          <pose>1.440 0.891 0.475 0 0 -2.934427</pose>
+          <geometry><box><size>0.996 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_094_collision">
+          <pose>1.456 0.849 0.475 0 0 -2.832368</pose>
+          <geometry><box><size>0.985 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_094_visual">
+          <pose>1.456 0.849 0.475 0 0 -2.832368</pose>
+          <geometry><box><size>0.985 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_095_collision">
+          <pose>2.577 0.565 0.475 0 0 -0.530731</pose>
+          <geometry><box><size>1.763 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_095_visual">
+          <pose>2.577 0.565 0.475 0 0 -0.530731</pose>
+          <geometry><box><size>1.763 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_096_collision">
+          <pose>4.623 0.514 0.475 0 0 -2.681707</pose>
+          <geometry><box><size>2.009 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_096_visual">
+          <pose>4.623 0.514 0.475 0 0 -2.681707</pose>
+          <geometry><box><size>2.009 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_097_collision">
+          <pose>1.435 0.845 0.475 0 0 -3.036088</pose>
+          <geometry><box><size>0.973 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_097_visual">
+          <pose>1.435 0.845 0.475 0 0 -3.036088</pose>
+          <geometry><box><size>0.973 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_098_collision">
+          <pose>1.452 0.804 0.475 0 0 -2.932597</pose>
+          <geometry><box><size>0.954 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_098_visual">
+          <pose>1.452 0.804 0.475 0 0 -2.932597</pose>
+          <geometry><box><size>0.954 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_099_collision">
+          <pose>2.572 0.520 0.475 0 0 -0.479492</pose>
+          <geometry><box><size>1.727 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_099_visual">
+          <pose>2.572 0.520 0.475 0 0 -0.479492</pose>
+          <geometry><box><size>1.727 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_100_collision">
+          <pose>0.201 0.148 0.475 0 0 -2.463399</pose>
+          <geometry><box><size>2.199 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_100_visual">
+          <pose>0.201 0.148 0.475 0 0 -2.463399</pose>
+          <geometry><box><size>2.199 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_101_collision">
+          <pose>0.218 0.107 0.475 0 0 -2.505059</pose>
+          <geometry><box><size>2.175 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_101_visual">
+          <pose>0.218 0.107 0.475 0 0 -2.505059</pose>
+          <geometry><box><size>2.175 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_102_collision">
+          <pose>7.647 0.512 0.475 0 0 -0.262080</pose>
+          <geometry><box><size>1.767 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_102_visual">
+          <pose>7.647 0.512 0.475 0 0 -0.262080</pose>
+          <geometry><box><size>1.767 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_103_collision">
+          <pose>-3.920 0.000 0.475 0 0 -1.924233</pose>
+          <geometry><box><size>1.027 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_103_visual">
+          <pose>-3.920 0.000 0.475 0 0 -1.924233</pose>
+          <geometry><box><size>1.027 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_104_collision">
+          <pose>8.888 -0.208 0.475 0 0 -0.850073</pose>
+          <geometry><box><size>1.469 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_104_visual">
+          <pose>8.888 -0.208 0.475 0 0 -0.850073</pose>
+          <geometry><box><size>1.469 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_105_collision">
+          <pose>17.026 -0.416 0.475 0 0 -1.174541</pose>
+          <geometry><box><size>1.670 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_105_visual">
+          <pose>17.026 -0.416 0.475 0 0 -1.174541</pose>
+          <geometry><box><size>1.670 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_106_collision">
+          <pose>3.531 0.122 0.475 0 0 -0.110934</pose>
+          <geometry><box><size>0.614 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_106_visual">
+          <pose>3.531 0.122 0.475 0 0 -0.110934</pose>
+          <geometry><box><size>0.614 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_107_collision">
+          <pose>15.693 -0.072 0.475 0 0 -0.812120</pose>
+          <geometry><box><size>0.494 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_107_visual">
+          <pose>15.693 -0.072 0.475 0 0 -0.812120</pose>
+          <geometry><box><size>0.494 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_108_collision">
+          <pose>6.129 -0.097 0.475 0 0 -0.171981</pose>
+          <geometry><box><size>0.626 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_108_visual">
+          <pose>6.129 -0.097 0.475 0 0 -0.171981</pose>
+          <geometry><box><size>0.626 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_109_collision">
+          <pose>5.024 -0.465 0.475 0 0 -2.694093</pose>
+          <geometry><box><size>2.020 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_109_visual">
+          <pose>5.024 -0.465 0.475 0 0 -2.694093</pose>
+          <geometry><box><size>2.020 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_110_collision">
+          <pose>1.567 -0.134 0.475 0 0 -2.981966</pose>
+          <geometry><box><size>0.370 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_110_visual">
+          <pose>1.567 -0.134 0.475 0 0 -2.981966</pose>
+          <geometry><box><size>0.370 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_111_collision">
+          <pose>2.229 -0.455 0.475 0 0 -0.564354</pose>
+          <geometry><box><size>1.395 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_111_visual">
+          <pose>2.229 -0.455 0.475 0 0 -0.564354</pose>
+          <geometry><box><size>1.395 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_112_collision">
+          <pose>7.086 -0.393 0.475 0 0 -0.343356</pose>
+          <geometry><box><size>1.623 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_112_visual">
+          <pose>7.086 -0.393 0.475 0 0 -0.343356</pose>
+          <geometry><box><size>1.623 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_113_collision">
+          <pose>0.685 -0.756 0.475 0 0 -2.470123</pose>
+          <geometry><box><size>2.057 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_113_visual">
+          <pose>0.685 -0.756 0.475 0 0 -2.470123</pose>
+          <geometry><box><size>2.057 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_114_collision">
+          <pose>16.123 -0.962 0.475 0 0 -1.190768</pose>
+          <geometry><box><size>1.744 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_114_visual">
+          <pose>16.123 -0.962 0.475 0 0 -1.190768</pose>
+          <geometry><box><size>1.744 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_115_collision">
+          <pose>-2.782 -0.994 0.475 0 0 -0.413528</pose>
+          <geometry><box><size>2.948 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_115_visual">
+          <pose>-2.782 -0.994 0.475 0 0 -0.413528</pose>
+          <geometry><box><size>2.948 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_116_collision">
+          <pose>-0.857 -0.506 0.475 0 0 0.006693</pose>
+          <geometry><box><size>0.618 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_116_visual">
+          <pose>-0.857 -0.506 0.475 0 0 0.006693</pose>
+          <geometry><box><size>0.618 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_117_collision">
+          <pose>7.904 -0.865 0.475 0 0 -1.103350</pose>
+          <geometry><box><size>0.610 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_117_visual">
+          <pose>7.904 -0.865 0.475 0 0 -1.103350</pose>
+          <geometry><box><size>0.610 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_118_collision">
+          <pose>9.441 -0.920 0.475 0 0 -1.083132</pose>
+          <geometry><box><size>0.584 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_118_visual">
+          <pose>9.441 -0.920 0.475 0 0 -1.083132</pose>
+          <geometry><box><size>0.584 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_119_collision">
+          <pose>2.830 -0.947 0.475 0 0 -1.178487</pose>
+          <geometry><box><size>0.449 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_119_visual">
+          <pose>2.830 -0.947 0.475 0 0 -1.178487</pose>
+          <geometry><box><size>0.449 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_120_collision">
+          <pose>4.117 -0.986 0.475 0 0 -2.000709</pose>
+          <geometry><box><size>0.363 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_120_visual">
+          <pose>4.117 -0.986 0.475 0 0 -2.000709</pose>
+          <geometry><box><size>0.363 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_121_collision">
+          <pose>2.866 -1.457 0.475 0 0 -1.646193</pose>
+          <geometry><box><size>0.836 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_121_visual">
+          <pose>2.866 -1.457 0.475 0 0 -1.646193</pose>
+          <geometry><box><size>0.836 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_122_collision">
+          <pose>3.972 -1.400 0.475 0 0 -1.872397</pose>
+          <geometry><box><size>0.756 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_122_visual">
+          <pose>3.972 -1.400 0.475 0 0 -1.872397</pose>
+          <geometry><box><size>0.756 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_123_collision">
+          <pose>7.923 -1.376 0.475 0 0 -1.874646</pose>
+          <geometry><box><size>0.732 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_123_visual">
+          <pose>7.923 -1.376 0.475 0 0 -1.874646</pose>
+          <geometry><box><size>0.732 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_124_collision">
+          <pose>10.464 -2.036 0.475 0 0 -0.783546</pose>
+          <geometry><box><size>2.701 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_124_visual">
+          <pose>10.464 -2.036 0.475 0 0 -0.783546</pose>
+          <geometry><box><size>2.701 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_125_collision">
+          <pose>17.433 -1.183 0.475 0 0 -0.450649</pose>
+          <geometry><box><size>0.359 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_125_visual">
+          <pose>17.433 -1.183 0.475 0 0 -0.450649</pose>
+          <geometry><box><size>0.359 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_126_collision">
+          <pose>17.799 -1.405 0.475 0 0 -0.581830</pose>
+          <geometry><box><size>0.739 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_126_visual">
+          <pose>17.799 -1.405 0.475 0 0 -0.581830</pose>
+          <geometry><box><size>0.739 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_127_collision">
+          <pose>-0.129 -1.550 0.475 0 0 -1.852965</pose>
+          <geometry><box><size>0.517 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_127_visual">
+          <pose>-0.129 -1.550 0.475 0 0 -1.852965</pose>
+          <geometry><box><size>0.517 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_128_collision">
+          <pose>-1.377 -1.798 0.475 0 0 -1.132047</pose>
+          <geometry><box><size>0.641 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_128_visual">
+          <pose>-1.377 -1.798 0.475 0 0 -1.132047</pose>
+          <geometry><box><size>0.641 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_129_collision">
+          <pose>18.818 -2.488 0.475 0 0 -0.876374</pose>
+          <geometry><box><size>2.498 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_129_visual">
+          <pose>18.818 -2.488 0.475 0 0 -0.876374</pose>
+          <geometry><box><size>2.498 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_130_collision">
+          <pose>7.802 -2.548 0.475 0 0 -1.605017</pose>
+          <geometry><box><size>1.881 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_130_visual">
+          <pose>7.802 -2.548 0.475 0 0 -1.605017</pose>
+          <geometry><box><size>1.881 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_131_collision">
+          <pose>15.894 -2.289 0.475 0 0 -2.316550</pose>
+          <geometry><box><size>1.682 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_131_visual">
+          <pose>15.894 -2.289 0.475 0 0 -2.316550</pose>
+          <geometry><box><size>1.682 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_132_collision">
+          <pose>0.214 -2.909 0.475 0 0 -1.242448</pose>
+          <geometry><box><size>2.589 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_132_visual">
+          <pose>0.214 -2.909 0.475 0 0 -1.242448</pose>
+          <geometry><box><size>2.589 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_133_collision">
+          <pose>4.202 -2.504 0.475 0 0 -1.185122</pose>
+          <geometry><box><size>1.848 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_133_visual">
+          <pose>4.202 -2.504 0.475 0 0 -1.185122</pose>
+          <geometry><box><size>1.848 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_134_collision">
+          <pose>-0.800 -3.228 0.475 0 0 -1.198437</pose>
+          <geometry><box><size>2.686 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_134_visual">
+          <pose>-0.800 -3.228 0.475 0 0 -1.198437</pose>
+          <geometry><box><size>2.686 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_135_collision">
+          <pose>8.808 -2.757 0.475 0 0 -1.716565</pose>
+          <geometry><box><size>1.466 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_135_visual">
+          <pose>8.808 -2.757 0.475 0 0 -1.716565</pose>
+          <geometry><box><size>1.466 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_136_collision">
+          <pose>9.689 -2.867 0.475 0 0 -0.780407</pose>
+          <geometry><box><size>2.325 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_136_visual">
+          <pose>9.689 -2.867 0.475 0 0 -0.780407</pose>
+          <geometry><box><size>2.325 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_137_collision">
+          <pose>17.229 -2.474 0.475 0 0 -2.777059</pose>
+          <geometry><box><size>0.371 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_137_visual">
+          <pose>17.229 -2.474 0.475 0 0 -2.777059</pose>
+          <geometry><box><size>0.371 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_138_collision">
+          <pose>18.152 -3.286 0.475 0 0 -0.816378</pose>
+          <geometry><box><size>2.471 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_138_visual">
+          <pose>18.152 -3.286 0.475 0 0 -0.816378</pose>
+          <geometry><box><size>2.471 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_139_collision">
+          <pose>16.511 -3.136 0.475 0 0 -2.342878</pose>
+          <geometry><box><size>1.843 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_139_visual">
+          <pose>16.511 -3.136 0.475 0 0 -2.342878</pose>
+          <geometry><box><size>1.843 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_140_collision">
+          <pose>12.462 -2.978 0.475 0 0 -2.888542</pose>
+          <geometry><box><size>1.567 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_140_visual">
+          <pose>12.462 -2.978 0.475 0 0 -2.888542</pose>
+          <geometry><box><size>1.567 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_141_collision">
+          <pose>13.811 -2.997 0.475 0 0 -0.299035</pose>
+          <geometry><box><size>1.477 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_141_visual">
+          <pose>13.811 -2.997 0.475 0 0 -0.299035</pose>
+          <geometry><box><size>1.477 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_142_collision">
+          <pose>14.912 -3.030 0.475 0 0 -2.788715</pose>
+          <geometry><box><size>1.085 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_142_visual">
+          <pose>14.912 -3.030 0.475 0 0 -2.788715</pose>
+          <geometry><box><size>1.085 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_143_collision">
+          <pose>11.570 -3.053 0.475 0 0 -0.505694</pose>
+          <geometry><box><size>0.558 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_143_visual">
+          <pose>11.570 -3.053 0.475 0 0 -0.505694</pose>
+          <geometry><box><size>0.558 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_144_collision">
+          <pose>4.483 -4.266 0.475 0 0 -1.617058</pose>
+          <geometry><box><size>2.044 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_144_visual">
+          <pose>4.483 -4.266 0.475 0 0 -1.617058</pose>
+          <geometry><box><size>2.044 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_145_collision">
+          <pose>19.268 -3.772 0.475 0 0 -2.269379</pose>
+          <geometry><box><size>1.087 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_145_visual">
+          <pose>19.268 -3.772 0.475 0 0 -2.269379</pose>
+          <geometry><box><size>1.087 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_146_collision">
+          <pose>8.241 -3.426 0.475 0 0 0.005601</pose>
+          <geometry><box><size>1.059 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_146_visual">
+          <pose>8.241 -3.426 0.475 0 0 0.005601</pose>
+          <geometry><box><size>1.059 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_147_collision">
+          <pose>10.515 -3.841 0.475 0 0 -1.358523</pose>
+          <geometry><box><size>0.526 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_147_visual">
+          <pose>10.515 -3.841 0.475 0 0 -1.358523</pose>
+          <geometry><box><size>0.526 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_148_collision">
+          <pose>15.142 -3.949 0.475 0 0 -2.892322</pose>
+          <geometry><box><size>1.705 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_148_visual">
+          <pose>15.142 -3.949 0.475 0 0 -2.892322</pose>
+          <geometry><box><size>1.705 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_149_collision">
+          <pose>13.790 -3.951 0.475 0 0 -0.319446</pose>
+          <geometry><box><size>1.349 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_149_visual">
+          <pose>13.790 -3.951 0.475 0 0 -0.319446</pose>
+          <geometry><box><size>1.349 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_150_collision">
+          <pose>12.594 -3.973 0.475 0 0 -2.805087</pose>
+          <geometry><box><size>1.418 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_150_visual">
+          <pose>12.594 -3.973 0.475 0 0 -2.805087</pose>
+          <geometry><box><size>1.418 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_151_collision">
+          <pose>0.140 -4.250 0.475 0 0 -2.791366</pose>
+          <geometry><box><size>1.127 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_151_visual">
+          <pose>0.140 -4.250 0.475 0 0 -2.791366</pose>
+          <geometry><box><size>1.127 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_152_collision">
+          <pose>10.377 -4.595 0.475 0 0 -1.886331</pose>
+          <geometry><box><size>1.288 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_152_visual">
+          <pose>10.377 -4.595 0.475 0 0 -1.886331</pose>
+          <geometry><box><size>1.288 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_153_collision">
+          <pose>11.840 -4.303 0.475 0 0 -2.458471</pose>
+          <geometry><box><size>0.487 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_153_visual">
+          <pose>11.840 -4.303 0.475 0 0 -2.458471</pose>
+          <geometry><box><size>0.487 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_154_collision">
+          <pose>10.420 -5.975 0.475 0 0 -1.304713</pose>
+          <geometry><box><size>1.829 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_154_visual">
+          <pose>10.420 -5.975 0.475 0 0 -1.304713</pose>
+          <geometry><box><size>1.829 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_155_collision">
+          <pose>4.542 -5.454 0.475 0 0 -1.143340</pose>
+          <geometry><box><size>0.620 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_155_visual">
+          <pose>4.542 -5.454 0.475 0 0 -1.143340</pose>
+          <geometry><box><size>0.620 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_156_collision">
+          <pose>3.522 -5.840 0.475 0 0 -1.204859</pose>
+          <geometry><box><size>1.094 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_156_visual">
+          <pose>3.522 -5.840 0.475 0 0 -1.204859</pose>
+          <geometry><box><size>1.094 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_157_collision">
+          <pose>5.316 -6.567 0.475 0 0 -0.923376</pose>
+          <geometry><box><size>2.341 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_157_visual">
+          <pose>5.316 -6.567 0.475 0 0 -0.923376</pose>
+          <geometry><box><size>2.341 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_158_collision">
+          <pose>4.344 -7.141 0.475 0 0 -0.917545</pose>
+          <geometry><box><size>2.251 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_158_visual">
+          <pose>4.344 -7.141 0.475 0 0 -0.917545</pose>
+          <geometry><box><size>2.251 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_159_collision">
+          <pose>11.790 -6.518 0.475 0 0 -0.718040</pose>
+          <geometry><box><size>0.400 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_159_visual">
+          <pose>11.790 -6.518 0.475 0 0 -0.718040</pose>
+          <geometry><box><size>0.400 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_160_collision">
+          <pose>12.760 -6.916 0.475 0 0 -0.339704</pose>
+          <geometry><box><size>1.954 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_160_visual">
+          <pose>12.760 -6.916 0.475 0 0 -0.339704</pose>
+          <geometry><box><size>1.954 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_161_collision">
+          <pose>10.085 -7.498 0.475 0 0 -2.246456</pose>
+          <geometry><box><size>1.910 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_161_visual">
+          <pose>10.085 -7.498 0.475 0 0 -2.246456</pose>
+          <geometry><box><size>1.910 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_162_collision">
+          <pose>13.504 -7.689 0.475 0 0 -1.824303</pose>
+          <geometry><box><size>1.085 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_162_visual">
+          <pose>13.504 -7.689 0.475 0 0 -1.824303</pose>
+          <geometry><box><size>1.085 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_163_collision">
+          <pose>6.180 -7.621 0.475 0 0 -0.711571</pose>
+          <geometry><box><size>0.635 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_163_visual">
+          <pose>6.180 -7.621 0.475 0 0 -0.711571</pose>
+          <geometry><box><size>0.635 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_164_collision">
+          <pose>11.470 -7.675 0.475 0 0 -2.913867</pose>
+          <geometry><box><size>0.440 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_164_visual">
+          <pose>11.470 -7.675 0.475 0 0 -2.913867</pose>
+          <geometry><box><size>0.440 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_165_collision">
+          <pose>12.505 -7.897 0.475 0 0 -0.286194</pose>
+          <geometry><box><size>1.952 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_165_visual">
+          <pose>12.505 -7.897 0.475 0 0 -0.286194</pose>
+          <geometry><box><size>1.952 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_166_collision">
+          <pose>10.756 -8.408 0.475 0 0 -2.245959</pose>
+          <geometry><box><size>1.905 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_166_visual">
+          <pose>10.756 -8.408 0.475 0 0 -2.245959</pose>
+          <geometry><box><size>1.905 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_167_collision">
+          <pose>7.063 -7.906 0.475 0 0 -0.168210</pose>
+          <geometry><box><size>1.514 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_167_visual">
+          <pose>7.063 -7.906 0.475 0 0 -0.168210</pose>
+          <geometry><box><size>1.514 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_168_collision">
+          <pose>4.986 -8.146 0.475 0 0 -1.600681</pose>
+          <geometry><box><size>0.437 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_168_visual">
+          <pose>4.986 -8.146 0.475 0 0 -1.600681</pose>
+          <geometry><box><size>0.437 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_169_collision">
+          <pose>8.425 -8.189 0.475 0 0 -0.241526</pose>
+          <geometry><box><size>1.511 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_169_visual">
+          <pose>8.425 -8.189 0.475 0 0 -0.241526</pose>
+          <geometry><box><size>1.511 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_170_collision">
+          <pose>9.313 -8.276 0.475 0 0 -2.783332</pose>
+          <geometry><box><size>0.575 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_170_visual">
+          <pose>9.313 -8.276 0.475 0 0 -2.783332</pose>
+          <geometry><box><size>0.575 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_171_collision">
+          <pose>4.149 -8.928 0.475 0 0 -2.499061</pose>
+          <geometry><box><size>2.201 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_171_visual">
+          <pose>4.149 -8.928 0.475 0 0 -2.499061</pose>
+          <geometry><box><size>2.201 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_172_collision">
+          <pose>5.901 -8.973 0.475 0 0 -2.611577</pose>
+          <geometry><box><size>0.613 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_172_visual">
+          <pose>5.901 -8.973 0.475 0 0 -2.611577</pose>
+          <geometry><box><size>0.613 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_173_collision">
+          <pose>6.841 -8.948 0.475 0 0 -0.135493</pose>
+          <geometry><box><size>1.587 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_173_visual">
+          <pose>6.841 -8.948 0.475 0 0 -0.135493</pose>
+          <geometry><box><size>1.587 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_174_collision">
+          <pose>4.792 -9.696 0.475 0 0 -2.553815</pose>
+          <geometry><box><size>2.276 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_174_visual">
+          <pose>4.792 -9.696 0.475 0 0 -2.553815</pose>
+          <geometry><box><size>2.276 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_175_collision">
+          <pose>8.372 -9.254 0.475 0 0 -0.251592</pose>
+          <geometry><box><size>1.782 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_175_visual">
+          <pose>8.372 -9.254 0.475 0 0 -0.251592</pose>
+          <geometry><box><size>1.782 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_176_collision">
+          <pose>9.688 -9.282 0.475 0 0 -2.805797</pose>
+          <geometry><box><size>1.202 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_176_visual">
+          <pose>9.688 -9.282 0.475 0 0 -2.805797</pose>
+          <geometry><box><size>1.202 0.120 0.950</size></box></geometry>
+          <material><ambient>0.18 0.17 0.16 1</ambient><diffuse>0.30 0.28 0.24 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+
+        <collision name="image_cave_wall_177_collision">
+          <pose>3.605 -9.922 0.475 0 0 -0.908275</pose>
+          <geometry><box><size>1.061 0.120 0.950</size></box></geometry>
+        </collision>
+        <visual name="image_cave_wall_177_visual">
+          <pose>3.605 -9.922 0.475 0 0 -0.908275</pose>
+          <geometry><box><size>1.061 0.120 0.950</size></box></geometry>
+          <material><ambient>0.12 0.12 0.11 1</ambient><diffuse>0.22 0.21 0.19 1</diffuse><specular>0.02 0.02 0.02 1</specular></material>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>

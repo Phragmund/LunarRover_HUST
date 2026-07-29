@@ -1,0 +1,51 @@
+composite_wheel_imu_odometry:
+  ros__parameters:
+    use_sim_time: true
+    joint_topic: /joint_states
+    imu_topic: /livox/imu
+    output_topic: /localization/composite_odometry
+    odom_frame: odom
+    base_frame: base_link
+    imu_frame: livox_imu_frame
+    child_frame: base_link
+
+    steering_joints:
+      - left_front_steering_joint
+      - right_front_steering_joint
+      - left_rear_steering_joint
+      - right_rear_steering_joint
+    wheel_joints:
+      - left_front_wheel_joint
+      - right_front_wheel_joint
+      - left_middle_wheel_joint
+      - right_middle_wheel_joint
+      - left_rear_wheel_joint
+      - right_rear_wheel_joint
+
+    # The mapping launch starts while the rover is stationary. Use the first IMU
+    # samples to define local yaw zero and gyro-z bias.
+    calibration_samples: 80
+
+    # Geometry / calibration. Start with measured wheel radius and controller
+    # geometry; forward_velocity_scale is the explicit knob for straight-line
+    # distance calibration against Gazebo truth or real measured runs.
+    wheel_radius: 0.0625
+    wheelbase: 0.39
+    track_width: 0.345
+    forward_velocity_scale: 1.0
+
+    # Reject stale joint feedback and unrealistic wheel spikes before integration.
+    wheel_velocity_timeout: 0.35
+    max_wheel_angular_velocity: 9.0
+    wheel_outlier_residual_mps: 0.08
+    min_wheels_for_fit: 4
+    stationary_wheel_speed_threshold_mps: 0.012
+    stationary_yaw_rate_threshold_radps: 0.012
+    max_dt: 0.10
+    max_forward_speed_mps: 0.8
+    max_forward_accel_mps2: 0.8
+
+    # Conservative planar covariance for a diagnostic odometry source. These
+    # values are intentionally not wired into Nav2 yet.
+    pose_covariance_diagonal: [0.04, 0.04, 1000000.0, 1000000.0, 1000000.0, 0.02]
+    twist_covariance_diagonal: [0.04, 1000000.0, 1000000.0, 1000000.0, 1000000.0, 0.02]

@@ -7,7 +7,8 @@ ROS-Gazebo bridge for the six-wheel rover.
 ros2 launch lunar_rover_simulation simulation.launch.py world:=mixed
 ```
 
-Available worlds are `flat`, `steps`, `rocks`, and `mixed`. All worlds use
+Available worlds include `flat`, `steps`, `rocks`, `mixed`, `reachable_maze`,
+`lava_tube`, and `image_cave`. All worlds use
 standard Earth gravity (`9.80665 m/s^2`), local assets only, and deterministic
 seed `360335` by default.
 

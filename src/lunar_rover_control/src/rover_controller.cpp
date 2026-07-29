@@ -43,7 +43,7 @@ controller_interface::CallbackReturn RoverController::on_init()
     auto_declare<std::vector<std::string>>(
       "steering_joints", kDefaultSteeringJoints);
     auto_declare<std::vector<std::string>>("wheel_joints", kDefaultWheelJoints);
-    auto_declare<double>("wheel_radius", 0.09);
+    auto_declare<double>("wheel_radius", 0.0625);
     auto_declare<double>("wheelbase", 0.52);
     auto_declare<double>("track_width", 0.50);
     auto_declare<double>("max_steering_angle", 1.0471975511965976);
@@ -188,11 +188,20 @@ controller_interface::return_type RoverController::update(
   const bool can_drive =
     fresh && (!stop_wheels_until_steered_ ||
     maximum_error <= steering_alignment_tolerance_);
+  const bool ackermann_turn_requested =
+    fresh && std::abs(command.linear_x) > 1e-6 && std::abs(command.angular_z) > 1e-6;
+  const bool hold_wheels_while_steering =
+    ackermann_turn_requested && stop_wheels_until_steered_ && !can_drive;
   const double wheel_step =
     std::isfinite(dt) && dt > 0.0 ? max_wheel_angular_acceleration_ * dt : 0.0;
   for (std::size_t i = 0; i < WHEEL_COUNT; ++i) {
-    if (!can_drive) {
-      // Alignment and watchdog stops intentionally bypass acceleration limiting.
+    if (!fresh) {
+      // Watchdog stops intentionally bypass acceleration limiting.
+      last_wheel_commands_[i] = 0.0;
+    } else if (hold_wheels_while_steering) {
+      // Preserve the current drive speed while steering catches up for Ackermann turns.
+    } else if (!can_drive) {
+      // Non-Ackermann alignment waits still stop the drive wheels.
       last_wheel_commands_[i] = 0.0;
     } else {
       const double difference =

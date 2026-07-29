@@ -1,0 +1,26 @@
+capture_time: 20260729_010709
+csv: /home/phragmund/LunarRover/docs/odometry_eval/trajectory_paths_20260729_010709.csv
+truth_points: 9176
+truth_final: x=0.068380, y=-0.738722, yaw_deg=-87.982, path_length=20.937928
+wheel_points: 9979
+wheel_final: x=0.447188, y=-0.948758, yaw_deg=-141.318, path_length=18.070914
+imu_points: 10724
+imu_final: x=285.573678, y=214.939860, yaw_deg=-66.203, path_length=650.040548
+wheel_final_error_vs_truth: xy=0.433141, yaw_deg=-53.336
+imu_final_error_vs_truth: xy=357.813535, yaw_deg=21.780
+distance_from_spawn_truth: 0.741880
+
+wheel_time_aligned_error:
+  xy_mean_m: 0.659271
+  xy_rms_m: 0.997988
+  xy_max_m: 2.663041
+  yaw_mean_abs_deg: 24.583931
+  yaw_rms_deg: 32.993350
+  yaw_max_abs_deg: 56.650006
+imu_time_aligned_error:
+  xy_mean_m: 45.460975
+  xy_rms_m: 93.449412
+  xy_max_m: 357.264601
+  yaw_mean_abs_deg: 11.886175
+  yaw_rms_deg: 16.813096
+  yaw_max_abs_deg: 31.860431

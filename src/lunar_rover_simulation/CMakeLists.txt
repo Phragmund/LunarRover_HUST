@@ -4,7 +4,7 @@ project(lunar_rover_simulation)
 find_package(ament_cmake REQUIRED)
 
 install(
-  DIRECTORY config launch models worlds
+  DIRECTORY config launch models worlds scripts
   DESTINATION share/${PROJECT_NAME}
 )
 install(

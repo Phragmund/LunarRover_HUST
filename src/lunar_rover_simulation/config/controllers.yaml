@@ -27,7 +27,7 @@ rover_controller:
       - right_middle_wheel_joint
       - left_rear_wheel_joint
       - right_rear_wheel_joint
-    wheel_radius: 0.075
+    wheel_radius: 0.0625
     wheelbase: 0.39
     track_width: 0.345
     max_steering_angle: 1.0471975512

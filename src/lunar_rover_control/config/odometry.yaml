@@ -1,0 +1,28 @@
+joint_feedback_odometry:
+  ros__parameters:
+    use_sim_time: true
+    joint_topic: /joint_states
+    output_topic: /localization/odometry
+    odom_frame: odom
+    base_frame: base_link
+    publish_tf: true
+    maximum_dt: 0.25
+    wheel_radius: 0.0625
+    wheelbase: 0.39
+    track_width: 0.345
+    max_steering_angle: 1.0471975512
+    feedback_velocity_limit: 100.0
+    pose_covariance_diagonal:
+      - 0.03
+      - 0.03
+      - 1000000.0
+      - 1000000.0
+      - 1000000.0
+      - 0.06
+    twist_covariance_diagonal:
+      - 0.04
+      - 1000000.0
+      - 1000000.0
+      - 1000000.0
+      - 1000000.0
+      - 0.08

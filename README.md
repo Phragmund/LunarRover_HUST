@@ -76,6 +76,7 @@ rocks
 mixed
 stairs_maze
 reachable_maze
+image_cave
 ```
 
 只启动Gazebo模型和原始桥接：

@@ -14,11 +14,14 @@ find_package(controller_interface REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(lunar_rover_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(realtime_tools REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 add_library(${PROJECT_NAME}_kinematics SHARED
   src/kinematics.cpp
@@ -59,6 +62,20 @@ ament_target_dependencies(sim_chassis_state_node
   std_msgs
 )
 
+add_executable(joint_feedback_odometry_node
+  src/joint_feedback_odometry_node.cpp
+)
+target_link_libraries(joint_feedback_odometry_node
+  ${PROJECT_NAME}_kinematics
+)
+ament_target_dependencies(joint_feedback_odometry_node
+  geometry_msgs
+  nav_msgs
+  rclcpp
+  sensor_msgs
+  tf2_ros
+)
+
 pluginlib_export_plugin_description_file(
   controller_interface
   lunar_rover_control_plugins.xml
@@ -74,6 +91,7 @@ install(
   TARGETS
     ${PROJECT_NAME}_kinematics
     ${PROJECT_NAME}_controllers
+    joint_feedback_odometry_node
     sim_chassis_state_node
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
@@ -101,10 +119,13 @@ ament_export_dependencies(
   geometry_msgs
   hardware_interface
   lunar_rover_msgs
+  nav_msgs
   pluginlib
   rclcpp
   rclcpp_lifecycle
   realtime_tools
+  sensor_msgs
   std_msgs
+  tf2_ros
 )
 ament_package()

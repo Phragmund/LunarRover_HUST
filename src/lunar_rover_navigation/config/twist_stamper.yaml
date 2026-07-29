@@ -1,0 +1,8 @@
+twist_stamper:
+  ros__parameters:
+    use_sim_time: true
+    input_topic: /cmd_vel
+    output_topic: /chassis/cmd_vel
+    frame_id: base_link
+    max_linear_x: 0.22
+    max_angular_z: 0.45
