@@ -15,12 +15,12 @@ IMU-only position integration.
 import math
 
 import rclpy
-from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import Quaternion, TransformStamped
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from rclpy.time import Time
 from sensor_msgs.msg import Imu, JointState
-from tf2_ros import Buffer, TransformListener
+from tf2_ros import Buffer, TransformBroadcaster, TransformListener
 
 
 def quaternion_tuple(q):
@@ -182,6 +182,7 @@ class CompositeWheelImuOdometry(Node):
         self.base_frame = self.declare_parameter("base_frame", "base_link").value
         self.imu_frame = self.declare_parameter("imu_frame", "livox_imu_frame").value
         self.child_frame = self.declare_parameter("child_frame", "base_link").value
+        self.publish_tf = bool(self.declare_parameter("publish_tf", True).value)
         self.calibration_samples = int(
             self.declare_parameter("calibration_samples", 80).value
         )
@@ -229,6 +230,7 @@ class CompositeWheelImuOdometry(Node):
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.tf_broadcaster = TransformBroadcaster(self) if self.publish_tf else None
         self.base_from_imu_quat = None
         self.transform_source_frame = None
         self.last_tf_warning = 0.0
@@ -531,6 +533,16 @@ class CompositeWheelImuOdometry(Node):
         msg.twist.twist.angular.z = self.yaw_rate
         msg.twist.covariance = self.twist_covariance
         self.publisher.publish(msg)
+        if self.tf_broadcaster is not None:
+            transform = TransformStamped()
+            transform.header.stamp = stamp
+            transform.header.frame_id = self.odom_frame
+            transform.child_frame_id = self.child_frame
+            transform.transform.translation.x = self.x
+            transform.transform.translation.y = self.y
+            transform.transform.translation.z = 0.0
+            transform.transform.rotation = msg.pose.pose.orientation
+            self.tf_broadcaster.sendTransform(transform)
 
 
 def main():

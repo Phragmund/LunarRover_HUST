@@ -7,6 +7,7 @@ key holds can lag and key release events cannot be observed reliably.
 """
 
 import glob
+import math
 import os
 import re
 import select
@@ -25,6 +26,7 @@ Lunar rover keyboard teleop
   W/S : forward / reverse
   A/D : in-place left / right rotation
   W/S + A/D : Ackermann-style turning while driving
+  Left Shift : 2x drive power while held
   SPACE : stop
   Ctrl-C : quit
 
@@ -38,9 +40,12 @@ KEY_CODES = {
     30: "a",
     31: "s",
     32: "d",
+    42: "left_shift",
     57: " ",
 }
 INPUT_EVENT = struct.Struct("llHHi")
+DRIVE_KEYS = {"w", "a", "s", "d"}
+MODIFIER_KEYS = {"left_shift"}
 
 
 class DirectKeyboardError(RuntimeError):
@@ -181,6 +186,14 @@ class KeyboardRoverTeleop(Node):
         self.spin_angular_speed = float(
             self.declare_parameter("spin_angular_speed", 0.36).value
         )
+        self.boost_multiplier = float(
+            self.declare_parameter("boost_multiplier", 2.0).value
+        )
+        if not math.isfinite(self.boost_multiplier) or self.boost_multiplier <= 0.0:
+            self.get_logger().warn(
+                f"invalid boost_multiplier={self.boost_multiplier!r}; using 2.0"
+            )
+            self.boost_multiplier = 2.0
         self.publish_rate = float(self.declare_parameter("publish_rate", 20.0).value)
         self.input_backend = self.declare_parameter("input_backend", "direct").value
         self.input_device = self.declare_parameter("input_device", "").value
@@ -195,13 +208,13 @@ class KeyboardRoverTeleop(Node):
 
     def set_key_state(self, key, pressed):
         key = key.lower()
-        if key in ("w", "a", "s", "d"):
+        if key in DRIVE_KEYS or key in MODIFIER_KEYS:
             if pressed:
                 self.held_keys.add(key)
             else:
                 self.held_keys.discard(key)
         elif key == " " and pressed:
-            self.held_keys.clear()
+            self.held_keys.difference_update(DRIVE_KEYS)
 
     def active_keys(self):
         return set(self.held_keys)
@@ -212,6 +225,7 @@ class KeyboardRoverTeleop(Node):
         reverse = "s" in keys and "w" not in keys
         left = "a" in keys and "d" not in keys
         right = "d" in keys and "a" not in keys
+        boosted = "left_shift" in keys
 
         linear_x = 0.0
         angular_z = 0.0
@@ -230,6 +244,11 @@ class KeyboardRoverTeleop(Node):
         elif right:
             angular_z = -self.spin_angular_speed
             mode = f"{mode} right" if linear_x else "spin right"
+
+        if mode != "stop" and boosted:
+            linear_x *= self.boost_multiplier
+            angular_z *= self.boost_multiplier
+            mode = f"{mode} boost"
 
         return linear_x, angular_z, mode
 

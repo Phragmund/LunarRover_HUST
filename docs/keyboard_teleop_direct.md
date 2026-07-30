@@ -63,8 +63,9 @@ cd /home/phragmund/LunarRover
 ./tools/keyboard_event_probe.py --all-keys
 ```
 
-Press `W/A/S/D`. A working setup prints `press`, optional `repeat`, and
-immediate `release` lines.
+Press `W/A/S/D` and left Shift. A working setup prints `press`, optional
+`repeat`, and immediate `release` lines. Left Shift should show as
+`left_shift` or `code=42` when `--all-keys` is used.
 
 If this fails with permission errors, either run the helper once so it applies
 the temporary ACL, or apply the ACL manually:
@@ -116,6 +117,7 @@ W+A     linear.x > 0, angular.z > 0
 W+D     linear.x > 0, angular.z < 0
 S+A     linear.x < 0, angular.z > 0
 S+D     linear.x < 0, angular.z < 0
+LeftShift+W/A/S/D combinations double the nonzero command values by default
 SPACE   linear.x = 0, angular.z = 0
 ```
 
@@ -134,6 +136,7 @@ Controls:
 W/S       forward / reverse
 A/D       in-place left / right rotation
 W/S+A/D   Ackermann-style turning while driving
+LeftShift 2x drive power while held
 SPACE     stop
 Ctrl-C    quit direct backend
 ```
@@ -144,6 +147,15 @@ This is equivalent to:
 ros2 run lunar_rover_navigation keyboard_rover_teleop.py --ros-args \
   -p input_backend:=direct \
   -p command_topic:=/chassis/cmd_vel
+```
+
+The boost multiplier is configurable:
+
+```bash
+ros2 run lunar_rover_navigation keyboard_rover_teleop.py --ros-args \
+  -p input_backend:=direct \
+  -p command_topic:=/chassis/cmd_vel \
+  -p boost_multiplier:=2.0
 ```
 
 Use the explicit form only after permissions are already correct. The helper is

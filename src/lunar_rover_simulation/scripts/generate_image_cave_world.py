@@ -16,11 +16,31 @@ DEFAULT_IMAGE = Path(
     "/home/phragmund/Downloads/ChatGPT Image Jul 29, 2026, 11_47_45 PM.png"
 )
 WORLD_NAME = "image_cave"
+TERRAIN_MODEL_NAME = "image_cave_heightmap_terrain"
+TERRAIN_GRID_SIZE = 33
+TERRAIN_SIZE_X = 30.0
+TERRAIN_SIZE_Y = 30.0
+TERRAIN_CENTER_X = 4.0
+TERRAIN_CENTER_Y = 2.24
+TERRAIN_Z_OFFSET = -0.04
+TERRAIN_HEIGHT_RANGE = 0.22
+TERRAIN_SEED = 360335
 WALL_HEIGHT = 0.95
 WALL_THICKNESS = 0.12
 WALL_Z = WALL_HEIGHT * 0.5
 SPAWN_X = -3.92
 SPAWN_Y = 0.0
+SPAWN_REFERENCE_PX = np.array([220.0, 750.0])
+MANUAL_EDGES = (
+    (96, 108),
+    (127, 153),
+    (150, 156),
+    (52, 74),
+    (41, 56),
+    (27, 34),
+    (59, 66),
+    (69, 76),
+)
 
 
 @dataclass(frozen=True)
@@ -45,6 +65,10 @@ def material_xml(name: str) -> str:
         "<specular>0.02 0.02 0.02 1</specular>"
         "</material>"
     )
+
+
+def terrain_model_dir() -> Path:
+    return Path(__file__).resolve().parents[1] / "models" / TERRAIN_MODEL_NAME
 
 
 def red_points(image: np.ndarray) -> np.ndarray:
@@ -111,7 +135,22 @@ def extract_edges(image: np.ndarray, points: np.ndarray) -> list[tuple[int, int]
                 edges.append((i, j))
     if not edges:
         raise RuntimeError("Could not infer black wall segments from the source image")
-    return edges
+    return merge_manual_edges(edges, len(points))
+
+
+def merge_manual_edges(
+    edges: list[tuple[int, int]], point_count: int
+) -> list[tuple[int, int]]:
+    merged = {tuple(sorted(edge)) for edge in edges}
+    for start, end in MANUAL_EDGES:
+        if not (0 <= start < point_count and 0 <= end < point_count):
+            raise RuntimeError(
+                f"Manual wall segment {start}-{end} is outside the detected point range"
+            )
+        if start == end:
+            raise RuntimeError(f"Manual wall segment {start}-{end} is degenerate")
+        merged.add(tuple(sorted((start, end))))
+    return sorted(merged)
 
 
 def estimate_channel_width_px(points: np.ndarray, edges: list[tuple[int, int]]) -> float:
@@ -147,8 +186,8 @@ def estimate_channel_width_px(points: np.ndarray, edges: list[tuple[int, int]]) 
 
 
 def entry_center(points: np.ndarray) -> np.ndarray:
-    order = np.argsort(points[:, 0])
-    return points[order[:2]].mean(axis=0)
+    _ = points
+    return SPAWN_REFERENCE_PX.copy()
 
 
 def to_world(point: np.ndarray, origin: np.ndarray, meters_per_px: float) -> tuple[float, float]:
@@ -185,6 +224,13 @@ def wall_xml(wall: Wall, index: int) -> str:
           <geometry><box><size>{length + WALL_THICKNESS:.3f} {WALL_THICKNESS:.3f} {WALL_HEIGHT:.3f}</size></box></geometry>
           {material_xml(material)}
         </visual>"""
+
+
+def terrain_include_xml() -> str:
+    return f"""
+    <include>
+      <uri>model://{TERRAIN_MODEL_NAME}</uri>
+    </include>"""
 
 
 def spawn_marker_xml() -> str:
@@ -231,9 +277,7 @@ def world_xml(walls: list[Wall]) -> str:
       <specular>0.16 0.14 0.10 1</specular>
       <direction>-0.35 0.30 -0.89</direction>
     </light>
-    <include>
-      <uri>model://lunar_ground</uri>
-    </include>
+    {terrain_include_xml()}
     {spawn_marker_xml()}
     <model name="generated_image_cave_walls">
       <static>true</static>
@@ -258,6 +302,189 @@ def write_overlay(
     cv2.imwrite(str(path), overlay)
 
 
+def generate_terrain_grid() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    rng = np.random.default_rng(TERRAIN_SEED)
+    size = TERRAIN_GRID_SIZE
+    xs = np.linspace(
+        TERRAIN_CENTER_X - TERRAIN_SIZE_X * 0.5,
+        TERRAIN_CENTER_X + TERRAIN_SIZE_X * 0.5,
+        size,
+    )
+    ys = np.linspace(
+        TERRAIN_CENTER_Y - TERRAIN_SIZE_Y * 0.5,
+        TERRAIN_CENTER_Y + TERRAIN_SIZE_Y * 0.5,
+        size,
+    )
+    grid_x, grid_y = np.meshgrid(xs, ys)
+
+    low = rng.normal(0.0, 1.0, (size, size)).astype(np.float32)
+    low = cv2.GaussianBlur(low, (0, 0), 15.0)
+    low = (low - low.mean()) / (low.std() + 1e-6)
+
+    mid = rng.normal(0.0, 1.0, (size, size)).astype(np.float32)
+    mid = cv2.GaussianBlur(mid, (0, 0), 4.5)
+    mid = (mid - mid.mean()) / (mid.std() + 1e-6)
+
+    ridge_a = np.sin(grid_x * 2.7 + grid_y * 1.1)
+    ridge_b = np.sin(grid_x * -1.3 + grid_y * 3.2 + 1.6)
+    terraces = np.round((0.55 * low + 0.45 * mid + 0.35 * ridge_a) * 3.0) / 3.0
+    ledges = np.sign(ridge_a + 0.55 * ridge_b) * 0.5
+
+    height = 0.035 + 0.026 * low + 0.018 * mid + 0.022 * terraces + 0.012 * ledges
+
+    for cx, cy, radius, amplitude in (
+        (-1.6, 3.2, 1.4, 0.055),
+        (2.8, -2.4, 1.1, -0.040),
+        (7.8, 5.0, 1.7, 0.050),
+        (9.7, -4.9, 1.2, 0.060),
+        (-5.9, -1.1, 1.3, 0.045),
+    ):
+        distance = np.hypot(grid_x - cx, grid_y - cy)
+        mask = np.clip(1.0 - distance / radius, 0.0, 1.0)
+        height += amplitude * mask * mask
+
+    # Keep the initial rover pose locally flat and low enough to avoid spawning on an edge.
+    spawn_distance = np.hypot(grid_x - SPAWN_X, grid_y - SPAWN_Y)
+    flat_weight = np.clip(1.0 - (spawn_distance - 0.75) / 0.85, 0.0, 1.0)
+    height = height * (1.0 - flat_weight) + 0.0 * flat_weight
+
+    height = np.clip(height, -0.03, 0.16)
+    return grid_x, grid_y, height
+
+
+def height_to_preview_pixel(height: np.ndarray) -> np.ndarray:
+    normalized = np.clip(
+        (height - TERRAIN_Z_OFFSET) / TERRAIN_HEIGHT_RANGE,
+        0.0,
+        1.0,
+    )
+    return np.rint(normalized * 255.0).astype(np.uint8)
+
+
+def terrain_tile_xml(
+    index: int,
+    x: float,
+    y: float,
+    z: float,
+    size_x: float,
+    size_y: float,
+    size_z: float,
+    top: float,
+) -> str:
+    shade = float(np.clip((top + 0.03) / 0.19, 0.0, 1.0))
+    ambient = (
+        0.22 + 0.12 * shade,
+        0.20 + 0.10 * shade,
+        0.17 + 0.08 * shade,
+    )
+    diffuse = (
+        0.36 + 0.16 * shade,
+        0.32 + 0.14 * shade,
+        0.26 + 0.12 * shade,
+    )
+    return f"""
+        <collision name="terrain_tile_{index:04d}_collision">
+          <pose>{x:.4f} {y:.4f} {z:.4f} 0 0 0</pose>
+          <geometry><box><size>{size_x:.4f} {size_y:.4f} {size_z:.4f}</size></box></geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>1.25</mu>
+                <mu2>1.05</mu2>
+              </ode>
+            </friction>
+            <contact>
+              <ode>
+                <kp>10000000</kp>
+                <kd>100</kd>
+              </ode>
+            </contact>
+          </surface>
+        </collision>
+        <visual name="terrain_tile_{index:04d}_visual">
+          <pose>{x:.4f} {y:.4f} {z:.4f} 0 0 0</pose>
+          <geometry><box><size>{size_x:.4f} {size_y:.4f} {size_z:.4f}</size></box></geometry>
+          <material>
+            <ambient>{ambient[0]:.3f} {ambient[1]:.3f} {ambient[2]:.3f} 1</ambient>
+            <diffuse>{diffuse[0]:.3f} {diffuse[1]:.3f} {diffuse[2]:.3f} 1</diffuse>
+            <specular>0.025 0.023 0.020 1</specular>
+          </material>
+        </visual>"""
+
+
+def terrain_tiles_xml(grid_x: np.ndarray, grid_y: np.ndarray, height: np.ndarray) -> str:
+    bottom = -0.08
+    overlap = 0.01
+    tiles = []
+    index = 0
+    for row in range(height.shape[0] - 1):
+        for col in range(height.shape[1] - 1):
+            top = float(
+                np.mean(
+                    height[row : row + 2, col : col + 2],
+                    dtype=np.float64,
+                )
+            )
+            size_z = max(top - bottom, 0.02)
+            x = float((grid_x[row, col] + grid_x[row, col + 1]) * 0.5)
+            y = float((grid_y[row, col] + grid_y[row + 1, col]) * 0.5)
+            size_x = abs(float(grid_x[row, col + 1] - grid_x[row, col])) + overlap
+            size_y = abs(float(grid_y[row + 1, col] - grid_y[row, col])) + overlap
+            z = bottom + size_z * 0.5
+            tiles.append(terrain_tile_xml(index, x, y, z, size_x, size_y, size_z, top))
+            index += 1
+    return "\n".join(tiles)
+
+
+def write_terrain_assets(model_dir: Path) -> tuple[float, float]:
+    texture_dir = model_dir / "materials" / "textures"
+    texture_dir.mkdir(parents=True, exist_ok=True)
+
+    grid_x, grid_y, height = generate_terrain_grid()
+    cv2.imwrite(
+        str(texture_dir / "image_cave_tile_height_preview.png"),
+        height_to_preview_pixel(height),
+    )
+    height_range = (float(height.min()), float(height.max()))
+
+    rng = np.random.default_rng(TERRAIN_SEED + 1)
+    diffuse = np.zeros((64, 64, 3), dtype=np.uint8)
+    base = np.array([86, 96, 116], dtype=np.int16)
+    noise = rng.normal(0.0, 8.0, (64, 64, 1)).astype(np.int16)
+    grain = (np.sin(np.linspace(0, 18, 64))[None, :, None] * 7).astype(np.int16)
+    diffuse[:] = np.clip(base + noise + grain, 0, 255).astype(np.uint8)
+    cv2.imwrite(str(texture_dir / "sandstone_diffuse.png"), diffuse)
+
+    normal = np.full((8, 8, 3), (255, 128, 128), dtype=np.uint8)
+    cv2.imwrite(str(texture_dir / "flat_normal.png"), normal)
+
+    model_sdf = f"""<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="{TERRAIN_MODEL_NAME}">
+    <static>true</static>
+    <link name="terrain_link">{terrain_tiles_xml(grid_x, grid_y, height)}
+    </link>
+  </model>
+</sdf>
+"""
+    (model_dir / "model.sdf").write_text(model_sdf, encoding="utf-8")
+
+    model_config = f"""<?xml version="1.0"?>
+<model>
+  <name>Image Cave Heightmap Terrain</name>
+  <version>1.0</version>
+  <sdf version="1.8">model.sdf</sdf>
+  <author>
+    <name>Lunar Rover Team</name>
+    <email>maintainer@example.com</email>
+  </author>
+  <description>Deterministic sharp sandstone-style tiled terrain for the generated image cave world.</description>
+</model>
+"""
+    (model_dir / "model.config").write_text(model_config, encoding="utf-8")
+    return height_range
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", type=Path, default=DEFAULT_IMAGE)
@@ -266,6 +493,7 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path(__file__).resolve().parents[1] / "worlds" / f"{WORLD_NAME}.sdf",
     )
+    parser.add_argument("--terrain-model-dir", type=Path, default=terrain_model_dir())
     parser.add_argument("--overlay", type=Path, default=None)
     return parser.parse_args()
 
@@ -280,12 +508,14 @@ def main() -> None:
     channel_width_px = estimate_channel_width_px(points, edges)
     meters_per_px = 1.0 / channel_width_px
     walls = build_walls(points, edges, meters_per_px)
+    terrain_min, terrain_max = write_terrain_assets(args.terrain_model_dir)
     args.output.write_text(world_xml(walls), encoding="utf-8")
     if args.overlay is not None:
         write_overlay(image, points, edges, args.overlay)
     print(
         f"wrote {args.output} from {len(points)} points and {len(edges)} wall segments; "
-        f"channel_width={channel_width_px:.2f}px scale={meters_per_px:.5f}m/px"
+        f"channel_width={channel_width_px:.2f}px scale={meters_per_px:.5f}m/px; "
+        f"terrain_height=[{terrain_min:.3f},{terrain_max:.3f}]m"
     )
 
 

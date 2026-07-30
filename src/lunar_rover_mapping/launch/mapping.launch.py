@@ -45,7 +45,10 @@ def generate_launch_description():
                 package="lunar_rover_control",
                 executable="joint_feedback_odometry_node",
                 name="joint_feedback_odometry",
-                parameters=[odometry_config],
+                # Keep raw wheel odometry available for diagnostics, but do not
+                # let it own odom->base_link in mapping. SLAM should use the
+                # composite wheel-distance + IMU-heading TF instead.
+                parameters=[odometry_config, {"publish_tf": False}],
                 output="screen",
             ),
             Node(

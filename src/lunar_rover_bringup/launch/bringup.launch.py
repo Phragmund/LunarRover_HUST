@@ -38,6 +38,10 @@ def _launch_setup(context):
                     "controller_config": str(
                         control_share / "config" / "controllers.yaml"
                     ),
+                    "spawn_x": LaunchConfiguration("spawn_x"),
+                    "spawn_y": LaunchConfiguration("spawn_y"),
+                    "spawn_z": LaunchConfiguration("spawn_z"),
+                    "spawn_yaw": LaunchConfiguration("spawn_yaw"),
                 },
             ),
             _include("lunar_rover_sensors", "sim_sensors.launch.py", {}),
@@ -76,6 +80,10 @@ def generate_launch_description():
             DeclareLaunchArgument("gui", default_value="true"),
             DeclareLaunchArgument("headless", default_value="false"),
             DeclareLaunchArgument("rviz", default_value="true"),
+            DeclareLaunchArgument("spawn_x", default_value="-3.92"),
+            DeclareLaunchArgument("spawn_y", default_value="0.0"),
+            DeclareLaunchArgument("spawn_z", default_value="0.45"),
+            DeclareLaunchArgument("spawn_yaw", default_value="0.0"),
             DeclareLaunchArgument(
                 "sensor_noise",
                 default_value="false",

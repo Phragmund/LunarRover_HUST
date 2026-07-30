@@ -284,7 +284,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("spawn_x", default_value="-3.92"),
             DeclareLaunchArgument("spawn_y", default_value="0.0"),
-            DeclareLaunchArgument("spawn_z", default_value="0.20"),
+            DeclareLaunchArgument("spawn_z", default_value="0.45"),
             DeclareLaunchArgument("spawn_yaw", default_value="0.0"),
             DeclareLaunchArgument(
                 "seed",

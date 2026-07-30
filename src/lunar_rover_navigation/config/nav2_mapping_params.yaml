@@ -3,7 +3,7 @@ bt_navigator:
     use_sim_time: true
     global_frame: map
     robot_base_frame: base_link
-    odom_topic: /localization/odometry
+    odom_topic: /localization/composite_odometry
     bt_loop_duration: 10
     default_server_timeout: 20
     wait_for_service_timeout: 1000
@@ -266,7 +266,7 @@ velocity_smoother:
     min_velocity: [-0.08, 0.0, -0.42]
     max_accel: [0.35, 0.0, 0.80]
     max_decel: [-0.45, 0.0, -0.90]
-    odom_topic: /localization/odometry
+    odom_topic: /localization/composite_odometry
     odom_duration: 0.2
     deadband_velocity: [0.0, 0.0, 0.0]
     velocity_timeout: 1.0

@@ -22,6 +22,7 @@ KEY_CODES = {
     30: "a",
     31: "s",
     32: "d",
+    42: "left_shift",
     57: "space",
 }
 INPUT_EVENT = struct.Struct("llHHi")
@@ -128,7 +129,7 @@ def main():
         print("Listening for all EV_KEY press/release/repeat events.")
         print("Use Ctrl-C to quit.")
     else:
-        print("Listening for W/A/S/D/Space/Q press/release events.")
+        print("Listening for W/A/S/D/LeftShift/Space/Q press/release events.")
         print("Use Q press to quit.")
     print("Devices:")
     for _, path in opened:

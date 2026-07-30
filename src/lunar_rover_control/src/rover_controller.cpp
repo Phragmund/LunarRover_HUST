@@ -188,20 +188,23 @@ controller_interface::return_type RoverController::update(
   const bool can_drive =
     fresh && (!stop_wheels_until_steered_ ||
     maximum_error <= steering_alignment_tolerance_);
-  const bool ackermann_turn_requested =
-    fresh && std::abs(command.linear_x) > 1e-6 && std::abs(command.angular_z) > 1e-6;
-  const bool hold_wheels_while_steering =
-    ackermann_turn_requested && stop_wheels_until_steered_ && !can_drive;
+  const bool linear_drive_requested =
+    fresh && std::abs(command.linear_x) > 1e-6;
+  const bool update_wheels_while_steering =
+    linear_drive_requested && stop_wheels_until_steered_ && !can_drive;
   const double wheel_step =
     std::isfinite(dt) && dt > 0.0 ? max_wheel_angular_acceleration_ * dt : 0.0;
   for (std::size_t i = 0; i < WHEEL_COUNT; ++i) {
     if (!fresh) {
       // Watchdog stops intentionally bypass acceleration limiting.
       last_wheel_commands_[i] = 0.0;
-    } else if (hold_wheels_while_steering) {
-      // Preserve the current drive speed while steering catches up for Ackermann turns.
+    } else if (update_wheels_while_steering) {
+      // Keep linear driving smooth while steering transitions between straight and Ackermann.
+      const double difference =
+        targets.wheel_angular_velocities[i] - last_wheel_commands_[i];
+      last_wheel_commands_[i] += std::clamp(difference, -wheel_step, wheel_step);
     } else if (!can_drive) {
-      // Non-Ackermann alignment waits still stop the drive wheels.
+      // Pure rotation alignment waits still stop the drive wheels.
       last_wheel_commands_[i] = 0.0;
     } else {
       const double difference =

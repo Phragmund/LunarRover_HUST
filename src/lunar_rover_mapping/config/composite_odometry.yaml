@@ -8,6 +8,7 @@ composite_wheel_imu_odometry:
     base_frame: base_link
     imu_frame: livox_imu_frame
     child_frame: base_link
+    publish_tf: true
 
     steering_joints:
       - left_front_steering_joint
