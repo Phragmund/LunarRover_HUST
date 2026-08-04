@@ -40,6 +40,7 @@ install(
     scripts/imu_ekf_preprocessor.py
     scripts/imu_dead_reckoning_node.py
     scripts/odometry_path_compare.py
+    scripts/terrain_mapper_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 install(

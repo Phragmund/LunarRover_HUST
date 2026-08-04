@@ -8,6 +8,12 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 install(
+  PROGRAMS
+    scripts/mid360_livox_sim_driver.py
+    scripts/mid360_livox_imu_driver.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+install(
   FILES README.md
   DESTINATION share/${PROJECT_NAME}
 )

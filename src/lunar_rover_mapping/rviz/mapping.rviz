@@ -6,19 +6,6 @@ Panels:
 Visualization Manager:
   Class: ""
   Displays:
-    - Alpha: 0.5
-      Cell Size: 1
-      Class: rviz_default_plugins/Grid
-      Color: 160; 160; 164
-      Enabled: true
-      Line Style:
-        Line Width: 0.03
-        Value: Lines
-      Name: Grid
-      Plane: XY
-      Plane Cell Count: 40
-      Reference Frame: <Fixed Frame>
-      Value: true
     - Class: rviz_default_plugins/TF
       Enabled: true
       Frame Timeout: 15
@@ -44,31 +31,11 @@ Visualization Manager:
       Enabled: true
       Name: RobotModel
       Value: true
-    - Alpha: 0.65
-      Class: rviz_default_plugins/Map
-      Color Scheme: map
-      Draw Behind: false
-      Enabled: true
-      Name: SLAM Occupancy Map
-      Topic:
-        Depth: 1
-        Durability Policy: Transient Local
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /map
-      Update Topic:
-        Depth: 1
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /map_updates
-      Use Timestamp: false
-      Value: true
-    - Alpha: 0.45
+    - Alpha: 0.85
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
+        Max Value: 3
+        Min Value: -2
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -76,31 +43,62 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: AxisColor
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
-      Name: Raw Livox Points
+      Name: FAST-LIO2 map cloud
       Position Transformer: XYZ
       Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.025
-      Style: Flat Squares
+      Size (Pixels): 1
+      Size (m): 0.01
+      Style: Points
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
-        Reliability Policy: Best Effort
-        Value: /livox/points
+        Reliability Policy: Reliable
+        Value: /localization/lio_map_cloud
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
-    - Alpha: 0.55
+      Value: true
+    - Alpha: 0.45
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 3
+        Min Value: -2
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz_default_plugins/PointCloud2
+      Color: 120; 220; 255
+      Color Transformer: AxisColor
+      Decay Time: 4
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: FAST-LIO2 registered cloud
+      Position Transformer: XYZ
+      Selectable: true
+      Size (Pixels): 1
+      Size (m): 0.01
+      Style: Points
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /localization/cloud_registered
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 0.6
       Class: rviz_default_plugins/Map
       Color Scheme: costmap
       Draw Behind: false
       Enabled: true
-      Name: 2.5D Traversability Grid
+      Name: /terrain/traversability
       Topic:
         Depth: 1
         Durability Policy: Volatile
@@ -115,23 +113,26 @@ Visualization Manager:
         Value: /terrain/traversability_updates
       Use Timestamp: false
       Value: true
-    - Alpha: 1
-      Class: rviz_default_plugins/LaserScan
-      Color: 255; 80; 80
-      Color Transformer: FlatColor
-      Decay Time: 0
-      Enabled: false
-      Name: Livox Scan
-      Position Transformer: XYZ
-      Size (m): 0.04
-      Style: Points
+    - Alpha: 0.55
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Draw Behind: false
+      Enabled: true
+      Name: /global_costmap/costmap
       Topic:
-        Depth: 5
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /global_costmap/costmap
+      Update Topic:
+        Depth: 1
         Durability Policy: Volatile
         History Policy: Keep Last
-        Reliability Policy: Best Effort
-        Value: /livox/scan
-      Value: false
+        Reliability Policy: Reliable
+        Value: /global_costmap/costmap_updates
+      Use Timestamp: false
+      Value: true
     - Alpha: 1
       Buffer Length: 1
       Class: rviz_default_plugins/Path
@@ -141,12 +142,12 @@ Visualization Manager:
       Head Length: 0.3
       Length: 0.2
       Line Style: Lines
-      Line Width: 0.05
-      Name: Wheel Odometry Path
+      Line Width: 0.06
+      Name: /plan
       Offset:
         X: 0
         Y: 0
-        Z: 0.03
+        Z: 0.08
       Pose Color: 0; 220; 255
       Pose Style: None
       Radius: 0.03
@@ -157,7 +158,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /debug/wheel_odom_path
+        Value: /plan
       Value: true
     - Alpha: 1
       Buffer Length: 1
@@ -169,11 +170,11 @@ Visualization Manager:
       Length: 0.2
       Line Style: Lines
       Line Width: 0.05
-      Name: Gazebo Truth Path
+      Name: /local_plan
       Offset:
         X: 0
         Y: 0
-        Z: 0.06
+        Z: 0.12
       Pose Color: 255; 180; 0
       Pose Style: None
       Radius: 0.03
@@ -184,61 +185,34 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /debug/ground_truth_path
+        Value: /local_plan
       Value: true
     - Alpha: 1
       Buffer Length: 1
       Class: rviz_default_plugins/Path
-      Color: 190; 80; 255
-      Enabled: false
-      Head Diameter: 0.2
-      Head Length: 0.3
-      Length: 0.2
-      Line Style: Lines
-      Line Width: 0.05
-      Name: IMU Dead Reckoning Path (disabled diagnostic)
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0.09
-      Pose Color: 190; 80; 255
-      Pose Style: None
-      Radius: 0.03
-      Shaft Diameter: 0.1
-      Shaft Length: 0.1
-      Topic:
-        Depth: 1
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /debug/imu_odom_path
-      Value: false
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz_default_plugins/Path
-      Color: 60; 255; 80
+      Color: 80; 255; 120
       Enabled: true
-      Head Diameter: 0.2
-      Head Length: 0.3
-      Length: 0.2
+      Head Diameter: 0.18
+      Head Length: 0.25
+      Length: 0.18
       Line Style: Lines
-      Line Width: 0.06
-      Name: Composite Wheel+IMU Path
+      Line Width: 0.04
+      Name: FAST-LIO2 path
       Offset:
         X: 0
         Y: 0
-        Z: 0.12
-      Pose Color: 60; 255; 80
+        Z: 0.18
+      Pose Color: 80; 255; 120
       Pose Style: None
-      Radius: 0.03
-      Shaft Diameter: 0.1
-      Shaft Length: 0.1
+      Radius: 0.025
+      Shaft Diameter: 0.08
+      Shaft Length: 0.08
       Topic:
         Depth: 1
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /debug/fused_odom_path
+        Value: /localization/lio_path
       Value: true
   Enabled: true
   Global Options:
@@ -252,13 +226,6 @@ Visualization Manager:
     - Class: rviz_default_plugins/Select
     - Class: rviz_default_plugins/FocusCamera
     - Class: rviz_default_plugins/Measure
-    - Class: rviz_default_plugins/SetInitialPose
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /initialpose
     - Class: rviz_default_plugins/SetGoal
       Topic:
         Depth: 5

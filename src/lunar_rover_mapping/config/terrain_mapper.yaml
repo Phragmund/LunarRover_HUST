@@ -1,0 +1,30 @@
+terrain_mapper:
+  ros__parameters:
+    use_sim_time: true
+    input_topic: /localization/cloud_registered
+    traversability_topic: /terrain/traversability
+    diagnostics_topic: /terrain/diagnostics
+    map_frame: map
+    base_frame: base_link
+    resolution: 0.10
+    width_cells: 120
+    height_cells: 90
+    origin_x: -6.0
+    origin_y: -4.5
+    min_z: -0.80
+    max_z: 1.80
+    min_points_per_cell: 2
+    cautious_step_height: 0.06
+    lethal_step_height: 0.10
+    max_slope_deg: 8.0
+    roughness_warn: 0.025
+    unknown_is_risky: false
+    max_points_per_cloud: 60000
+    publish_period: 0.5
+    rolling_window: false
+    recenter_margin_m: 6.0
+    cell_decay_time: 0.0
+    raytrace_free_space: true
+    raytrace_stride: 6
+    raytrace_max_range: 6.0
+    raytrace_endpoint_margin: 0.20

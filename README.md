@@ -13,7 +13,7 @@
 - Gemini 335原始彩色图、深度图和相机内参；
 - 深度图到点云的基础几何转换，仅用于数据观察；
 - Gazebo和RViz基础可视化；
-- 平地、台阶、岩石、混合地形和迷宫世界；
+- 平地、台阶、岩石、混合地形、迷宫和图像洞穴测试世界；
 - 实车Livox和Orbbec驱动启动入口。
 
 ## 明确不包含
@@ -64,7 +64,7 @@ source install/setup.bash
 
 ```bash
 ros2 launch lunar_rover_bringup bringup.launch.py \
-  mode:=sim world:=mixed gui:=true rviz:=true sensor_noise:=false
+  mode:=sim gui:=true rviz:=true sensor_noise:=false
 ```
 
 可用世界：
@@ -76,14 +76,20 @@ rocks
 mixed
 stairs_maze
 reachable_maze
+lava_tube
 image_cave
+terrain_preview
 ```
+
+默认测试世界是 `image_cave`。该地图包含从参考洞穴图生成的封闭墙体拓扑和
+0.2 m 边长、0.2 m 高差范围的三角伪曲面地形。地图内容见
+[`docs/simulation_worlds.md`](docs/simulation_worlds.md)。
 
 只启动Gazebo模型和原始桥接：
 
 ```bash
 ros2 launch lunar_rover_simulation simulation.launch.py \
-  world:=mixed gui:=true rviz:=true sensor_noise:=false
+  gui:=true rviz:=true sensor_noise:=false
 ```
 
 实车原始传感器入口：

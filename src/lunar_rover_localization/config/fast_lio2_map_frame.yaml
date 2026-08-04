@@ -1,0 +1,18 @@
+fast_lio2_map_frame:
+  ros__parameters:
+    use_sim_time: true
+    map_frame: map
+    base_frame: base_link
+    lio_body_frame: livox_imu_frame
+    raw_lio_map_frame: camera_init
+    raw_odom_topic: /localization/lio_odometry_raw
+    raw_path_topic: /localization/lio_path_raw
+    raw_registered_topic: /localization/cloud_registered_raw
+    raw_map_cloud_topic: /localization/lio_map_cloud_raw
+    odom_topic: /localization/lio_odometry
+    path_topic: /localization/lio_path
+    registered_topic: /localization/cloud_registered
+    map_cloud_topic: /localization/lio_map_cloud
+    restamp_outputs: true
+    max_abs_position: 1000.0
+    require_valid_pose_for_clouds: true

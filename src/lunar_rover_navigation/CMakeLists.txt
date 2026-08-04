@@ -11,7 +11,11 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(nav2_costmap_2d REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(tf2 REQUIRED)
 
 add_executable(twist_stamper_node
   src/twist_stamper_node.cpp
@@ -20,6 +24,25 @@ ament_target_dependencies(twist_stamper_node
   geometry_msgs
   rclcpp
 )
+
+add_library(lunar_rover_navigation_terrain_layer SHARED
+  src/terrain_layer.cpp
+)
+target_include_directories(lunar_rover_navigation_terrain_layer PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+ament_target_dependencies(lunar_rover_navigation_terrain_layer
+  nav2_costmap_2d
+  nav_msgs
+  pluginlib
+  rclcpp
+  tf2
+)
+pluginlib_export_plugin_description_file(nav2_costmap_2d plugins/terrain_layer.xml)
+ament_export_include_directories(include)
+ament_export_libraries(lunar_rover_navigation_terrain_layer)
+ament_export_dependencies(nav2_costmap_2d nav_msgs pluginlib rclcpp tf2)
 
 install(
   DIRECTORY config launch
@@ -35,6 +58,16 @@ install(
 install(
   TARGETS twist_stamper_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
+install(
+  TARGETS lunar_rover_navigation_terrain_layer
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+install(
+  DIRECTORY include/
+  DESTINATION include
 )
 
 ament_package()

@@ -76,13 +76,14 @@ def check_packages():
         "lunar_rover_control",
         "lunar_rover_sensors",
         "lunar_rover_bringup",
+        "lunar_rover_localization",
+        "lunar_rover_exploration",
     }
     missing = sorted(required - names)
     if missing:
         errors.append("Missing base packages: " + ", ".join(missing))
 
     removed = {
-        "lunar_rover_localization",
         "lunar_rover_perception",
         "lunar_rover_missions",
     }
@@ -137,9 +138,7 @@ def check_contracts():
         if not any(part in SKIP_PARTS for part in path.parts)
     ).lower()
     forbidden = (
-        "fast_lio",
         "rtabmap",
-        "robot_localization",
         "icp_odometry",
         "terrain_perception",
         "wheel_odometry",

@@ -1,0 +1,8 @@
+<library path="lunar_rover_navigation_terrain_layer">
+  <class
+    name="lunar_rover_navigation/TerrainLayer"
+    type="lunar_rover_navigation::TerrainLayer"
+    base_class_type="nav2_costmap_2d::Layer">
+    <description>Injects the lunar rover 2.5D traversability grid into Nav2 costmaps.</description>
+  </class>
+</library>

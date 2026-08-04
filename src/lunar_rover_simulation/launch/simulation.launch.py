@@ -1,6 +1,7 @@
 """Start Gazebo Fortress, spawn the rover, and bridge simulated sensors."""
 
 import os
+import tempfile
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
@@ -33,6 +34,7 @@ SUPPORTED_WORLDS = (
     "reachable_maze",
     "lava_tube",
     "image_cave",
+    "terrain_preview",
 )
 
 
@@ -52,6 +54,23 @@ def _launch_setup(context):
     world_path = os.path.join(simulation_share, "worlds", f"{world_name}.sdf")
     controller_config = LaunchConfiguration("controller_config").perform(context)
     bridge_config = os.path.join(simulation_share, "config", "bridge.yaml")
+    clock_bridge_config = os.path.join(
+        tempfile.gettempdir(), f"lunar_rover_{world_name}_clock_bridge.yaml"
+    )
+    with open(clock_bridge_config, "w", encoding="utf-8") as config_file:
+        config_file.write(
+            "\n".join(
+                [
+                    "- ros_topic_name: /clock",
+                    f"  gz_topic_name: /world/{world_name}/clock",
+                    "  ros_type_name: rosgraph_msgs/msg/Clock",
+                    "  gz_type_name: ignition.msgs.Clock",
+                    "  direction: GZ_TO_ROS",
+                    "  lazy: false",
+                    "",
+                ]
+            )
+        )
 
     gz_args = [
         "-r",
@@ -135,6 +154,8 @@ def _launch_setup(context):
             "/controller_manager",
             "--controller-manager-timeout",
             "60",
+            "--switch-timeout",
+            "60",
             "--param-file",
             controller_config,
         ],
@@ -151,6 +172,8 @@ def _launch_setup(context):
             "/controller_manager",
             "--controller-manager-timeout",
             "60",
+            "--switch-timeout",
+            "60",
             "--param-file",
             controller_config,
         ],
@@ -166,6 +189,8 @@ def _launch_setup(context):
             "--controller-manager",
             "/controller_manager",
             "--controller-manager-timeout",
+            "60",
+            "--switch-timeout",
             "60",
             "--param-file",
             controller_config,
@@ -200,6 +225,53 @@ def _launch_setup(context):
         ],
         output="screen",
     )
+    mid360_livox_driver = Node(
+        package="lunar_rover_simulation",
+        executable="mid360_livox_sim_driver.py",
+        name="mid360_livox_sim_driver",
+        parameters=[
+            {
+                "use_sim_time": True,
+                "raw_points_topic": "/mid360/raw_points",
+                "raw_imu_topic": "/mid360/raw_imu",
+                "truth_odom_topic": "/simulation/ground_truth/odometry",
+                "imu_source": "ground_truth_kinematics",
+                "publish_imu": False,
+                "custom_topic": "/livox/lidar",
+                "points_topic": "/livox/points",
+                "imu_topic": "/livox/imu_disabled",
+                "base_frame": "base_link",
+                "lidar_frame": "livox_frame",
+                "imu_frame": "livox_imu_frame",
+                "scan_rate": 10.0,
+                "scan_lines": 11,
+            }
+        ],
+        output="screen",
+    )
+    mid360_livox_imu_driver = Node(
+        package="lunar_rover_simulation",
+        executable="mid360_livox_imu_driver.py",
+        name="mid360_livox_imu_driver",
+        parameters=[
+            {
+                "use_sim_time": True,
+                "raw_imu_topic": "/mid360/raw_imu",
+                "truth_odom_topic": "/simulation/ground_truth/odometry",
+                "imu_topic": "/livox/imu",
+                "base_frame": "base_link",
+                "imu_frame": "livox_imu_frame",
+            }
+        ],
+        output="screen",
+    )
+    clock_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="simulation_clock_bridge",
+        parameters=[{"config_file": clock_bridge_config, "use_sim_time": True}],
+        output="screen",
+    )
     rviz_config = PathJoinSubstitution(
         [
             FindPackageShare("lunar_rover_description"),
@@ -218,7 +290,10 @@ def _launch_setup(context):
 
     return [
         gazebo,
+        clock_bridge,
         bridge,
+        mid360_livox_driver,
+        mid360_livox_imu_driver,
         robot_state_publisher,
         spawn_rover,
         spawn_controllers_after_robot,
@@ -250,9 +325,9 @@ def generate_launch_description():
             SetEnvironmentVariable("IGN_GAZEBO_RESOURCE_PATH", resource_path),
             DeclareLaunchArgument(
                 "world",
-                default_value="mixed",
+                default_value="image_cave",
                 description=(
-                    "One of: flat, steps, rocks, mixed, stairs_maze, reachable_maze, lava_tube, image_cave."
+                    "One of: flat, steps, rocks, mixed, stairs_maze, reachable_maze, lava_tube, image_cave, terrain_preview."
                 ),
             ),
             DeclareLaunchArgument(
@@ -284,7 +359,7 @@ def generate_launch_description():
             ),
             DeclareLaunchArgument("spawn_x", default_value="-3.92"),
             DeclareLaunchArgument("spawn_y", default_value="0.0"),
-            DeclareLaunchArgument("spawn_z", default_value="0.45"),
+            DeclareLaunchArgument("spawn_z", default_value="1.45"),
             DeclareLaunchArgument("spawn_yaw", default_value="0.0"),
             DeclareLaunchArgument(
                 "seed",

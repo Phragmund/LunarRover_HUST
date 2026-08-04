@@ -87,6 +87,7 @@ public:
     width_cells_ = declare_parameter<int>("width_cells", 160);
     height_cells_ = declare_parameter<int>("height_cells", 160);
     rolling_window_ = declare_parameter<bool>("rolling_window", false);
+    accumulate_ = declare_parameter<bool>("accumulate", false);
     origin_x_ = declare_parameter<double>("origin_x", -8.0);
     origin_y_ = declare_parameter<double>("origin_y", -8.0);
     min_points_per_cell_ = declare_parameter<int>("min_points_per_cell", 2);
@@ -177,7 +178,9 @@ private:
       origin_y = center_y - 0.5 * static_cast<double>(height_cells_) * cell_size_;
     }
 
-    reset_cells();
+    if (!accumulate_ || rolling_window_) {
+      reset_cells();
+    }
     rasterize_cloud(cloud_map, origin_x, origin_y);
     if (publish_current_voxels_) {
       publish_current_voxel_cloud(cloud.header.stamp, cloud_map);
@@ -382,6 +385,7 @@ private:
   int width_cells_{160};
   int height_cells_{160};
   bool rolling_window_{false};
+  bool accumulate_{false};
   double origin_x_{-8.0};
   double origin_y_{-8.0};
   int min_points_per_cell_{2};

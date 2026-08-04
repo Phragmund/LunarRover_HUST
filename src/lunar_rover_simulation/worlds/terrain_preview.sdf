@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <world name="terrain_preview">
+    <gravity>0 0 -9.80665</gravity>
+    <physics name="physics" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+    <plugin filename="libignition-gazebo-physics-system.so" name="ignition::gazebo::systems::Physics"/>
+    <plugin filename="libignition-gazebo-user-commands-system.so" name="ignition::gazebo::systems::UserCommands"/>
+    <plugin filename="libignition-gazebo-scene-broadcaster-system.so" name="ignition::gazebo::systems::SceneBroadcaster"/>
+    <scene>
+      <ambient>0.18 0.18 0.18 1</ambient>
+      <background>0.030 0.032 0.036 1</background>
+      <shadows>true</shadows>
+    </scene>
+    <gui fullscreen="0"/>
+    <light name="terrain_key_light" type="directional">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.95 0.89 0.76 1</diffuse>
+      <specular>0.18 0.16 0.12 1</specular>
+      <direction>-0.35 0.25 -0.90</direction>
+    </light>
+    
+    <include>
+      <uri>model://image_cave_heightmap_terrain</uri>
+    </include>
+    
+    <include>
+      <uri>model://image_cave_walls</uri>
+    </include>
+    
+    <include>
+      <uri>model://image_cave_surface_blocks</uri>
+    </include>
+  </world>
+</sdf>

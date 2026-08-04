@@ -76,13 +76,13 @@ def generate_launch_description():
     return LaunchDescription(
         [
             DeclareLaunchArgument("mode", default_value="sim"),
-            DeclareLaunchArgument("world", default_value="mixed"),
+            DeclareLaunchArgument("world", default_value="image_cave"),
             DeclareLaunchArgument("gui", default_value="true"),
             DeclareLaunchArgument("headless", default_value="false"),
             DeclareLaunchArgument("rviz", default_value="true"),
             DeclareLaunchArgument("spawn_x", default_value="-3.92"),
             DeclareLaunchArgument("spawn_y", default_value="0.0"),
-            DeclareLaunchArgument("spawn_z", default_value="0.45"),
+            DeclareLaunchArgument("spawn_z", default_value="1.45"),
             DeclareLaunchArgument("spawn_yaw", default_value="0.0"),
             DeclareLaunchArgument(
                 "sensor_noise",
