@@ -87,7 +87,41 @@ def _launch_setup(context):
             package="lunar_rover_localization",
             executable="fast_lio2_map_frame_node.py",
             name="fast_lio2_map_frame",
-            parameters=[map_frame_params],
+            parameters=[
+                map_frame_params,
+                {
+                    "imu_mount_pitch_source": LaunchConfiguration(
+                        "imu_mount_pitch_source"
+                    ),
+                    "imu_mount_pitch_samples": LaunchConfiguration(
+                        "imu_mount_pitch_samples"
+                    ),
+                    "imu_mount_pitch_max_gyro_radps": LaunchConfiguration(
+                        "imu_mount_pitch_max_gyro_radps"
+                    ),
+                    "imu_mount_pitch_correction_deg": LaunchConfiguration(
+                        "imu_mount_pitch_correction_deg"
+                    ),
+                    "level_correction_source": LaunchConfiguration(
+                        "level_correction_source"
+                    ),
+                    "level_correction_samples": LaunchConfiguration(
+                        "level_correction_samples"
+                    ),
+                    "level_correction_start_delay_sec": LaunchConfiguration(
+                        "level_correction_start_delay_sec"
+                    ),
+                    "level_correction_max_abs_tilt_deg": LaunchConfiguration(
+                        "level_correction_max_abs_tilt_deg"
+                    ),
+                    "level_correction_preserve_yaw": LaunchConfiguration(
+                        "level_correction_preserve_yaw"
+                    ),
+                    "level_correction_anchor_position": LaunchConfiguration(
+                        "level_correction_anchor_position"
+                    ),
+                },
+            ],
             output="screen",
             condition=IfCondition(LaunchConfiguration("run_map_frame_node")),
         ),
@@ -175,6 +209,16 @@ def generate_launch_description():
                 "map_frame_params_file",
                 default_value=str(localization_share / "config" / "fast_lio2_map_frame.yaml"),
             ),
+            DeclareLaunchArgument("imu_mount_pitch_source", default_value="urdf"),
+            DeclareLaunchArgument("imu_mount_pitch_samples", default_value="80"),
+            DeclareLaunchArgument("imu_mount_pitch_max_gyro_radps", default_value="0.02"),
+            DeclareLaunchArgument("imu_mount_pitch_correction_deg", default_value="0.0"),
+            DeclareLaunchArgument("level_correction_source", default_value="startup_lio_pose"),
+            DeclareLaunchArgument("level_correction_samples", default_value="40"),
+            DeclareLaunchArgument("level_correction_start_delay_sec", default_value="20.0"),
+            DeclareLaunchArgument("level_correction_max_abs_tilt_deg", default_value="10.0"),
+            DeclareLaunchArgument("level_correction_preserve_yaw", default_value="true"),
+            DeclareLaunchArgument("level_correction_anchor_position", default_value="true"),
             OpaqueFunction(function=_launch_setup),
         ]
     )

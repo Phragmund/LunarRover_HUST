@@ -4,6 +4,11 @@ fast_lio2_map_frame:
     map_frame: map
     base_frame: base_link
     lio_body_frame: livox_imu_frame
+    imu_topic: /livox/imu
+    imu_mount_pitch_source: urdf
+    imu_mount_pitch_samples: 80
+    imu_mount_pitch_max_gyro_radps: 0.02
+    imu_mount_pitch_correction_deg: 0.0
     raw_lio_map_frame: camera_init
     raw_odom_topic: /localization/lio_odometry_raw
     raw_path_topic: /localization/lio_path_raw
@@ -16,3 +21,9 @@ fast_lio2_map_frame:
     restamp_outputs: true
     max_abs_position: 1000.0
     require_valid_pose_for_clouds: true
+    level_correction_source: startup_lio_pose
+    level_correction_samples: 40
+    level_correction_start_delay_sec: 20.0
+    level_correction_max_abs_tilt_deg: 10.0
+    level_correction_preserve_yaw: true
+    level_correction_anchor_position: true

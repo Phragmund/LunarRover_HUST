@@ -10,6 +10,7 @@ from nav_msgs.msg import Odometry, Path
 from rclpy.node import Node
 from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
+from sensor_msgs.msg import Imu
 from sensor_msgs.msg import PointCloud2, PointField
 from sensor_msgs_py import point_cloud2
 from tf2_ros import Buffer, TransformException, TransformListener
@@ -17,6 +18,12 @@ from tf2_ros import Buffer, TransformException, TransformListener
 
 def q_tuple(q):
     return (float(q.x), float(q.y), float(q.z), float(q.w))
+
+
+def bool_value(value):
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return bool(value)
 
 
 def q_normalize(q):
@@ -47,6 +54,34 @@ def q_multiply(a, b):
     return q_normalize(q_multiply_raw(a, b))
 
 
+def q_from_rpy(roll, pitch, yaw):
+    cr = math.cos(roll * 0.5)
+    sr = math.sin(roll * 0.5)
+    cp = math.cos(pitch * 0.5)
+    sp = math.sin(pitch * 0.5)
+    cy = math.cos(yaw * 0.5)
+    sy = math.sin(yaw * 0.5)
+    return (
+        sr * cp * cy - cr * sp * sy,
+        cr * sp * cy + sr * cp * sy,
+        cr * cp * sy - sr * sp * cy,
+        cr * cp * cy + sr * sp * sy,
+    )
+
+
+def rpy_from_q(q):
+    x, y, z, w = q_normalize(q)
+    sinr_cosp = 2.0 * (w * x + y * z)
+    cosr_cosp = 1.0 - 2.0 * (x * x + y * y)
+    roll = math.atan2(sinr_cosp, cosr_cosp)
+    sinp = 2.0 * (w * y - z * x)
+    pitch = math.copysign(math.pi / 2.0, sinp) if abs(sinp) >= 1.0 else math.asin(sinp)
+    siny_cosp = 2.0 * (w * z + x * y)
+    cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+    yaw = math.atan2(siny_cosp, cosy_cosp)
+    return roll, pitch, yaw
+
+
 def rotate(q, v):
     vx, vy, vz = v
     x, y, z, _ = q_multiply_raw(
@@ -72,6 +107,11 @@ def compose(a_t, a_q, b_t, b_q):
     )
 
 
+def inverse_transform(t, q):
+    q_inv = q_inverse(q)
+    return rotate(q_inv, (-t[0], -t[1], -t[2])), q_inv
+
+
 def point_field_size(datatype):
     return {
         PointField.INT8: 1,
@@ -91,6 +131,21 @@ class FastLio2MapFrameNode(Node):
         self.map_frame = self.declare_parameter("map_frame", "map").value
         self.base_frame = self.declare_parameter("base_frame", "base_link").value
         self.lio_body_frame = self.declare_parameter("lio_body_frame", "livox_imu_frame").value
+        self.imu_topic = self.declare_parameter("imu_topic", "/livox/imu").value
+        self.imu_mount_pitch_source = (
+            self.declare_parameter("imu_mount_pitch_source", "urdf")
+            .value.strip()
+            .lower()
+        )
+        self.imu_mount_pitch_samples = max(
+            1, int(self.declare_parameter("imu_mount_pitch_samples", 80).value)
+        )
+        self.imu_mount_pitch_max_gyro = float(
+            self.declare_parameter("imu_mount_pitch_max_gyro_radps", 0.02).value
+        )
+        self.imu_mount_pitch_correction = math.radians(
+            float(self.declare_parameter("imu_mount_pitch_correction_deg", 0.0).value)
+        )
         self.raw_lio_map_frame = self.declare_parameter(
             "raw_lio_map_frame", "camera_init"
         ).value
@@ -123,11 +178,49 @@ class FastLio2MapFrameNode(Node):
         self.require_valid_pose_for_clouds = bool(
             self.declare_parameter("require_valid_pose_for_clouds", True).value
         )
+        self.level_correction_source = (
+            self.declare_parameter("level_correction_source", "none")
+            .value.strip()
+            .lower()
+        )
+        self.level_correction_samples = max(
+            1, int(self.declare_parameter("level_correction_samples", 40).value)
+        )
+        self.level_correction_start_delay = max(
+            0.0,
+            float(self.declare_parameter("level_correction_start_delay_sec", 20.0).value),
+        )
+        self.level_correction_max_abs_tilt = math.radians(
+            float(self.declare_parameter("level_correction_max_abs_tilt_deg", 10.0).value)
+        )
+        self.level_correction_preserve_yaw = bool_value(
+            self.declare_parameter("level_correction_preserve_yaw", True).value
+        )
+        self.level_correction_anchor_position = bool_value(
+            self.declare_parameter("level_correction_anchor_position", True).value
+        )
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.map_from_lio = None
         self.lio_body_from_base = None
+        self.level_correction = (
+            None
+            if self.level_correction_source in ("startup_lio_pose", "lio", "startup")
+            else ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+        )
+        self.level_sample_count = 0
+        self.level_roll_sin_sum = 0.0
+        self.level_roll_cos_sum = 0.0
+        self.level_pitch_sin_sum = 0.0
+        self.level_pitch_cos_sum = 0.0
+        self.level_yaw_sin_sum = 0.0
+        self.level_yaw_cos_sum = 0.0
+        self.level_position_sum = [0.0, 0.0, 0.0]
+        self.level_first_raw_odom_time = None
+        self.calibrated_imu_pitch = None
+        self.imu_pitch_sample_count = 0
+        self.imu_pitch_sum = 0.0
         self.last_pose_valid = False
         self.wait_timer = self.create_timer(0.1, self.try_initialize)
         self.cloud_qos = QoSProfile(
@@ -146,6 +239,8 @@ class FastLio2MapFrameNode(Node):
         )
 
         self.create_subscription(Odometry, self.raw_odom_topic, self.on_odom, 20)
+        if self.imu_mount_pitch_source in ("startup_imu_pitch", "imu", "measured"):
+            self.create_subscription(Imu, self.imu_topic, self.on_imu, 50)
         self.create_subscription(Path, self.raw_path_topic, self.on_path, 10)
         self.create_subscription(
             PointCloud2,
@@ -164,8 +259,42 @@ class FastLio2MapFrameNode(Node):
             "FAST-LIO2 map frame: raw camera_init products -> level map products"
         )
 
+    def on_imu(self, msg):
+        if self.calibrated_imu_pitch is not None:
+            return
+        gyro_norm = math.sqrt(
+            msg.angular_velocity.x * msg.angular_velocity.x
+            + msg.angular_velocity.y * msg.angular_velocity.y
+            + msg.angular_velocity.z * msg.angular_velocity.z
+        )
+        if self.imu_mount_pitch_max_gyro > 0.0 and gyro_norm > self.imu_mount_pitch_max_gyro:
+            return
+        _, pitch, _ = rpy_from_q(q_tuple(msg.orientation))
+        if not math.isfinite(pitch):
+            return
+        self.imu_pitch_sample_count += 1
+        self.imu_pitch_sum += pitch
+        if self.imu_pitch_sample_count >= self.imu_mount_pitch_samples:
+            self.calibrated_imu_pitch = self.imu_pitch_sum / float(self.imu_pitch_sample_count)
+            self.get_logger().info(
+                "Calibrated effective IMU mount pitch from startup IMU orientation: "
+                f"{math.degrees(self.calibrated_imu_pitch):.3f} deg "
+                f"from {self.imu_pitch_sample_count} samples"
+            )
+
     def try_initialize(self):
         if self.map_from_lio is not None:
+            return
+        if (
+            self.imu_mount_pitch_source in ("startup_imu_pitch", "imu", "measured")
+            and self.calibrated_imu_pitch is None
+        ):
+            self.get_logger().warn(
+                "Waiting for startup IMU pitch calibration from "
+                f"{self.imu_topic}: {self.imu_pitch_sample_count}/"
+                f"{self.imu_mount_pitch_samples} samples",
+                throttle_duration_sec=2.0,
+            )
             return
         try:
             base_from_lio_body = self.tf_buffer.lookup_transform(
@@ -181,13 +310,31 @@ class FastLio2MapFrameNode(Node):
             )
             return
 
-        self.map_from_lio = transform_parts(base_from_lio_body)
-        self.lio_body_from_base = transform_parts(lio_body_from_base)
+        base_from_lio_body_t, base_from_lio_body_q = transform_parts(base_from_lio_body)
+        pitch_source = "urdf"
+        if self.imu_mount_pitch_source in ("startup_imu_pitch", "imu", "measured"):
+            urdf_roll, _, urdf_yaw = rpy_from_q(base_from_lio_body_q)
+            base_from_lio_body_q = q_normalize(
+                q_from_rpy(urdf_roll, self.calibrated_imu_pitch, urdf_yaw)
+            )
+            pitch_source = "startup_imu_pitch"
+        elif abs(self.imu_mount_pitch_correction) > 0.0:
+            base_from_lio_body_q = q_normalize(
+                q_multiply(
+                    base_from_lio_body_q,
+                    q_from_rpy(0.0, -self.imu_mount_pitch_correction, 0.0),
+                )
+            )
+            pitch_source = "manual_correction"
+        self.map_from_lio = (base_from_lio_body_t, base_from_lio_body_q)
+        self.lio_body_from_base = inverse_transform(*self.map_from_lio)
         _, q = self.map_from_lio
-        pitch = math.degrees(math.asin(max(-1.0, min(1.0, 2.0 * (q[3] * q[1] - q[2] * q[0])))))
+        _, pitch, _ = rpy_from_q(q)
         self.get_logger().info(
             f"Using URDF-derived {self.base_frame}->{self.lio_body_frame} as "
-            f"{self.map_frame}->{self.raw_lio_map_frame}; pitch={pitch:.3f} deg"
+            f"{self.map_frame}->{self.raw_lio_map_frame}; "
+            f"pitch={math.degrees(pitch):.3f} deg; pitch_source={pitch_source}; "
+            f"pitch_correction={math.degrees(self.imu_mount_pitch_correction):.3f} deg"
         )
         self.wait_timer.cancel()
 
@@ -197,11 +344,119 @@ class FastLio2MapFrameNode(Node):
             return False
         return True
 
-    def raw_pose_to_map_base(self, position, orientation):
+    def level_initialized(self):
+        if self.level_correction is not None:
+            return True
+        self.get_logger().warn(
+            "Waiting for startup FAST-LIO pose level calibration: "
+            f"{self.level_sample_count}/{self.level_correction_samples} samples",
+            throttle_duration_sec=2.0,
+        )
+        return False
+
+    def raw_pose_to_map_base_uncorrected(self, position, orientation):
         raw_t = (float(position.x), float(position.y), float(position.z))
         raw_q = q_tuple(orientation)
         map_body = compose(*self.map_from_lio, raw_t, raw_q)
         return compose(*map_body, *self.lio_body_from_base)
+
+    def raw_pose_to_map_base(self, position, orientation):
+        t, q = self.raw_pose_to_map_base_uncorrected(position, orientation)
+        return self.apply_level_correction(t, q)
+
+    def apply_level_correction(self, t, q):
+        if self.level_correction is None:
+            return t, q
+        return compose(*self.level_correction, t, q)
+
+    def average_angle(self, sin_sum, cos_sum):
+        return math.atan2(sin_sum, cos_sum)
+
+    def record_startup_level_sample(self, t, q):
+        if self.level_correction is not None:
+            return True
+        now_sec = self.get_clock().now().nanoseconds * 1.0e-9
+        if self.level_first_raw_odom_time is None:
+            self.level_first_raw_odom_time = now_sec
+        elapsed = now_sec - self.level_first_raw_odom_time
+        if elapsed < self.level_correction_start_delay:
+            self.get_logger().warn(
+                "Waiting before startup FAST-LIO pose level calibration: "
+                f"{elapsed:.1f}/{self.level_correction_start_delay:.1f}s",
+                throttle_duration_sec=2.0,
+            )
+            return False
+        if not self.pose_is_valid(t, q):
+            self.get_logger().warn(
+                "Skipping invalid startup FAST-LIO pose while calibrating level correction",
+                throttle_duration_sec=2.0,
+            )
+            return False
+
+        roll, pitch, yaw = rpy_from_q(q)
+        self.level_roll_sin_sum += math.sin(roll)
+        self.level_roll_cos_sum += math.cos(roll)
+        self.level_pitch_sin_sum += math.sin(pitch)
+        self.level_pitch_cos_sum += math.cos(pitch)
+        self.level_yaw_sin_sum += math.sin(yaw)
+        self.level_yaw_cos_sum += math.cos(yaw)
+        self.level_position_sum[0] += t[0]
+        self.level_position_sum[1] += t[1]
+        self.level_position_sum[2] += t[2]
+        self.level_sample_count += 1
+
+        if self.level_sample_count < self.level_correction_samples:
+            self.get_logger().warn(
+                "Collecting startup FAST-LIO pose samples for level correction: "
+                f"{self.level_sample_count}/{self.level_correction_samples}",
+                throttle_duration_sec=2.0,
+            )
+            return False
+
+        avg_roll = self.average_angle(self.level_roll_sin_sum, self.level_roll_cos_sum)
+        avg_pitch = self.average_angle(self.level_pitch_sin_sum, self.level_pitch_cos_sum)
+        avg_yaw = self.average_angle(self.level_yaw_sin_sum, self.level_yaw_cos_sum)
+        avg_t = (
+            self.level_position_sum[0] / float(self.level_sample_count),
+            self.level_position_sum[1] / float(self.level_sample_count),
+            self.level_position_sum[2] / float(self.level_sample_count),
+        )
+        tilt = max(abs(avg_roll), abs(avg_pitch))
+        if self.level_correction_max_abs_tilt > 0.0 and tilt > self.level_correction_max_abs_tilt:
+            self.level_correction = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+            self.get_logger().error(
+                "Startup FAST-LIO level correction rejected because tilt is too large: "
+                f"roll={math.degrees(avg_roll):.3f} deg, "
+                f"pitch={math.degrees(avg_pitch):.3f} deg, "
+                f"limit={math.degrees(self.level_correction_max_abs_tilt):.3f} deg"
+            )
+            return True
+
+        measured_q = q_from_rpy(avg_roll, avg_pitch, avg_yaw)
+        desired_yaw = avg_yaw if self.level_correction_preserve_yaw else 0.0
+        desired_q = q_from_rpy(0.0, 0.0, desired_yaw)
+        correction_q = q_multiply(desired_q, q_inverse(measured_q))
+        if self.level_correction_anchor_position:
+            rotated_anchor = rotate(correction_q, avg_t)
+            correction_t = (
+                avg_t[0] - rotated_anchor[0],
+                avg_t[1] - rotated_anchor[1],
+                avg_t[2] - rotated_anchor[2],
+            )
+        else:
+            correction_t = (0.0, 0.0, 0.0)
+        self.level_correction = (correction_t, correction_q)
+        corr_roll, corr_pitch, corr_yaw = rpy_from_q(correction_q)
+        self.get_logger().info(
+            "Startup FAST-LIO level correction calibrated: "
+            f"measured rpy=({math.degrees(avg_roll):+.3f}, "
+            f"{math.degrees(avg_pitch):+.3f}, {math.degrees(avg_yaw):+.3f}) deg; "
+            f"correction rpy=({math.degrees(corr_roll):+.3f}, "
+            f"{math.degrees(corr_pitch):+.3f}, {math.degrees(corr_yaw):+.3f}) deg; "
+            f"samples={self.level_sample_count}; "
+            f"preserve_yaw={self.level_correction_preserve_yaw}"
+        )
+        return True
 
     def pose_is_valid(self, t, q):
         values = (*t, *q)
@@ -229,7 +484,12 @@ class FastLio2MapFrameNode(Node):
         if self.restamp_outputs:
             out.header.stamp = self.get_clock().now().to_msg()
         out.child_frame_id = self.base_frame
-        t, q = self.raw_pose_to_map_base(msg.pose.pose.position, msg.pose.pose.orientation)
+        uncorrected_t, uncorrected_q = self.raw_pose_to_map_base_uncorrected(
+            msg.pose.pose.position, msg.pose.pose.orientation
+        )
+        if not self.record_startup_level_sample(uncorrected_t, uncorrected_q):
+            return
+        t, q = self.apply_level_correction(uncorrected_t, uncorrected_q)
         if not self.pose_is_valid(t, q):
             self.last_pose_valid = False
             self.get_logger().warn(
@@ -243,7 +503,7 @@ class FastLio2MapFrameNode(Node):
         self.odom_pub.publish(out)
 
     def on_path(self, msg):
-        if not self.initialized():
+        if not self.initialized() or not self.level_initialized():
             return
         out = Path()
         out.header = msg.header
@@ -264,7 +524,7 @@ class FastLio2MapFrameNode(Node):
         self.path_pub.publish(out)
 
     def transform_cloud(self, msg):
-        if not self.initialized():
+        if not self.initialized() or not self.level_initialized():
             return None
         if self.require_valid_pose_for_clouds and not self.last_pose_valid:
             self.get_logger().warn(
@@ -297,7 +557,7 @@ class FastLio2MapFrameNode(Node):
             self.get_logger().warn("PointCloud2 has no x/y/z fields", throttle_duration_sec=2.0)
             return None
 
-        map_t, map_q = self.map_from_lio
+        map_t, map_q = compose(*self.level_correction, *self.map_from_lio)
         points = []
         for point in point_cloud2.read_points(msg, field_names=names, skip_nans=True):
             values = list(point)

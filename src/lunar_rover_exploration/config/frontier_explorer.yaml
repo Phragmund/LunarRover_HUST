@@ -2,20 +2,23 @@ frontier_explorer:
   ros__parameters:
     use_sim_time: true
     free_cost: 35
-    max_goal_cost: 55
-    min_cluster_size: 8
-    max_goals: 24
-    goal_timeout: 80.0
+    max_goal_cost: 60
+    min_cluster_size: 3
+    max_goals: 40
+    goal_timeout: 100.0
     path_timeout: 4.0
     settle_time: 1.5
     goal_backoff: 0.45
     blacklist_radius: 0.45
-    max_path_checks: 24
+    max_path_checks: 32
     info_gain_weight: 0.07
     terrain_risk_weight: 0.018
     return_risk_weight: 0.20
-    min_known_ratio: 0.80
-    failure_return_threshold: 4
+    min_known_ratio: 0.55
+    failure_return_threshold: 6
     start_search_radius: 1.2
+    min_goal_distance: 1.00
+    no_frontier_wait: 8.0
+    max_no_frontier_cycles: 6
     home_frame: map
     robot_frame: base_link

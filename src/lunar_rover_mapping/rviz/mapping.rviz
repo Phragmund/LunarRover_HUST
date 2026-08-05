@@ -31,6 +31,19 @@ Visualization Manager:
       Enabled: true
       Name: RobotModel
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Simulation world model
+      Namespaces:
+        world_model: true
+        world_model_outline: true
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /simulation/world_model_markers
+      Value: true
     - Alpha: 0.85
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -50,8 +63,8 @@ Visualization Manager:
       Name: FAST-LIO2 map cloud
       Position Transformer: XYZ
       Selectable: true
-      Size (Pixels): 1
-      Size (m): 0.01
+      Size (Pixels): 2
+      Size (m): 0.015
       Style: Points
       Topic:
         Depth: 5
@@ -81,8 +94,8 @@ Visualization Manager:
       Name: FAST-LIO2 registered cloud
       Position Transformer: XYZ
       Selectable: true
-      Size (Pixels): 1
-      Size (m): 0.01
+      Size (Pixels): 2
+      Size (m): 0.015
       Style: Points
       Topic:
         Depth: 5

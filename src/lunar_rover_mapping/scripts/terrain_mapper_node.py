@@ -125,6 +125,11 @@ class TerrainMapper(Node):
         self.cautious_step = float(self.declare_parameter("cautious_step_height", 0.06).value)
         self.lethal_step = float(self.declare_parameter("lethal_step_height", 0.10).value)
         self.max_slope_deg = float(self.declare_parameter("max_slope_deg", 8.0).value)
+        self.lethal_slope_deg = float(
+            self.declare_parameter(
+                "lethal_slope_deg", max(self.max_slope_deg * 2.0, self.max_slope_deg + 8.0)
+            ).value
+        )
         self.roughness_warn = float(self.declare_parameter("roughness_warn", 0.025).value)
         self.unknown_is_risky = bool(self.declare_parameter("unknown_is_risky", False).value)
         self.max_points_per_cloud = int(self.declare_parameter("max_points_per_cloud", 60000).value)
@@ -151,6 +156,9 @@ class TerrainMapper(Node):
         self.self_filter_max_y = float(self.declare_parameter("self_filter_max_y", 0.35).value)
         self.self_filter_min_z = float(self.declare_parameter("self_filter_min_z", -0.35).value)
         self.self_filter_max_z = float(self.declare_parameter("self_filter_max_z", 0.35).value)
+        self.clear_robot_footprint = bool(
+            self.declare_parameter("clear_robot_footprint", True).value
+        )
 
         self.cells = [TerrainCell() for _ in range(self.width * self.height)]
         self.tf_buffer = Buffer()
@@ -261,6 +269,57 @@ class TerrainMapper(Node):
             and self.self_filter_min_y <= y <= self.self_filter_max_y
             and self.self_filter_min_z <= z <= self.self_filter_max_z
         )
+
+    def clear_robot_cells(self, data):
+        if not self.clear_robot_footprint:
+            return
+        try:
+            map_from_base = self.tf_buffer.lookup_transform(
+                self.map_frame,
+                self.base_frame,
+                rclpy.time.Time(),
+                timeout=Duration(seconds=0.05),
+            )
+            base_from_map = self.tf_buffer.lookup_transform(
+                self.base_frame,
+                self.map_frame,
+                rclpy.time.Time(),
+                timeout=Duration(seconds=0.05),
+            )
+        except TransformException as exc:
+            self.get_logger().warn(
+                f"Cannot clear robot footprint in terrain grid: {exc}",
+                throttle_duration_sec=2.0,
+            )
+            return
+
+        corners_base = (
+            (self.self_filter_min_x, self.self_filter_min_y, 0.0),
+            (self.self_filter_min_x, self.self_filter_max_y, 0.0),
+            (self.self_filter_max_x, self.self_filter_min_y, 0.0),
+            (self.self_filter_max_x, self.self_filter_max_y, 0.0),
+        )
+        corners_map = [self.transform_point(map_from_base, corner) for corner in corners_base]
+        min_x = min(point[0] for point in corners_map) - self.resolution
+        max_x = max(point[0] for point in corners_map) + self.resolution
+        min_y = min(point[1] for point in corners_map) - self.resolution
+        max_y = max(point[1] for point in corners_map) + self.resolution
+        min_col = max(0, int(math.floor((min_x - self.origin_x) / self.resolution)))
+        max_col = min(self.width - 1, int(math.floor((max_x - self.origin_x) / self.resolution)))
+        min_row = max(0, int(math.floor((min_y - self.origin_y) / self.resolution)))
+        max_row = min(self.height - 1, int(math.floor((max_y - self.origin_y) / self.resolution)))
+
+        for row in range(min_row, max_row + 1):
+            y = self.origin_y + (row + 0.5) * self.resolution
+            row_offset = row * self.width
+            for column in range(min_col, max_col + 1):
+                x = self.origin_x + (column + 0.5) * self.resolution
+                bx, by, _bz = self.transform_point(base_from_map, (x, y, 0.0))
+                if (
+                    self.self_filter_min_x <= bx <= self.self_filter_max_x
+                    and self.self_filter_min_y <= by <= self.self_filter_max_y
+                ):
+                    data[row_offset + column] = 0
 
     def mark_ray_free(self, origin, endpoint, stamp):
         dx = endpoint[0] - origin[0]
@@ -385,9 +444,12 @@ class TerrainMapper(Node):
                 continue
             slope = math.degrees(math.atan2(abs(cell.mean_z - neighbor.mean_z), self.resolution))
             max_slope = max(max_slope, slope)
-        if max_slope >= self.max_slope_deg:
+        if max_slope >= self.lethal_slope_deg:
             return 100
-        return int(round(70.0 * max_slope / max(0.1, self.max_slope_deg)))
+        if max_slope <= self.max_slope_deg:
+            return int(round(30.0 * max_slope / max(0.1, self.max_slope_deg)))
+        slope_band = max(0.1, self.lethal_slope_deg - self.max_slope_deg)
+        return 30 + int(round(45.0 * (max_slope - self.max_slope_deg) / slope_band))
 
     def cell_cost(self, index):
         cell = self.cells[index]
@@ -400,8 +462,8 @@ class TerrainMapper(Node):
             return 100
         step_cost = 0
         if height_range >= self.cautious_step:
-            step_cost = 65 + int(round(25.0 * (height_range - self.cautious_step) / max(0.01, self.lethal_step - self.cautious_step)))
-        roughness_cost = int(round(60.0 * min(1.0, math.sqrt(cell.variance) / max(0.001, self.roughness_warn))))
+            step_cost = 35 + int(round(40.0 * (height_range - self.cautious_step) / max(0.01, self.lethal_step - self.cautious_step)))
+        roughness_cost = int(round(35.0 * min(1.0, math.sqrt(cell.variance) / max(0.001, self.roughness_warn))))
         return min(100, max(step_cost, roughness_cost, self.neighbor_slope_cost(index)))
 
     def publish_grid(self):
@@ -417,6 +479,7 @@ class TerrainMapper(Node):
         grid.info.origin.position.y = self.origin_y
         grid.info.origin.orientation.w = 1.0
         grid.data = [self.cell_cost(index) for index in range(len(self.cells))]
+        self.clear_robot_cells(grid.data)
         self.grid_pub.publish(grid)
 
         known = sum(1 for value in grid.data if value >= 0)

@@ -2,7 +2,29 @@ twist_stamper:
   ros__parameters:
     use_sim_time: true
     input_topic: /cmd_vel
-    output_topic: /chassis/cmd_vel
+    output_topic: /navigation/chassis_cmd_vel
     frame_id: base_link
     max_linear_x: 0.22
     max_angular_z: 0.45
+    clearance_guard_enabled: true
+    costmap_topic: /local_costmap/costmap
+    odom_topic: /localization/composite_odometry
+    front_check_start_x: 0.25
+    front_check_distance: 0.35
+    rear_check_distance: 0.30
+    check_half_width: 0.20
+    lethal_cost_threshold: 90
+    backup_speed: -0.08
+    backup_distance: 0.10
+    backup_hold_time: 1.5
+    backup_cooldown_time: 8.0
+    max_data_age: 1.0
+
+chassis_cmd_mux:
+  ros__parameters:
+    use_sim_time: true
+    nav_topic: /navigation/chassis_cmd_vel
+    keyboard_topic: /keyboard/chassis_cmd_vel
+    output_topic: /chassis/cmd_vel
+    keyboard_timeout: 5.0
+    status_period: 1.0

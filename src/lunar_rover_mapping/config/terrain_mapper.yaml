@@ -6,18 +6,19 @@ terrain_mapper:
     diagnostics_topic: /terrain/diagnostics
     map_frame: map
     base_frame: base_link
-    resolution: 0.10
-    width_cells: 120
-    height_cells: 90
-    origin_x: -6.0
-    origin_y: -4.5
+    resolution: 0.05
+    width_cells: 440
+    height_cells: 320
+    origin_x: -11.0
+    origin_y: -8.0
     min_z: -0.80
     max_z: 1.80
     min_points_per_cell: 2
-    cautious_step_height: 0.06
-    lethal_step_height: 0.10
-    max_slope_deg: 8.0
-    roughness_warn: 0.025
+    cautious_step_height: 0.12
+    lethal_step_height: 0.28
+    max_slope_deg: 16.0
+    lethal_slope_deg: 34.0
+    roughness_warn: 0.06
     unknown_is_risky: false
     max_points_per_cloud: 60000
     publish_period: 0.5
@@ -26,5 +27,13 @@ terrain_mapper:
     cell_decay_time: 0.0
     raytrace_free_space: true
     raytrace_stride: 6
-    raytrace_max_range: 6.0
+    raytrace_max_range: 8.0
     raytrace_endpoint_margin: 0.20
+    self_filter_enabled: true
+    self_filter_min_x: -0.28
+    self_filter_max_x: 0.28
+    self_filter_min_y: -0.21
+    self_filter_max_y: 0.21
+    self_filter_min_z: -0.45
+    self_filter_max_z: 0.75
+    clear_robot_footprint: true

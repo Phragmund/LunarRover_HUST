@@ -22,10 +22,12 @@ def _include(package, launch_file, arguments=None):
 def generate_launch_description():
     mapping_share = Path(get_package_share_directory("lunar_rover_mapping"))
     navigation_share = Path(get_package_share_directory("lunar_rover_navigation"))
+    exploration_share = Path(get_package_share_directory("lunar_rover_exploration"))
 
     composite_config = mapping_share / "config" / "composite_odometry.yaml"
     terrain_config = mapping_share / "config" / "terrain_mapper.yaml"
     nav2_params = navigation_share / "config" / "nav2_fast_lio2_params.yaml"
+    exploration_params = exploration_share / "config" / "frontier_explorer.yaml"
 
     return LaunchDescription(
         [
@@ -45,6 +47,18 @@ def generate_launch_description():
             DeclareLaunchArgument("fast_lio_package", default_value="auto"),
             DeclareLaunchArgument("fast_lio_launch_file", default_value="auto"),
             DeclareLaunchArgument("direct_fast_lio_node", default_value="true"),
+            DeclareLaunchArgument("imu_mount_pitch_source", default_value="startup_imu_pitch"),
+            DeclareLaunchArgument("imu_mount_pitch_samples", default_value="80"),
+            DeclareLaunchArgument("imu_mount_pitch_max_gyro_radps", default_value="0.02"),
+            DeclareLaunchArgument("level_correction_source", default_value="startup_lio_pose"),
+            DeclareLaunchArgument("level_correction_samples", default_value="40"),
+            DeclareLaunchArgument("level_correction_start_delay_sec", default_value="8.0"),
+            DeclareLaunchArgument("level_correction_preserve_yaw", default_value="true"),
+            DeclareLaunchArgument("level_correction_anchor_position", default_value="true"),
+            DeclareLaunchArgument("fast_lio_start_delay_sec", default_value="6.0"),
+            DeclareLaunchArgument("terrain_start_delay_sec", default_value="9.0"),
+            DeclareLaunchArgument("navigation_start_delay_sec", default_value="12.0"),
+            DeclareLaunchArgument("exploration_start_delay_sec", default_value="32.0"),
             _include(
                 "lunar_rover_bringup",
                 "bringup.launch.py",
@@ -69,7 +83,7 @@ def generate_launch_description():
                 output="screen",
             ),
             TimerAction(
-                period=10.0,
+                period=LaunchConfiguration("fast_lio_start_delay_sec"),
                 actions=[
                     _include(
                         "lunar_rover_localization",
@@ -79,12 +93,36 @@ def generate_launch_description():
                             "fast_lio_package": LaunchConfiguration("fast_lio_package"),
                             "fast_lio_launch_file": LaunchConfiguration("fast_lio_launch_file"),
                             "direct_fast_lio_node": LaunchConfiguration("direct_fast_lio_node"),
+                            "imu_mount_pitch_source": LaunchConfiguration(
+                                "imu_mount_pitch_source"
+                            ),
+                            "imu_mount_pitch_samples": LaunchConfiguration(
+                                "imu_mount_pitch_samples"
+                            ),
+                            "imu_mount_pitch_max_gyro_radps": LaunchConfiguration(
+                                "imu_mount_pitch_max_gyro_radps"
+                            ),
+                            "level_correction_source": LaunchConfiguration(
+                                "level_correction_source"
+                            ),
+                            "level_correction_samples": LaunchConfiguration(
+                                "level_correction_samples"
+                            ),
+                            "level_correction_start_delay_sec": LaunchConfiguration(
+                                "level_correction_start_delay_sec"
+                            ),
+                            "level_correction_preserve_yaw": LaunchConfiguration(
+                                "level_correction_preserve_yaw"
+                            ),
+                            "level_correction_anchor_position": LaunchConfiguration(
+                                "level_correction_anchor_position"
+                            ),
                         },
                     )
                 ],
             ),
             TimerAction(
-                period=14.0,
+                period=LaunchConfiguration("terrain_start_delay_sec"),
                 actions=[
                     _include(
                         "lunar_rover_mapping",
@@ -94,7 +132,7 @@ def generate_launch_description():
                 ],
             ),
             TimerAction(
-                period=18.0,
+                period=LaunchConfiguration("navigation_start_delay_sec"),
                 actions=[
                     _include(
                         "lunar_rover_navigation",
@@ -104,14 +142,36 @@ def generate_launch_description():
                 ],
             ),
             TimerAction(
-                period=24.0,
+                period=LaunchConfiguration("exploration_start_delay_sec"),
                 actions=[
                     _include(
                         "lunar_rover_exploration",
                         "frontier_exploration.launch.py",
+                        {"params_file": str(exploration_params)},
                     )
                 ],
                 condition=IfCondition(LaunchConfiguration("start_exploration")),
+            ),
+            Node(
+                package="lunar_rover_simulation",
+                executable="world_model_marker_node.py",
+                name="world_model_marker",
+                parameters=[
+                    {
+                        "use_sim_time": True,
+                        "world_name": LaunchConfiguration("world"),
+                        "frame_id": "map",
+                        "marker_topic": "/simulation/world_model_markers",
+                        "alpha": 0.30,
+                        "outline_alpha": 0.30,
+                        "outline_width": 0.025,
+                        "map_origin_world_x": LaunchConfiguration("spawn_x"),
+                        "map_origin_world_y": LaunchConfiguration("spawn_y"),
+                        "map_origin_world_z": LaunchConfiguration("spawn_z"),
+                        "map_origin_world_yaw": LaunchConfiguration("spawn_yaw"),
+                    }
+                ],
+                output="screen",
             ),
             Node(
                 package="rviz2",

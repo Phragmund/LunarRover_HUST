@@ -53,6 +53,11 @@ class FrontierExplorer(Node):
         self.min_known_ratio = float(self.declare_parameter("min_known_ratio", 0.80).value)
         self.failure_return_threshold = int(self.declare_parameter("failure_return_threshold", 4).value)
         self.start_search_radius = float(self.declare_parameter("start_search_radius", 1.2).value)
+        self.min_goal_distance = float(self.declare_parameter("min_goal_distance", 0.75).value)
+        self.no_frontier_wait = float(self.declare_parameter("no_frontier_wait", 8.0).value)
+        self.max_no_frontier_cycles = int(
+            self.declare_parameter("max_no_frontier_cycles", 6).value
+        )
         self.home_frame = self.declare_parameter("home_frame", "map").value
         self.robot_frame = self.declare_parameter("robot_frame", "base_link").value
 
@@ -60,6 +65,7 @@ class FrontierExplorer(Node):
         self.completed = []
         self.home_pose = None
         self.consecutive_failures = 0
+        self.no_frontier_cycles = 0
 
     def on_grid(self, msg):
         self.grid = msg
@@ -205,6 +211,9 @@ class FrontierExplorer(Node):
                     continue
                 visited.add(neighbor)
                 queue.append((neighbor, distance + 1))
+        if not candidates:
+            candidates = [cell for cell in cluster if cell in reachable and self.is_goal_cell(*cell)]
+        candidates.sort()
         return candidates
 
     def is_blacklisted(self, x, y):
@@ -287,14 +296,19 @@ class FrontierExplorer(Node):
             self.get_logger().warn("No free terrain cell near robot; cannot seed frontier search")
             return None
         reachable = self.reachable_free(start)
-        options = []
+        candidate_options = []
         for cluster in self.frontier_clusters(reachable):
-            for cell in self.backed_off_candidates(cluster, reachable)[:8]:
+            for cell in self.backed_off_candidates(cluster, reachable):
                 x, y = self.cell_to_world(*cell)
                 if self.is_blacklisted(x, y):
                     continue
                 yaw = math.atan2(y - robot_y, x - robot_x)
-                options.append((x, y, yaw, len(cluster)))
+                candidate_options.append((x, y, yaw, len(cluster)))
+        options = [
+            option
+            for option in candidate_options
+            if math.hypot(option[0] - robot_x, option[1] - robot_y) >= self.min_goal_distance
+        ] or candidate_options
         if self.home_pose is not None:
             options.sort(key=lambda option: self.option_priority(option, robot_x, robot_y))
 
@@ -339,14 +353,24 @@ class FrontierExplorer(Node):
         if self.home_pose is None:
             return
         x, y = self.home_pose
-        robot_x, robot_y = self.robot_xy()
+        try:
+            robot_x, robot_y = self.robot_xy()
+        except TransformException as exc:
+            self.get_logger().warn(f"Cannot return home without robot pose: {exc}")
+            return
         self.get_logger().warn("Returning home after exploration stop condition")
         self.send_goal(x, y, math.atan2(y - robot_y, x - robot_x))
+
+    def wait_for_map_update(self):
+        deadline = time.monotonic() + self.no_frontier_wait
+        while rclpy.ok() and time.monotonic() < deadline:
+            rclpy.spin_once(self, timeout_sec=0.1)
 
     def run(self):
         if not self.wait_ready():
             raise RuntimeError("Timed out waiting for terrain grid, TF, and Nav2 actions")
-        for goal_index in range(1, self.max_goals + 1):
+        goal_index = 1
+        while rclpy.ok() and goal_index <= self.max_goals:
             if self.known_ratio() >= self.min_known_ratio:
                 self.get_logger().info(f"Exploration complete: known_ratio={self.known_ratio():.3f}")
                 self.return_home()
@@ -356,9 +380,18 @@ class FrontierExplorer(Node):
                 return
             selected = self.select_goal()
             if selected is None:
-                self.get_logger().info("No reachable terrain-aware frontier remains")
-                self.return_home()
-                return
+                self.no_frontier_cycles += 1
+                if self.no_frontier_cycles >= self.max_no_frontier_cycles:
+                    self.get_logger().info("No reachable terrain-aware frontier remains")
+                    self.return_home()
+                    return
+                self.get_logger().warn(
+                    "No reachable frontier in current grid; waiting for map update "
+                    f"({self.no_frontier_cycles}/{self.max_no_frontier_cycles})"
+                )
+                self.wait_for_map_update()
+                continue
+            self.no_frontier_cycles = 0
             x, y, yaw, cluster_size = selected
             self.get_logger().info(
                 f"Goal {goal_index}/{self.max_goals}: ({x:.2f}, {y:.2f}), "
@@ -375,6 +408,7 @@ class FrontierExplorer(Node):
             end = time.monotonic() + self.settle_time
             while rclpy.ok() and time.monotonic() < end:
                 rclpy.spin_once(self, timeout_sec=0.1)
+            goal_index += 1
         self.return_home()
 
 

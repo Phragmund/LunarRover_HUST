@@ -323,7 +323,10 @@ class Mid360LivoxSimDriver(Node):
         custom.lidar_id = self.lidar_id
         custom.rsvd = [0, 0, 0]
 
-        pc_rows = []
+        publish_points = (
+            self.publish_pointcloud2 and self.points_pub.get_subscription_count() > 0
+        )
+        pc_rows = [] if publish_points else None
         data = msg.data
         horizontal_steps = msg.width if msg.height > 1 else total
         last_column = max(horizontal_steps - 1, 1)
@@ -360,12 +363,15 @@ class Mid360LivoxSimDriver(Node):
             point.tag = 0x10
             point.line = line
             custom.points.append(point)
-            pc_rows.append((x, y, z, float(reflectivity), offset_time * 1.0e-6, 0x10, line))
+            if pc_rows is not None:
+                pc_rows.append(
+                    (x, y, z, float(reflectivity), offset_time * 1.0e-6, 0x10, line)
+                )
 
         custom.point_num = len(custom.points)
         self.custom_pub.publish(custom)
 
-        if self.publish_pointcloud2:
+        if pc_rows is not None:
             header = deepcopy(msg.header)
             header.frame_id = self.lidar_frame
             fields = [

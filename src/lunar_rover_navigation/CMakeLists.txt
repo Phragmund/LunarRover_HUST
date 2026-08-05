@@ -22,6 +22,7 @@ add_executable(twist_stamper_node
 )
 ament_target_dependencies(twist_stamper_node
   geometry_msgs
+  nav_msgs
   rclcpp
 )
 
@@ -51,7 +52,9 @@ install(
 install(
   PROGRAMS
     scripts/frontier_exploration_test.py
+    scripts/chassis_cmd_mux_node.py
     scripts/keyboard_rover_teleop.py
+    scripts/nav2_lifecycle_bringup_node.py
     scripts/navigation_smoke_test.py
   DESTINATION lib/${PROJECT_NAME}
 )

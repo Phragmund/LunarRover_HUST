@@ -4,7 +4,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -29,17 +29,42 @@ def generate_launch_description():
                 PythonLaunchDescriptionSource(nav2_launch),
                 launch_arguments={
                     "use_sim_time": "true",
-                    "autostart": "true",
+                    "autostart": "false",
                     "params_file": LaunchConfiguration("params_file"),
                     "use_composition": "False",
                     "use_respawn": "False",
                     "log_level": "info",
                 }.items(),
             ),
+            TimerAction(
+                period=3.0,
+                actions=[
+                    Node(
+                        package="lunar_rover_navigation",
+                        executable="nav2_lifecycle_bringup_node.py",
+                        name="nav2_lifecycle_bringup",
+                        parameters=[
+                            {
+                                "use_sim_time": True,
+                                "wait_timeout": 90.0,
+                                "call_timeout": 10.0,
+                            }
+                        ],
+                        output="screen",
+                    )
+                ],
+            ),
             Node(
                 package="lunar_rover_navigation",
                 executable="twist_stamper_node",
                 name="twist_stamper",
+                parameters=[stamper_config],
+                output="screen",
+            ),
+            Node(
+                package="lunar_rover_navigation",
+                executable="chassis_cmd_mux_node.py",
+                name="chassis_cmd_mux",
                 parameters=[stamper_config],
                 output="screen",
             ),

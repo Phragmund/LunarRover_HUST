@@ -1,6 +1,7 @@
 build/
 install/
 log/
+logs/
 .cache/
 .pytest_cache/
 __pycache__/
@@ -13,4 +14,3 @@ metrics/*.json
 third_party/
 .deps/
 .vscode/
-

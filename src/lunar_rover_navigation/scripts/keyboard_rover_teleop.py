@@ -292,7 +292,8 @@ def run_direct_backend(node):
                 node.set_key_state(key, pressed)
                 node.publish_command()
 
-            node.publish_command()
+            if node.active_keys():
+                node.publish_command()
             rclpy.spin_once(node, timeout_sec=0.0)
             elapsed = time.monotonic() - start
             if elapsed < period:

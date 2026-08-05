@@ -7,7 +7,7 @@ Usage:
   scripts/run_direct_keyboard_teleop.sh [--probe] [--topic TOPIC] [--device DEVICE[,DEVICE...]] [--no-acl]
 
 Defaults:
-  --topic /chassis/cmd_vel
+  --topic /keyboard/chassis_cmd_vel
 
 Options:
   --probe              Publish to /keyboard_probe/cmd_vel instead of the chassis.
@@ -21,7 +21,7 @@ sudo only for the temporary /dev/input read ACL, then starts ROS normally.
 EOF
 }
 
-topic="/chassis/cmd_vel"
+topic="/keyboard/chassis_cmd_vel"
 devices=""
 apply_acl=1
 

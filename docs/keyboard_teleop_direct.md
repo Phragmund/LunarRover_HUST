@@ -30,7 +30,7 @@ scripts/run_direct_keyboard_teleop.sh
 Success looks like this:
 
 ```text
-Starting direct keyboard teleop on /chassis/cmd_vel
+Starting direct keyboard teleop on /keyboard/chassis_cmd_vel
 Keyboard event ACL targets:
   /dev/input/event...
 input backend: direct /dev/input
@@ -123,7 +123,7 @@ SPACE   linear.x = 0, angular.z = 0
 
 ## Chassis Control
 
-After the isolated test works, start the direct backend on the chassis topic:
+After the isolated test works, start the direct backend on the keyboard override topic:
 
 ```bash
 cd /home/phragmund/LunarRover
@@ -146,15 +146,19 @@ This is equivalent to:
 ```bash
 ros2 run lunar_rover_navigation keyboard_rover_teleop.py --ros-args \
   -p input_backend:=direct \
-  -p command_topic:=/chassis/cmd_vel
+  -p command_topic:=/keyboard/chassis_cmd_vel
 ```
+
+`chassis_cmd_mux` forwards `/keyboard/chassis_cmd_vel` to `/chassis/cmd_vel`
+while keyboard input is active. If no keyboard command arrives for 5 seconds,
+the mux returns chassis control to the navigation command stream.
 
 The boost multiplier is configurable:
 
 ```bash
 ros2 run lunar_rover_navigation keyboard_rover_teleop.py --ros-args \
   -p input_backend:=direct \
-  -p command_topic:=/chassis/cmd_vel \
+  -p command_topic:=/keyboard/chassis_cmd_vel \
   -p boost_multiplier:=2.0
 ```
 

@@ -11,6 +11,7 @@ install(
   PROGRAMS
     scripts/mid360_livox_sim_driver.py
     scripts/mid360_livox_imu_driver.py
+    scripts/world_model_marker_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 install(
