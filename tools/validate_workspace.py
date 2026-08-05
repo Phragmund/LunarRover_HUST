@@ -77,6 +77,8 @@ def check_packages():
         "lunar_rover_sensors",
         "lunar_rover_bringup",
         "lunar_rover_localization",
+        "lunar_rover_mapping",
+        "lunar_rover_navigation",
         "lunar_rover_exploration",
     }
     missing = sorted(required - names)

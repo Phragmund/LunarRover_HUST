@@ -9,16 +9,12 @@ export CMAKE_PREFIX_PATH="${ROOT_DIR}/.deps/livox-sdk2:${CMAKE_PREFIX_PATH:-}"
 cd "${ROOT_DIR}"
 rosdep install \
   --from-paths \
-    src/lunar_rover_msgs \
-    src/lunar_rover_description \
-    src/lunar_rover_simulation \
-    src/lunar_rover_control \
-    src/lunar_rover_sensors \
-    src/lunar_rover_bringup \
+    src \
   --ignore-src --rosdistro humble -r -y
 colcon build \
   --packages-select \
     livox_ros_driver2 \
+    fast_lio \
     orbbec_camera_msgs \
     orbbec_description \
     orbbec_camera \
@@ -27,6 +23,10 @@ colcon build \
     lunar_rover_simulation \
     lunar_rover_control \
     lunar_rover_sensors \
+    lunar_rover_localization \
+    lunar_rover_mapping \
+    lunar_rover_navigation \
+    lunar_rover_exploration \
     lunar_rover_bringup \
   --symlink-install \
   --event-handlers console_direct+ \

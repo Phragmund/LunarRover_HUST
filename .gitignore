@@ -2,6 +2,7 @@ build/
 install/
 log/
 logs/
+tmp/
 .cache/
 .pytest_cache/
 __pycache__/
