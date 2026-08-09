@@ -14,6 +14,8 @@ CELL_PITCH = 1.12
 WALL_THICKNESS = 0.12
 WALL_HEIGHT = 1.0
 WALL_TRANSPARENCY = 0.30
+CEILING_THICKNESS = 0.03
+CEILING_TRANSPARENCY = 0.72
 OBSTACLE_RADIUS = 0.10
 OBSTACLE_COUNT = 180
 SEED = 360335
@@ -150,6 +152,23 @@ def obstacle_xml(x: float, y: float, idx: int) -> str:
         </visual>"""
 
 
+def ceiling_xml() -> str:
+    size_x = COLS * CELL_PITCH + WALL_THICKNESS
+    size_y = ROWS * CELL_PITCH + WALL_THICKNESS
+    z = WALL_HEIGHT + CEILING_THICKNESS / 2.0
+    return f"""
+        <visual name="maze_transparent_ceiling_visual">
+          <pose>0 0 {z:.3f} 0 0 0</pose>
+          <geometry><box><size>{size_x:.3f} {size_y:.3f} {CEILING_THICKNESS:.3f}</size></box></geometry>
+          <material>
+            <ambient>0.46 0.55 0.64 0.22</ambient>
+            <diffuse>0.58 0.70 0.82 0.22</diffuse>
+            <specular>0.04 0.05 0.06 1</specular>
+          </material>
+          <transparency>{CEILING_TRANSPARENCY:.2f}</transparency>
+        </visual>"""
+
+
 def generate_obstacles(rng: random.Random):
     min_x = -COLS * CELL_PITCH / 2.0 + 0.25
     max_x = COLS * CELL_PITCH / 2.0 - 0.25
@@ -225,6 +244,7 @@ def build_world() -> str:
     <model name="generated_reachable_maze">
       <static>true</static>
       <link name="maze_link">{walls_xml}
+{ceiling_xml()}
       </link>
     </model>
 
