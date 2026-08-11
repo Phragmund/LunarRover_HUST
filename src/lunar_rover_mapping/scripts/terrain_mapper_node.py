@@ -189,7 +189,7 @@ class TerrainMapper(Node):
         transform = self.tf_buffer.lookup_transform(
             self.map_frame,
             self.base_frame,
-            rclpy.time.Time(),
+            self.get_clock().now().to_msg(),
             timeout=Duration(seconds=0.05),
         )
         x = transform.transform.translation.x
@@ -274,16 +274,17 @@ class TerrainMapper(Node):
         if not self.clear_robot_footprint:
             return
         try:
+            now = self.get_clock().now().to_msg()
             map_from_base = self.tf_buffer.lookup_transform(
                 self.map_frame,
                 self.base_frame,
-                rclpy.time.Time(),
+                now,
                 timeout=Duration(seconds=0.05),
             )
             base_from_map = self.tf_buffer.lookup_transform(
                 self.base_frame,
                 self.map_frame,
-                rclpy.time.Time(),
+                now,
                 timeout=Duration(seconds=0.05),
             )
         except TransformException as exc:
@@ -359,7 +360,7 @@ class TerrainMapper(Node):
                 transform = self.tf_buffer.lookup_transform(
                     self.map_frame,
                     msg.header.frame_id,
-                    rclpy.time.Time(),
+                    self.get_clock().now().to_msg(),
                     timeout=Duration(seconds=0.05),
                 )
             except TransformException:
@@ -383,7 +384,7 @@ class TerrainMapper(Node):
                     base_from_cloud = self.tf_buffer.lookup_transform(
                         self.base_frame,
                         msg.header.frame_id,
-                        rclpy.time.Time(),
+                        self.get_clock().now().to_msg(),
                         timeout=Duration(seconds=0.05),
                     )
                 except TransformException as exc:
@@ -434,22 +435,34 @@ class TerrainMapper(Node):
         if cell.count < self.min_points:
             return 0
         max_slope = 0.0
-        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            nr = row + dy
-            nc = column + dx
-            if nr < 0 or nr >= self.height or nc < 0 or nc >= self.width:
-                continue
-            neighbor = self.cells[nr * self.width + nc]
-            if neighbor.count < self.min_points:
-                continue
-            slope = math.degrees(math.atan2(abs(cell.mean_z - neighbor.mean_z), self.resolution))
-            max_slope = max(max_slope, slope)
+        unknown_neighbors = 0
+        # 8-connected neighbourhood so diagonal slopes are also detected.
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                nr = row + dy
+                nc = column + dx
+                if nr < 0 or nr >= self.height or nc < 0 or nc >= self.width:
+                    continue
+                neighbor = self.cells[nr * self.width + nc]
+                if neighbor.count < self.min_points:
+                    unknown_neighbors += 1
+                    continue
+                dist = self.resolution * math.hypot(dx, dy)  # diagonal cells are farther
+                slope = math.degrees(math.atan2(abs(cell.mean_z - neighbor.mean_z), dist))
+                max_slope = max(max_slope, slope)
+        # Conservative penalty: each unseen neighbour adds an assumed slope risk.
+        # At map edges / frontiers we lack data — assume worst-case safe slope.
+        unknown_penalty = 0
+        if unknown_neighbors > 0:
+            unknown_penalty = min(35, 8 * unknown_neighbors)
         if max_slope >= self.lethal_slope_deg:
-            return 100
+            return min(100, 100 + unknown_penalty)  # already lethal, penalty is moot
         if max_slope <= self.max_slope_deg:
-            return int(round(30.0 * max_slope / max(0.1, self.max_slope_deg)))
+            return min(100, int(round(30.0 * max_slope / max(0.1, self.max_slope_deg))) + unknown_penalty)
         slope_band = max(0.1, self.lethal_slope_deg - self.max_slope_deg)
-        return 30 + int(round(45.0 * (max_slope - self.max_slope_deg) / slope_band))
+        return min(100, 30 + int(round(45.0 * (max_slope - self.max_slope_deg) / slope_band)) + unknown_penalty)
 
     def cell_cost(self, index):
         cell = self.cells[index]
@@ -464,7 +477,11 @@ class TerrainMapper(Node):
         if height_range >= self.cautious_step:
             step_cost = 35 + int(round(40.0 * (height_range - self.cautious_step) / max(0.01, self.lethal_step - self.cautious_step)))
         roughness_cost = int(round(35.0 * min(1.0, math.sqrt(cell.variance) / max(0.001, self.roughness_warn))))
-        return min(100, max(step_cost, roughness_cost, self.neighbor_slope_cost(index)))
+        slope_cost = self.neighbor_slope_cost(index)
+        # Sum accumulated risks instead of taking only the worst factor.
+        # A cell with moderate step, roughness, AND slope is riskier than any
+        # single factor — the combined cost better reflects real traversability.
+        return min(100, step_cost + roughness_cost + slope_cost)
 
     def publish_grid(self):
         now = self.get_clock().now().to_msg()

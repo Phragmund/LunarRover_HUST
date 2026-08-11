@@ -30,10 +30,13 @@ terrain_mapper:
     raytrace_max_range: 8.0
     raytrace_endpoint_margin: 0.20
     self_filter_enabled: true
-    self_filter_min_x: -0.28
-    self_filter_max_x: 0.28
-    self_filter_min_y: -0.21
-    self_filter_max_y: 0.21
-    self_filter_min_z: -0.45
-    self_filter_max_z: 0.75
+    # Expanded bounding box.  Vehicle wheelbase 0.52 m, track 0.50 m,
+    # wheel radius 0.0625 m.  The box must fully enclose the rover body
+    # plus wheels so that self-points are not misinterpreted as terrain.
+    self_filter_min_x: -0.40
+    self_filter_max_x: 0.40
+    self_filter_min_y: -0.35
+    self_filter_max_y: 0.35
+    self_filter_min_z: -0.50
+    self_filter_max_z: 0.85
     clear_robot_footprint: true
