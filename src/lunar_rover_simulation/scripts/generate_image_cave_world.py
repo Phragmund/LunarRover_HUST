@@ -19,6 +19,8 @@ WORLD_NAME = "image_cave"
 TERRAIN_MODEL_NAME = "image_cave_heightmap_terrain"
 WALL_MODEL_NAME = "image_cave_walls"
 BLOCK_MODEL_NAME = "image_cave_surface_blocks"
+CEILING_MODEL_NAME = "image_cave_lidar_ceiling"
+PIT_METADATA_NAME = "pits.csv"
 TERRAIN_TRIANGLE_EDGE = 0.2
 TERRAIN_SIZE_X = 30.0
 TERRAIN_SIZE_Y = 30.0
@@ -26,21 +28,32 @@ TERRAIN_CENTER_X = 4.0
 TERRAIN_CENTER_Y = 2.24
 TERRAIN_BASE_Z = 1.0
 TERRAIN_BOTTOM_Z = 0.70
-TERRAIN_Z_OFFSET = 0.90
-TERRAIN_HEIGHT_RANGE = 0.20
+TERRAIN_Z_OFFSET = 0.95
+TERRAIN_HEIGHT_RANGE = 0.10
 TERRAIN_SEED = 360335
-BLOCK_COUNT = 1200
+WALL_CENTER_WIDTH_SCALE = 1.12
+PIT_COUNT = 100
+PIT_RADIUS = 0.24
+PIT_TARGET_Z_MIN = 0.91
+PIT_TARGET_Z_MAX = 0.94
+PIT_MIN_CENTER_DISTANCE = 0.40
+PIT_WALL_MARGIN = 0.30
+PIT_SPAWN_CLEARANCE = 1.10
+PIT_CANDIDATES_PER_PICK = 96
+BLOCK_COUNT = 200
 BLOCK_SIZE_X = 0.10
 BLOCK_SIZE_Y = 0.13
 BLOCK_SIZE_Z = 0.05
 BLOCK_MAX_TILT_DEG = 5.0
-BLOCK_CLEARANCE_CAP = 0.01
-BLOCK_TOP_Z_MIN = 1.00
-BLOCK_TOP_Z_MAX = 1.01
-BLOCK_TOP_BINS = 20
-WALL_HEIGHT = 0.95
+BLOCK_GROUND_CLEARANCE = 0.002
+WALL_HEIGHT = 1.25
 WALL_THICKNESS = 0.12
 WALL_Z = TERRAIN_BASE_Z + WALL_HEIGHT * 0.5
+CORRIDOR_MASK_RESOLUTION = 0.05
+CORRIDOR_MASK_WALL_INFLATION = 0.10
+CEILING_THICKNESS = 0.04
+CEILING_BOTTOM_Z = 2.19
+CEILING_Z = CEILING_BOTTOM_Z + CEILING_THICKNESS * 0.5
 SPAWN_X = -3.92
 SPAWN_Y = 0.0
 SPAWN_REFERENCE_PX = np.array([220.0, 750.0])
@@ -75,6 +88,34 @@ class SurfaceBlock:
     top_z: float
 
 
+@dataclass(frozen=True)
+class Pit:
+    x: float
+    y: float
+    target_z: float
+
+
+@dataclass(frozen=True)
+class CorridorMask:
+    accessible: np.ndarray
+    x_min: float
+    y_min: float
+    resolution: float
+
+    def contains(self, x: float, y: float) -> bool:
+        col = int(round((x - self.x_min) / self.resolution))
+        row = int(round((y - self.y_min) / self.resolution))
+        if row < 0 or col < 0:
+            return False
+        if row >= self.accessible.shape[0] or col >= self.accessible.shape[1]:
+            return False
+        return bool(self.accessible[row, col])
+
+    @property
+    def area(self) -> float:
+        return float(np.count_nonzero(self.accessible)) * self.resolution**2
+
+
 def material_xml(name: str) -> str:
     colors = {
         "wall": ("0.18 0.17 0.16 1", "0.30 0.28 0.24 1"),
@@ -101,6 +142,10 @@ def wall_model_dir() -> Path:
 
 def block_model_dir() -> Path:
     return Path(__file__).resolve().parents[1] / "models" / BLOCK_MODEL_NAME
+
+
+def ceiling_model_dir() -> Path:
+    return Path(__file__).resolve().parents[1] / "models" / CEILING_MODEL_NAME
 
 
 def red_points(image: np.ndarray) -> np.ndarray:
@@ -279,6 +324,13 @@ def block_include_xml() -> str:
     </include>"""
 
 
+def ceiling_include_xml() -> str:
+    return f"""
+    <include>
+      <uri>model://{CEILING_MODEL_NAME}</uri>
+    </include>"""
+
+
 def spawn_marker_xml() -> str:
     return f"""
     <model name="image_cave_spawn_marker">
@@ -326,6 +378,7 @@ def world_xml(walls: list[Wall]) -> str:
     {terrain_include_xml()}
     {wall_include_xml()}
     {block_include_xml()}
+    {ceiling_include_xml()}
     {spawn_marker_xml()}
   </world>
 </sdf>
@@ -361,6 +414,7 @@ def terrain_preview_world_xml() -> str:
     {terrain_include_xml()}
     {wall_include_xml()}
     {block_include_xml()}
+    {ceiling_include_xml()}
   </world>
 </sdf>
 """
@@ -428,10 +482,11 @@ def generate_terrain_grid() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
     height = height - float(height.mean())
     max_abs_height = float(np.max(np.abs(height)))
+    height_amplitude = TERRAIN_HEIGHT_RANGE * 0.5
     if max_abs_height > 1e-6:
-        height = height / max_abs_height * 0.10
+        height = height / max_abs_height * height_amplitude
     height = np.round(height / 0.010) * 0.010
-    height = np.clip(height, -0.10, 0.10)
+    height = np.clip(height, -height_amplitude, height_amplitude)
     height += TERRAIN_BASE_Z
     return grid_x, grid_y, height
 
@@ -473,6 +528,164 @@ def near_any_wall(x: float, y: float, walls: list[Wall], margin: float) -> bool:
     return any(distance_to_wall(x, y, wall) < margin for wall in walls)
 
 
+def wall_mask_pixel(
+    x: float, y: float, x_min: float, y_min: float, resolution: float
+) -> tuple[int, int]:
+    col = int(round((x - x_min) / resolution))
+    row = int(round((y - y_min) / resolution))
+    return col, row
+
+
+def nearest_free_seed(free: np.ndarray, seed_col: int, seed_row: int) -> tuple[int, int]:
+    rows, cols = free.shape
+    seed_col = max(0, min(cols - 1, seed_col))
+    seed_row = max(0, min(rows - 1, seed_row))
+    if free[seed_row, seed_col] != 0:
+        return seed_col, seed_row
+
+    for radius in range(1, max(rows, cols)):
+        row_min = max(0, seed_row - radius)
+        row_max = min(rows - 1, seed_row + radius)
+        col_min = max(0, seed_col - radius)
+        col_max = min(cols - 1, seed_col + radius)
+        window = free[row_min : row_max + 1, col_min : col_max + 1]
+        candidates = np.argwhere(window != 0)
+        if candidates.size == 0:
+            continue
+        offset_row, offset_col = candidates[0]
+        return col_min + int(offset_col), row_min + int(offset_row)
+
+    raise RuntimeError("Could not find a free corridor seed near the spawn point")
+
+
+def build_corridor_mask(
+    walls: list[Wall], grid_x: np.ndarray, grid_y: np.ndarray
+) -> CorridorMask:
+    resolution = CORRIDOR_MASK_RESOLUTION
+    x_min = float(grid_x.min())
+    x_max = float(grid_x.max())
+    y_min = float(grid_y.min())
+    y_max = float(grid_y.max())
+    cols = int(math.ceil((x_max - x_min) / resolution)) + 1
+    rows = int(math.ceil((y_max - y_min) / resolution)) + 1
+    occupied = np.zeros((rows, cols), dtype=np.uint8)
+    wall_pixels = max(
+        1,
+        int(round((WALL_THICKNESS + CORRIDOR_MASK_WALL_INFLATION) / resolution)),
+    )
+    radius_pixels = max(1, wall_pixels // 2)
+
+    for wall in walls:
+        start = wall_mask_pixel(wall.x0, wall.y0, x_min, y_min, resolution)
+        end = wall_mask_pixel(wall.x1, wall.y1, x_min, y_min, resolution)
+        cv2.line(occupied, start, end, 255, wall_pixels, lineType=cv2.LINE_8)
+        cv2.circle(occupied, start, radius_pixels, 255, thickness=-1)
+        cv2.circle(occupied, end, radius_pixels, 255, thickness=-1)
+
+    kernel = np.ones((3, 3), dtype=np.uint8)
+    occupied = cv2.morphologyEx(occupied, cv2.MORPH_CLOSE, kernel, iterations=1)
+    free = np.where(occupied == 0, 1, 0).astype(np.uint8)
+    seed_col, seed_row = wall_mask_pixel(SPAWN_X, SPAWN_Y, x_min, y_min, resolution)
+    seed_col, seed_row = nearest_free_seed(free, seed_col, seed_row)
+    filled = free.copy()
+    flood_mask = np.zeros((rows + 2, cols + 2), dtype=np.uint8)
+    cv2.floodFill(filled, flood_mask, (seed_col, seed_row), 2)
+    accessible = filled == 2
+    if np.count_nonzero(accessible) == 0:
+        raise RuntimeError("Corridor flood-fill produced an empty reachable mask")
+    return CorridorMask(accessible, x_min, y_min, resolution)
+
+
+def pit_candidate_points(
+    grid_x: np.ndarray,
+    grid_y: np.ndarray,
+    corridor_mask: CorridorMask,
+    walls: list[Wall],
+) -> np.ndarray:
+    points = []
+    for x, y in zip(grid_x.ravel(), grid_y.ravel()):
+        world_x = float(x)
+        world_y = float(y)
+        if not corridor_mask.contains(world_x, world_y):
+            continue
+        if math.hypot(world_x - SPAWN_X, world_y - SPAWN_Y) < PIT_SPAWN_CLEARANCE:
+            continue
+        if near_any_wall(world_x, world_y, walls, PIT_WALL_MARGIN):
+            continue
+        points.append((world_x, world_y))
+    if not points:
+        raise RuntimeError("Could not find any valid pit candidate vertices")
+    return np.array(points, dtype=np.float64)
+
+
+def select_pits(
+    grid_x: np.ndarray,
+    grid_y: np.ndarray,
+    corridor_mask: CorridorMask,
+    walls: list[Wall],
+) -> list[Pit]:
+    rng = np.random.default_rng(TERRAIN_SEED + 73)
+    available = pit_candidate_points(grid_x, grid_y, corridor_mask, walls)
+    selected = np.empty((0, 2), dtype=np.float64)
+    pits: list[Pit] = []
+    min_distance_sq = PIT_MIN_CENTER_DISTANCE * PIT_MIN_CENTER_DISTANCE
+
+    for _ in range(PIT_COUNT):
+        if len(available) == 0:
+            raise RuntimeError(
+                f"Could only place {len(pits)} pits out of {PIT_COUNT}; "
+                f"min_center_distance={PIT_MIN_CENTER_DISTANCE:.2f}m"
+            )
+        sample_count = min(PIT_CANDIDATES_PER_PICK, len(available))
+        sample_indices = rng.choice(len(available), size=sample_count, replace=False)
+        samples = available[sample_indices]
+        if len(selected) == 0:
+            spawn_distance_sq = np.sum(
+                (samples - np.array((SPAWN_X, SPAWN_Y), dtype=np.float64)) ** 2,
+                axis=1,
+            )
+            best_sample = int(np.argmax(spawn_distance_sq))
+        else:
+            delta = samples[:, None, :] - selected[None, :, :]
+            min_distance = np.min(np.sum(delta * delta, axis=2), axis=1)
+            best_sample = int(np.argmax(min_distance))
+        chosen = samples[best_sample]
+        pits.append(
+            Pit(
+                float(chosen[0]),
+                float(chosen[1]),
+                float(rng.uniform(PIT_TARGET_Z_MIN, PIT_TARGET_Z_MAX)),
+            )
+        )
+        selected = np.vstack((selected, chosen[None, :]))
+
+        distance_sq = np.sum((available - chosen[None, :]) ** 2, axis=1)
+        available = available[distance_sq >= min_distance_sq]
+
+    return pits
+
+
+def apply_pits(height: np.ndarray, grid_x: np.ndarray, grid_y: np.ndarray, pits: list[Pit]) -> np.ndarray:
+    lowered = height.copy()
+    for pit in pits:
+        distance = np.hypot(grid_x - pit.x, grid_y - pit.y)
+        falloff = np.clip(1.0 - distance / PIT_RADIUS, 0.0, 1.0) ** 0.65
+        target = lowered - np.maximum(lowered - pit.target_z, 0.0) * falloff
+        lowered = np.where(falloff > 0.0, np.minimum(lowered, target), lowered)
+    return lowered
+
+
+def write_pit_metadata(model_dir: Path, pits: list[Pit]) -> None:
+    metadata_dir = model_dir / "metadata"
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+    lines = ["x,y,target_z,radius"]
+    lines.extend(
+        f"{pit.x:.6f},{pit.y:.6f},{pit.target_z:.6f},{PIT_RADIUS:.6f}"
+        for pit in pits
+    )
+    (metadata_dir / PIT_METADATA_NAME).write_text("\n".join(lines) + "\n", encoding="ascii")
+
+
 def rotation_matrix(roll: float, pitch: float, yaw: float) -> np.ndarray:
     cr = math.cos(roll)
     sr = math.sin(roll)
@@ -504,15 +717,8 @@ def rotated_box_z_extents(
 
 def generate_surface_blocks(
     grid_x: np.ndarray, grid_y: np.ndarray, height: np.ndarray, walls: list[Wall]
-) -> tuple[list[SurfaceBlock], float]:
+) -> tuple[list[SurfaceBlock], float, float]:
     rng = np.random.default_rng(TERRAIN_SEED + 37)
-    height_cap = (float(height.min()) + float(height.max())) * 0.5 + BLOCK_CLEARANCE_CAP
-    top_min = max(BLOCK_TOP_Z_MIN, float(height.min()))
-    top_max = min(BLOCK_TOP_Z_MAX, height_cap)
-    if top_min >= top_max:
-        raise RuntimeError(
-            f"Invalid surface block top range [{top_min:.3f}, {top_max:.3f}]"
-        )
     x_min = float(grid_x.min()) + 0.35
     x_max = float(grid_x.max()) - 0.35
     y_min = float(grid_y.min()) + 0.35
@@ -520,25 +726,16 @@ def generate_surface_blocks(
     max_tilt = math.radians(BLOCK_MAX_TILT_DEG)
     wall_margin = WALL_THICKNESS * 0.5 + max(BLOCK_SIZE_X, BLOCK_SIZE_Y) * 0.75
     spawn_margin = 0.85
+    corridor_mask = build_corridor_mask(walls, grid_x, grid_y)
     blocks: list[SurfaceBlock] = []
-    bin_counts = [0] * BLOCK_TOP_BINS
-    target_per_bin = math.ceil(BLOCK_COUNT / BLOCK_TOP_BINS)
 
-    for _ in range(BLOCK_COUNT * 450):
+    for _ in range(BLOCK_COUNT * 500):
         if len(blocks) >= BLOCK_COUNT:
             break
-        available_bins = [
-            index for index, count in enumerate(bin_counts) if count < target_per_bin
-        ]
-        if not available_bins:
-            break
-        bin_index = int(rng.choice(available_bins))
-        bin_low = top_min + (top_max - top_min) * bin_index / BLOCK_TOP_BINS
-        bin_high = top_min + (top_max - top_min) * (bin_index + 1) / BLOCK_TOP_BINS
-        target_top_z = float(rng.uniform(bin_low, bin_high))
-
         x = float(rng.uniform(x_min, x_max))
         y = float(rng.uniform(y_min, y_max))
+        if not corridor_mask.contains(x, y):
+            continue
         if math.hypot(x - SPAWN_X, y - SPAWN_Y) < spawn_margin:
             continue
         if near_any_wall(x, y, walls, wall_margin):
@@ -551,21 +748,19 @@ def generate_surface_blocks(
             BLOCK_SIZE_X, BLOCK_SIZE_Y, BLOCK_SIZE_Z, roll, pitch, yaw
         )
         ground_z = nearest_terrain_height(x, y, grid_x, grid_y, height)
-        center_z = target_top_z - max_offset
-        bottom_z = center_z + min_offset
-        if bottom_z < ground_z - 0.002:
+        if ground_z < TERRAIN_Z_OFFSET - 0.005:
             continue
-        if target_top_z < BLOCK_TOP_Z_MIN or target_top_z > height_cap:
-            continue
-        blocks.append(SurfaceBlock(x, y, center_z, roll, pitch, yaw, target_top_z))
-        bin_counts[bin_index] += 1
+        center_z = ground_z + BLOCK_GROUND_CLEARANCE - min_offset
+        top_z = center_z + max_offset
+        blocks.append(SurfaceBlock(x, y, center_z, roll, pitch, yaw, top_z))
 
     if len(blocks) < BLOCK_COUNT:
         raise RuntimeError(
             f"Could only place {len(blocks)} surface blocks out of {BLOCK_COUNT}; "
-            f"top-bin counts={bin_counts}"
+            f"corridor_area={corridor_mask.area:.2f}m^2"
         )
-    return blocks, height_cap
+    height_cap = max(block.top_z for block in blocks)
+    return blocks, height_cap, corridor_mask.area
 
 
 def terrain_vertices(
@@ -797,18 +992,29 @@ def terrain_edge_visuals_xml(
     return "\n".join(visuals)
 
 
-def write_terrain_assets(model_dir: Path) -> tuple[float, float, np.ndarray, np.ndarray, np.ndarray]:
+def write_terrain_assets(
+    model_dir: Path, walls: list[Wall]
+) -> tuple[float, float, np.ndarray, np.ndarray, np.ndarray, int, float]:
     texture_dir = model_dir / "materials" / "textures"
     texture_dir.mkdir(parents=True, exist_ok=True)
     mesh_dir = model_dir / "meshes"
     mesh_dir.mkdir(parents=True, exist_ok=True)
 
     grid_x, grid_y, height = generate_terrain_grid()
+    corridor_mask = build_corridor_mask(walls, grid_x, grid_y)
+    pits = select_pits(grid_x, grid_y, corridor_mask, walls)
+    write_pit_metadata(model_dir, pits)
+    height = apply_pits(height, grid_x, grid_y, pits)
     cv2.imwrite(
         str(texture_dir / "image_cave_triangular_height_preview.png"),
         height_to_preview_pixel(height),
     )
     height_range = (float(height.min()), float(height.max()))
+    pit_min_spacing = min(
+        math.hypot(a.x - b.x, a.y - b.y)
+        for index, a in enumerate(pits)
+        for b in pits[index + 1 :]
+    )
     vertices, faces, top_face_count = closed_terrain_mesh(grid_x, grid_y, height)
     top_faces = faces[:top_face_count]
     top_vertices = vertices[: grid_x.size]
@@ -879,11 +1085,11 @@ def write_terrain_assets(model_dir: Path) -> tuple[float, float, np.ndarray, np.
     <name>Lunar Rover Team</name>
     <email>maintainer@example.com</email>
   </author>
-  <description>Deterministic watertight triangular sandstone-style terrain for the generated image cave world. Edge length {TERRAIN_TRIANGLE_EDGE:.2f} m, top faces {top_face_count}.</description>
+  <description>Deterministic watertight triangular sandstone-style terrain for the generated image cave world. Edge length {TERRAIN_TRIANGLE_EDGE:.2f} m, top faces {top_face_count}, corridor pits {len(pits)}, pit center target z {PIT_TARGET_Z_MIN:.2f}-{PIT_TARGET_Z_MAX:.2f} m, min pit spacing {pit_min_spacing:.2f} m.</description>
 </model>
 """
     (model_dir / "model.config").write_text(model_config, encoding="utf-8")
-    return height_range[0], height_range[1], grid_x, grid_y, height
+    return height_range[0], height_range[1], grid_x, grid_y, height, len(pits), pit_min_spacing
 
 
 def write_wall_assets(model_dir: Path, walls: list[Wall]) -> None:
@@ -949,9 +1155,11 @@ def write_block_assets(
     grid_y: np.ndarray,
     height: np.ndarray,
     walls: list[Wall],
-) -> tuple[int, float, float]:
+) -> tuple[int, float, float, float]:
     model_dir.mkdir(parents=True, exist_ok=True)
-    blocks, height_cap = generate_surface_blocks(grid_x, grid_y, height, walls)
+    blocks, height_cap, corridor_area = generate_surface_blocks(
+        grid_x, grid_y, height, walls
+    )
     blocks_xml = "\n".join(block_xml(block, index) for index, block in enumerate(blocks))
     top_max = max(block.top_z for block in blocks)
     model_sdf = f"""<?xml version="1.0"?>
@@ -974,11 +1182,64 @@ def write_block_assets(
     <name>Lunar Rover Team</name>
     <email>maintainer@example.com</email>
   </author>
-  <description>{len(blocks)} randomized small sandstone blocks. Size {BLOCK_SIZE_X:.2f} x {BLOCK_SIZE_Y:.2f} x {BLOCK_SIZE_Z:.2f} m, yaw randomized, roll/pitch within {BLOCK_MAX_TILT_DEG:.1f} deg, max rotated top z {top_max:.3f} m, cap {height_cap:.3f} m.</description>
+  <description>{len(blocks)} randomized small sandstone blocks placed only inside the spawn-connected flood-filled cave corridor mask. Size {BLOCK_SIZE_X:.2f} x {BLOCK_SIZE_Y:.2f} x {BLOCK_SIZE_Z:.2f} m, yaw randomized, roll/pitch within {BLOCK_MAX_TILT_DEG:.1f} deg, bottom vertices placed about {BLOCK_GROUND_CLEARANCE:.3f} m above sampled terrain, max rotated top z {top_max:.3f} m, corridor area {corridor_area:.1f} m2.</description>
 </model>
 """
     (model_dir / "model.config").write_text(model_config, encoding="utf-8")
-    return len(blocks), height_cap, top_max
+    return len(blocks), height_cap, top_max, corridor_area
+
+
+def write_ceiling_assets(model_dir: Path) -> None:
+    model_dir.mkdir(parents=True, exist_ok=True)
+    model_sdf = f"""<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="{CEILING_MODEL_NAME}">
+    <static>true</static>
+    <link name="ceiling_link">
+      <collision name="ceiling_collision">
+        <laser_retro>1.0</laser_retro>
+        <pose>{TERRAIN_CENTER_X:.3f} {TERRAIN_CENTER_Y:.3f} {CEILING_Z:.3f} 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>{TERRAIN_SIZE_X:.3f} {TERRAIN_SIZE_Y:.3f} {CEILING_THICKNESS:.3f}</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="ceiling_visual">
+        <laser_retro>1.0</laser_retro>
+        <pose>{TERRAIN_CENTER_X:.3f} {TERRAIN_CENTER_Y:.3f} {CEILING_Z:.3f} 0 0 0</pose>
+        <cast_shadows>false</cast_shadows>
+        <geometry>
+          <box>
+            <size>{TERRAIN_SIZE_X:.3f} {TERRAIN_SIZE_Y:.3f} {CEILING_THICKNESS:.3f}</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0 0 0 0</ambient>
+          <diffuse>0 0 0 0</diffuse>
+          <specular>0 0 0 0</specular>
+        </material>
+        <transparency>1.0</transparency>
+      </visual>
+    </link>
+  </model>
+</sdf>
+"""
+    (model_dir / "model.sdf").write_text(model_sdf, encoding="utf-8")
+
+    model_config = f"""<?xml version="1.0"?>
+<model>
+  <name>Image Cave Lidar Ceiling</name>
+  <version>1.0</version>
+  <sdf version="1.8">model.sdf</sdf>
+  <author>
+    <name>Lunar Rover Team</name>
+    <email>maintainer@example.com</email>
+  </author>
+  <description>Fully transparent, non-shadowing ceiling collision target for lidar returns in the generated image cave world. Size {TERRAIN_SIZE_X:.1f} x {TERRAIN_SIZE_Y:.1f} x {CEILING_THICKNESS:.2f} m, bottom z {CEILING_BOTTOM_Z:.2f} m.</description>
+</model>
+"""
+    (model_dir / "model.config").write_text(model_config, encoding="utf-8")
 
 
 def parse_args() -> argparse.Namespace:
@@ -992,6 +1253,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--terrain-model-dir", type=Path, default=terrain_model_dir())
     parser.add_argument("--wall-model-dir", type=Path, default=wall_model_dir())
     parser.add_argument("--block-model-dir", type=Path, default=block_model_dir())
+    parser.add_argument("--ceiling-model-dir", type=Path, default=ceiling_model_dir())
     parser.add_argument(
         "--preview-output",
         type=Path,
@@ -1009,24 +1271,29 @@ def main() -> None:
     points = red_points(image)
     edges = extract_edges(image, points)
     channel_width_px = estimate_channel_width_px(points, edges)
-    meters_per_px = 1.0 / channel_width_px
+    meters_per_px = WALL_CENTER_WIDTH_SCALE / channel_width_px
     walls = build_walls(points, edges, meters_per_px)
-    terrain_min, terrain_max, grid_x, grid_y, height = write_terrain_assets(
-        args.terrain_model_dir
+    terrain_min, terrain_max, grid_x, grid_y, height, pit_count, pit_min_spacing = (
+        write_terrain_assets(args.terrain_model_dir, walls)
     )
     write_wall_assets(args.wall_model_dir, walls)
-    block_count, block_cap, block_top_max = write_block_assets(
+    block_count, block_cap, block_top_max, corridor_area = write_block_assets(
         args.block_model_dir, grid_x, grid_y, height, walls
     )
+    write_ceiling_assets(args.ceiling_model_dir)
     args.output.write_text(world_xml(walls), encoding="utf-8")
     args.preview_output.write_text(terrain_preview_world_xml(), encoding="utf-8")
     if args.overlay is not None:
         write_overlay(image, points, edges, args.overlay)
     print(
         f"wrote {args.output} from {len(points)} points and {len(edges)} wall segments; "
-        f"channel_width={channel_width_px:.2f}px scale={meters_per_px:.5f}m/px; "
+        f"channel_width={channel_width_px:.2f}px scale={meters_per_px:.5f}m/px "
+        f"wall_center_width={WALL_CENTER_WIDTH_SCALE:.3f}m; "
         f"terrain_height=[{terrain_min:.3f},{terrain_max:.3f}]m; "
-        f"surface_blocks={block_count} top_max={block_top_max:.3f}m cap={block_cap:.3f}m"
+        f"pits={pit_count} min_spacing={pit_min_spacing:.3f}m; "
+        f"surface_blocks={block_count} top_max={block_top_max:.3f}m cap={block_cap:.3f}m; "
+        f"corridor_area={corridor_area:.1f}m^2; "
+        f"ceiling_bottom={CEILING_BOTTOM_Z:.3f}m"
     )
 
 

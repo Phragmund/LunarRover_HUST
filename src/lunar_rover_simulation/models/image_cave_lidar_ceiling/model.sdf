@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="image_cave_lidar_ceiling">
+    <static>true</static>
+    <link name="ceiling_link">
+      <collision name="ceiling_collision">
+        <laser_retro>1.0</laser_retro>
+        <pose>4.000 2.240 2.210 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>30.000 30.000 0.040</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="ceiling_visual">
+        <laser_retro>1.0</laser_retro>
+        <pose>4.000 2.240 2.210 0 0 0</pose>
+        <cast_shadows>false</cast_shadows>
+        <geometry>
+          <box>
+            <size>30.000 30.000 0.040</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0 0 0 0</ambient>
+          <diffuse>0 0 0 0</diffuse>
+          <specular>0 0 0 0</specular>
+        </material>
+        <transparency>1.0</transparency>
+      </visual>
+    </link>
+  </model>
+</sdf>

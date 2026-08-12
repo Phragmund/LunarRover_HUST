@@ -5,7 +5,8 @@ fast_lio2_map_frame:
     base_frame: base_link
     lio_body_frame: livox_imu_frame
     imu_topic: /livox/imu
-    imu_mount_pitch_source: urdf
+    imu_mount_pitch_source: fixed
+    imu_mount_pitch_deg: 35.273
     imu_mount_pitch_samples: 80
     imu_mount_pitch_max_gyro_radps: 0.02
     imu_mount_pitch_correction_deg: 0.0
@@ -19,11 +20,64 @@ fast_lio2_map_frame:
     registered_topic: /localization/cloud_registered
     map_cloud_topic: /localization/lio_map_cloud
     restamp_outputs: true
+    publish_odom: true
+    publish_path: false
+    publish_registered_cloud: false
+    publish_map_cloud: false
+    path_max_rate_hz: 0.0
+    path_max_poses: 0
+    registered_cloud_max_rate_hz: 0.0
+    map_cloud_max_rate_hz: 0.0
     max_abs_position: 1000.0
     require_valid_pose_for_clouds: true
-    level_correction_source: startup_lio_pose
+    level_correction_source: fixed
     level_correction_samples: 40
     level_correction_start_delay_sec: 20.0
     level_correction_max_abs_tilt_deg: 10.0
     level_correction_preserve_yaw: true
     level_correction_anchor_position: true
+    level_correction_roll_deg: -0.58
+    level_correction_pitch_deg: -0.67
+    level_correction_yaw_deg: 0.007
+
+fast_lio2_map_frame_visualization:
+  ros__parameters:
+    use_sim_time: true
+    map_frame: map
+    base_frame: base_link
+    lio_body_frame: livox_imu_frame
+    imu_topic: /livox/imu
+    imu_mount_pitch_source: fixed
+    imu_mount_pitch_deg: 35.273
+    imu_mount_pitch_samples: 80
+    imu_mount_pitch_max_gyro_radps: 0.02
+    imu_mount_pitch_correction_deg: 0.0
+    raw_lio_map_frame: camera_init
+    raw_odom_topic: /localization/lio_odometry_raw
+    raw_path_topic: /localization/lio_path_raw
+    raw_registered_topic: /localization/cloud_registered_raw
+    raw_map_cloud_topic: /localization/lio_map_cloud_raw
+    odom_topic: /localization/lio_odometry
+    path_topic: /localization/lio_path
+    registered_topic: /localization/cloud_registered
+    map_cloud_topic: /localization/lio_map_cloud
+    restamp_outputs: true
+    publish_odom: false
+    publish_path: true
+    publish_registered_cloud: true
+    publish_map_cloud: true
+    path_max_rate_hz: 0.5
+    path_max_poses: 500
+    registered_cloud_max_rate_hz: 3.0
+    map_cloud_max_rate_hz: 0.2
+    max_abs_position: 1000.0
+    require_valid_pose_for_clouds: true
+    level_correction_source: fixed
+    level_correction_samples: 40
+    level_correction_start_delay_sec: 20.0
+    level_correction_max_abs_tilt_deg: 10.0
+    level_correction_preserve_yaw: true
+    level_correction_anchor_position: true
+    level_correction_roll_deg: -0.58
+    level_correction_pitch_deg: -0.67
+    level_correction_yaw_deg: 0.007

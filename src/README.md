@@ -40,7 +40,7 @@ lunar_rover_bringup
 | `lunar_rover_sensors/` | 仿真/实车传感器启动入口，保持原始话题语义。 |
 | `lunar_rover_control/` | ros2_control 底盘控制器、摇臂差动控制器、仿真底盘状态和轮反馈里程计。 |
 | `lunar_rover_mapping/` | 组合轮速 IMU 里程计、FAST-LIO2 点云地形建图、旧 SLAM/OctoMap 调试入口。 |
-| `lunar_rover_localization/` | FAST-LIO2 输入/输出适配、启动水平校正和 `map->odom` TF 桥。 |
+| `lunar_rover_localization/` | FAST-LIO2 输入/输出适配、固定 map 水平补正和 `map->odom` TF 桥。 |
 | `lunar_rover_navigation/` | Nav2 配置、地形 costmap layer、`Twist` 到底盘 `TwistStamped` 适配、键盘接管 mux。 |
 | `lunar_rover_exploration/` | 地形感知前沿探索节点，向 Nav2 发送 `NavigateToPose` 目标。 |
 | `lunar_rover_bringup/` | 基础 bringup 和完整 FAST-LIO2 探索导航调试 launch。 |

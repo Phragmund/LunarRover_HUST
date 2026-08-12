@@ -139,17 +139,19 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-## 推荐启动链路：FAST-LIO2建图 + RViz + 键盘接管
+## 推荐启动链路：延迟传感器 + FAST-LIO2建图 + RViz + 键盘直控
 
-这是当前调试和手动驾驶的推荐链路。它会启动 Gazebo、RViz、FAST-LIO2、地形建图、键盘控制和 `chassis_cmd_mux`，但不会启动 Nav2 和 frontier exploration，因此不会在 FAST-LIO 初始化或地图观察阶段自动移动车辆。
+这是当前验证通过的推荐链路。默认会启动 Gazebo、RViz、FAST-LIO2、地形建图和键盘控制，但不会启动 Nav2、frontier exploration 或 `chassis_cmd_mux`。键盘直接发布到底盘 `/chassis/cmd_vel`，不会有自动导航节点在 FAST-LIO 初始化或地图观察阶段移动车辆。
+
+当前链路的关键变化是：Gazebo 先只启动基础仿真和基础 bridge，等待 `/clock`、`/simulation/ground_truth/odometry` 和额外稳定时间后，才启动 Gazebo 传感器 bridge、Mid-360 点云/IMU ROS 驱动和 FAST-LIO2。这可以避免复杂地图刚加载时的传感器数据提前进入 FAST-LIO。
 
 核心原则：
 
-- 启动 FAST-LIO2 后，机器人必须保持静止。
-- 必须先看到 FAST-LIO 后端日志 `IMU Initial Done`。
-- 必须再看到 `fast_lio2_map_frame_node.py` 日志 `Startup FAST-LIO level correction calibrated`。
-- 上面两个条件都完成后，额外静置约 30 秒，再启动 terrain mapper、键盘 mux 和键盘控制。
-- 这个链路只允许键盘通过 `/keyboard/chassis_cmd_vel` 控制车体；没有自动导航目标。
+- Gazebo、车体、控制器和基础真值里程计先稳定。
+- `/mid360/raw_points`、`/livox/lidar`、`/livox/points`、`/livox/imu` 延后启动。
+- `fast_lio2_map_frame_node.py` 使用固定 IMU pitch 和固定 map 水平补正，不再进行启动静止采样。
+- `/localization/lio_odometry` 第一帧可用后，再启动 terrain mapper 和键盘直控。
+- 默认不启动 Nav2 和 frontier exploration；只有显式设置 `ENABLE_NAV2=1` 才恢复自动导航链路。
 
 ### 干净终止旧进程
 
@@ -193,232 +195,93 @@ pgrep -af "ign gazebo|rviz2|fastlio_mapping|fast_lio2_map_frame|terrain_mapper|c
 
 正常情况下，除当前 `pgrep` 命令本身外，不应再看到旧进程。
 
-### 一键启动保守手动链路
+### 一键启动当前推荐链路
 
-把下面整段复制到一个终端执行：
-
-```bash
-cd /home/phragmund/LunarRover
-mkdir -p log/manual_start
-log_file="log/manual_start/clean_manual_keyboard_fastlio_$(date +%Y%m%d_%H%M%S).log"
-
-START_LOG_FILE="$log_file" setsid bash -lc '
-set -eo pipefail
-cd /home/phragmund/LunarRover
-source /opt/ros/humble/setup.bash
-source install/setup.bash
-
-wait_for_log_fixed() {
-  local pattern="$1"
-  local timeout_sec="$2"
-  local deadline=$((SECONDS + timeout_sec))
-  echo "[$(date +%T)] waiting for required startup log"
-  while (( SECONDS < deadline )); do
-    if grep -F "$pattern" "$START_LOG_FILE" 2>/dev/null \
-      | grep -Fv "waiting for required startup log" \
-      | grep -Fv "completed required startup log" \
-      >/dev/null; then
-      echo "[$(date +%T)] completed required startup log"
-      return 0
-    fi
-    sleep 1
-  done
-  echo "Timed out waiting for required startup log: $pattern" >&2
-  return 1
-}
-
-echo "[$(date +%T)] clean start: sim/sensors/control"
-ros2 launch lunar_rover_bringup bringup.launch.py \
-  mode:=sim \
-  world:=reachable_maze \
-  gui:=true \
-  headless:=false \
-  rviz:=false \
-  sensor_noise:=false \
-  spawn_x:=-3.92 \
-  spawn_y:=0.0 \
-  spawn_z:=0.20 \
-  spawn_yaw:=0.0 &
-
-echo "[$(date +%T)] clean start: composite odometry"
-ros2 run lunar_rover_mapping composite_wheel_imu_odometry_node.py \
-  --ros-args \
-  -r __node:=composite_wheel_imu_odometry \
-  --params-file install/lunar_rover_mapping/share/lunar_rover_mapping/config/composite_odometry.yaml &
-
-echo "[$(date +%T)] clean start: world marker + RViz"
-ros2 run lunar_rover_simulation world_model_marker_node.py \
-  --ros-args \
-  -p use_sim_time:=true \
-  -p world_name:=reachable_maze \
-  -p frame_id:=map \
-  -p marker_topic:=/simulation/world_model_markers \
-  -p alpha:=0.30 \
-  -p outline_alpha:=0.30 \
-  -p outline_width:=0.025 \
-  -p map_origin_world_x:=-3.92 \
-  -p map_origin_world_y:=0.0 \
-  -p map_origin_world_z:=0.20 \
-  -p map_origin_world_yaw:=0.0 &
-
-rviz2 -d install/lunar_rover_mapping/share/lunar_rover_mapping/rviz/mapping.rviz \
-  --ros-args \
-  -p use_sim_time:=true &
-
-sleep 10
-
-echo "[$(date +%T)] clean start: FAST-LIO localization; keep rover still"
-ros2 launch lunar_rover_localization fast_lio2_localization.launch.py \
-  run_fast_lio2:=true \
-  direct_fast_lio_node:=true \
-  run_tf_bridge:=true \
-  run_map_frame_node:=true \
-  run_input_normalizer:=false \
-  run_sim_imu_adapter:=false \
-  imu_mount_pitch_source:=startup_imu_pitch \
-  imu_mount_pitch_samples:=80 \
-  imu_mount_pitch_max_gyro_radps:=0.02 \
-  level_correction_source:=startup_lio_pose \
-  level_correction_samples:=40 \
-  level_correction_start_delay_sec:=8.0 \
-  level_correction_preserve_yaw:=true \
-  level_correction_anchor_position:=true &
-
-wait_for_log_fixed "[fastlio_mapping-1] IMU Initial Done" 90
-wait_for_log_fixed "Startup FAST-LIO level correction calibrated" 90
-echo "[$(date +%T)] FAST-LIO init and level correction complete; extra static hold 30s"
-sleep 30
-
-echo "[$(date +%T)] clean start: terrain mapping"
-ros2 launch lunar_rover_mapping terrain_mapping.launch.py \
-  params_file:=install/lunar_rover_mapping/share/lunar_rover_mapping/config/terrain_mapper.yaml &
-
-sleep 3
-
-echo "[$(date +%T)] clean start: keyboard mux only; Nav2/exploration disabled"
-ros2 run lunar_rover_navigation chassis_cmd_mux_node.py \
-  --ros-args \
-  -r __node:=chassis_cmd_mux \
-  --params-file install/lunar_rover_navigation/share/lunar_rover_navigation/config/twist_stamper.yaml &
-
-scripts/run_direct_keyboard_teleop.sh \
-  --no-acl \
-  --device /dev/input/event3,/dev/input/event6,/dev/input/event9,/dev/input/event13 &
-
-wait
-' >"$log_file" 2>&1 < /dev/null &
-
-pid=$!
-echo "$pid" > log/manual_start/latest_clean_manual.pid
-echo "$log_file" > log/manual_start/latest_clean_manual.log
-echo "started_pid=$pid"
-echo "log_file=$log_file"
-```
-
-启动完成后检查日志：
-
-```bash
-tail -f "$(cat log/manual_start/latest_clean_manual.log)"
-```
-
-应按顺序看到：
-
-```text
-clean start: FAST-LIO localization; keep rover still
-[fastlio_mapping-1] IMU Initial Done
-Startup FAST-LIO level correction calibrated
-FAST-LIO init and level correction complete; extra static hold 30s
-clean start: terrain mapping
-clean start: keyboard mux only; Nav2/exploration disabled
-Starting direct keyboard teleop on /keyboard/chassis_cmd_vel
-```
-
-检查关键节点：
-
-```bash
-pgrep -af "ign gazebo|rviz2|fastlio_mapping|terrain_mapper_node|chassis_cmd_mux_node|keyboard_rover_teleop"
-```
-
-确认自动导航没有启动：
-
-```bash
-pgrep -af "controller_server|bt_navigator|frontier_explorer_node|nav2_lifecycle_bringup"
-```
-
-这个命令正常应为空。若看到这些进程，说明 Nav2 或探索还在运行，应先按上面的终止链路清理。
-
-### 终止保守手动链路
-
-优先停止启动脚本所在进程组：
-
-```bash
-cd /home/phragmund/LunarRover
-pid="$(cat log/manual_start/latest_clean_manual.pid)"
-kill -TERM -- "-$pid"
-sleep 3
-```
-
-如果还有残留，再执行“干净终止旧进程”小节中的兜底清理命令，并再次确认：
-
-```bash
-pgrep -af "ign gazebo|rviz2|fastlio_mapping|terrain_mapper|chassis_cmd_mux|keyboard_rover_teleop"
-```
-
-## 完整自动探索链路：FAST-LIO2建图 + 探索 + 导航 + 键盘接管
-
-这个链路会启动 Nav2 和 frontier exploration。`frontier_explorer` 会向 Nav2 发送目标，机器人会自动移动。只有在确认 FAST-LIO 初始化、map frame 水平校正和地形地图都稳定后，才建议使用这个链路。
-
-推荐使用门控脚本启动完整链路：
+推荐使用门控脚本启动。默认世界为 `reachable_maze`：
 
 ```bash
 cd /home/phragmund/LunarRover
 scripts/restart_gated_mapping_exploration_navigation.sh
 ```
 
-这个脚本不会按固定秒数直接启动导航，而是先等待 FAST-LIO2 输出已经过启动水平校正的 `/localization/lio_odometry` 第一帧，再启动地形建图、Nav2、键盘控制和探索。注意：当前脚本没有把 FAST-LIO 后端日志 `IMU Initial Done` 作为独立门控条件，也没有额外静置 30 秒；若需要严格静止初始化，优先使用上面的保守手动链路。
+`image_cave` 当前验证过的启动方式：
+
+```bash
+WORLD=image_cave SIM_SETTLE_SEC=20 scripts/restart_gated_mapping_exploration_navigation.sh
+```
+
+常用环境变量：
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `WORLD` | `reachable_maze` | Gazebo 世界名。`image_cave` 会自动使用 `spawn_z=1.45`。 |
+| `SPAWN_X` / `SPAWN_Y` / `SPAWN_Z` / `SPAWN_YAW` | `-3.92` / `0.0` / 自动 / `0.0` | 车辆出生位姿。未设置 `SPAWN_Z` 时，`image_cave` 用 `1.45`，其他世界用 `0.45`。 |
+| `MAP_ORIGIN_Z` | 同 `SPAWN_Z` | RViz world marker 的 map 原点高度。 |
+| `SIM_SETTLE_SEC` | `12` | `/simulation/ground_truth/odometry` 可用后，启动传感器 bridge 和 Livox 驱动前的额外等待时间。 |
+| `DELAY_LIVOX_DRIVERS` | `true` | 是否延迟启动 Gazebo 传感器 bridge 和 Mid-360 ROS 驱动。建议保持默认。 |
+| `ENABLE_NAV2` | `false` | 是否启动 Nav2、命令 mux 和 frontier exploration。当前调试默认关闭。 |
+
+如需临时恢复 Nav2 + frontier exploration：
+
+```bash
+ENABLE_NAV2=1 scripts/restart_gated_mapping_exploration_navigation.sh
+```
 
 启动顺序：
 
-1. 启动 Gazebo、原始传感器、底盘控制、`robot_state_publisher`。
-2. 启动 `composite_wheel_imu_odometry_node.py`，提供轮速 + IMU 组合里程计。
-3. 启动透明度 30% 的仿真 world model marker 和 RViz。
-4. 静置约 6 秒后启动 FAST-LIO2 定位链路。
-5. `fast_lio2_map_frame_node.py` 从 `/livox/imu` 读取启动 IMU 姿态，使用真实启动 pitch 替代固定安装角；随后等待 FAST-LIO2 raw odom 初步收敛。
-6. `fast_lio2_map_frame_node.py` 采样启动时未校正的 `map->base_link` 姿态，自动生成固定水平校正，只清除启动 roll/pitch，保留 yaw。
-7. 脚本等待 `/localization/lio_odometry` 发布。只有这一步完成后，才允许后续模块启动。
-8. 启动 terrain mapper。
-9. 启动 Nav2 和 `chassis_cmd_mux`。
-10. 等 `/bt_navigator` lifecycle 变为 active。
-11. 启动 direct keyboard teleop。
-12. 启动 frontier exploration。
+1. 启动 Gazebo、车体、控制器、`robot_state_publisher`、基础 bridge；此时 `livox_drivers:=false`、`sensor_bridges:=false`。
+2. 等待 `/clock` 第一帧。
+3. 等待 `/simulation/ground_truth/odometry` 第一帧，确认 Gazebo 车体真值里程计已经发布。
+4. 额外等待 `SIM_SETTLE_SEC` 秒，让复杂地图和车体物理状态稳定。
+5. 启动延迟的 Gazebo sensor bridge：`/mid360/raw_points`、`/mid360/raw_imu`、相机等话题开始进入 ROS。
+6. 启动延迟的 Mid-360 ROS 驱动，发布 `/livox/lidar`、`/livox/points` 和 `/livox/imu`。
+7. 等待 `/livox/lidar` 和 `/livox/imu` 第一帧。
+8. 启动 `composite_wheel_imu_odometry_node.py`。
+9. 启动 world model marker 和 RViz。
+10. 启动 FAST-LIO2 定位链路。
+11. `fast_lio2_map_frame_node.py` 使用固定 IMU pitch `35.273 deg` 替代启动 IMU 姿态采样。
+12. `fast_lio2_map_frame_node.py` 使用固定 FAST-LIO map 水平补正 `roll=-0.58 deg, pitch=-0.67 deg, yaw=+0.007 deg`，不再采样启动姿态。
+13. 脚本等待 `/localization/lio_odometry` 发布；只有这一步完成后，后续模块才启动。
+14. 启动 terrain mapper。
+15. 默认跳过 Nav2 和 frontier exploration。
+16. 启动 direct keyboard teleop，直接发布到底盘 `/chassis/cmd_vel`。
+
+仅当 `ENABLE_NAV2=1` 时，脚本才会启动 Nav2、等待 `/bt_navigator` active、启动经 mux 的键盘接管和 frontier exploration。
 
 关键话题和控制关系：
 
 | 话题 | 类型 | 说明 |
 | --- | --- | --- |
+| `/mid360/raw_points` | `sensor_msgs/msg/PointCloud2` | Gazebo sensor bridge 延迟启动后才出现的原始雷达点云 |
+| `/livox/lidar` | `livox_ros_driver2/msg/CustomMsg` | Mid-360 仿真驱动输出给 FAST-LIO2 的点云 |
+| `/livox/points` | `sensor_msgs/msg/PointCloud2` | Mid-360 仿真驱动输出给 RViz/其他 ROS 节点的点云 |
+| `/livox/imu` | `sensor_msgs/msg/Imu` | Mid-360 仿真 IMU |
 | `/localization/lio_odometry_raw` | `nav_msgs/msg/Odometry` | FAST-LIO2 原始输出，保留算法内部估计姿态 |
-| `/localization/lio_odometry` | `nav_msgs/msg/Odometry` | 经过启动水平校正后的导航定位输出 |
-| `/localization/cloud_registered` | `sensor_msgs/msg/PointCloud2` | 同步应用 map 水平校正后的注册点云 |
-| `/localization/lio_map_cloud` | `sensor_msgs/msg/PointCloud2` | 同步应用 map 水平校正后的 FAST-LIO2 地图点云 |
-| `/navigation/chassis_cmd_vel` | `geometry_msgs/msg/TwistStamped` | Nav2 经 `twist_stamper` 后的底盘指令 |
-| `/keyboard/chassis_cmd_vel` | `geometry_msgs/msg/TwistStamped` | 键盘控制指令 |
-| `/chassis/cmd_vel` | `geometry_msgs/msg/TwistStamped` | mux 后真正发送给底盘控制器的指令 |
+| `/localization/lio_odometry` | `nav_msgs/msg/Odometry` | 经过固定水平补正后的导航定位输出 |
+| `/localization/cloud_registered` | `sensor_msgs/msg/PointCloud2` | 同步应用固定 map 水平补正后的注册点云 |
+| `/localization/lio_map_cloud` | `sensor_msgs/msg/PointCloud2` | 同步应用固定 map 水平补正后的 FAST-LIO2 地图点云 |
+| `/chassis/cmd_vel` | `geometry_msgs/msg/TwistStamped` | 默认键盘直控输出，真正发送给底盘控制器的指令 |
+| `/navigation/chassis_cmd_vel` | `geometry_msgs/msg/TwistStamped` | 仅 `ENABLE_NAV2=1` 时存在，Nav2 经 `twist_stamper` 后的底盘指令 |
+| `/keyboard/chassis_cmd_vel` | `geometry_msgs/msg/TwistStamped` | 仅 `ENABLE_NAV2=1` 时用于 mux 的键盘控制指令 |
 
-键盘接管逻辑：
+默认键盘控制逻辑：
 
-- `chassis_cmd_mux_node.py` 订阅 `/navigation/chassis_cmd_vel` 和 `/keyboard/chassis_cmd_vel`。
-- 键盘 5 秒内有输入时，mux 输出键盘指令，导航仍运行但失去车体控制权。
-- 键盘 5 秒没有输入后，mux 自动恢复导航指令输出。
+- Nav2 不启动，`chassis_cmd_mux_node.py` 不启动。
+- direct keyboard teleop 直接发布 `/chassis/cmd_vel`。
+- `ENABLE_NAV2=1` 时才恢复 mux 接管逻辑：键盘 5 秒内有输入则覆盖导航，5 秒无输入后恢复导航指令。
 
 启动完成后，日志中应出现类似顺序：
 
 ```text
-Startup FAST-LIO level correction calibrated
+starting sim: world=image_cave delayed_livox_drivers=true
+Gazebo ground truth is live; waiting 20s before Livox ROS drivers
+starting delayed Gazebo sensor bridge
+starting delayed Mid-360 ROS point cloud driver
+starting delayed Mid-360 IMU driver
+starting FAST-LIO localization with fixed map leveling
+Using fixed FAST-LIO level correction
 FAST-LIO corrected odometry is live; starting terrain mapping
-starting Nav2 and command mux after level correction
-Nav2 lifecycle bringup complete
-starting direct keyboard teleop
-starting frontier exploration
+skipping Nav2/frontier exploration; starting direct keyboard teleop on /chassis/cmd_vel
 ```
 
 如果要终止当前链路，优先按脚本所在进程组整体停止：
@@ -432,15 +295,16 @@ pid="$(cat log/manual_start/latest_gated.pid 2>/dev/null || pgrep -f restart_gat
 也可以先查进程：
 
 ```bash
-pgrep -af "restart_gated|fastlio_mapping|rviz2|ign gazebo|controller_server|frontier|keyboard_rover_teleop"
+pgrep -af "restart_gated|fastlio_mapping|rviz2|ign gazebo|terrain_mapper|keyboard_rover_teleop"
 ```
 
 注意：
 
-- 启动后在日志出现 `IMU Initial Done` 和 `Startup FAST-LIO level correction calibrated` 之前不要移动机器人。
-- 不建议用固定 TimerAction 直接启动导航，因为 Nav2 可能在 FAST-LIO2 校平前控制车体运动。
+- 默认链路不再等待启动静止采样；FAST-LIO 后端自身 `IMU Initial Done` 出现前仍不要移动机器人。
+- `DELAY_LIVOX_DRIVERS=true` 只延迟 ROS 侧 sensor bridge 和 Mid-360 ROS 驱动。Gazebo URDF 中 `<always_on>true</always_on>` 的传感器本体仍可能在 Gazebo 内部运行。
+- 当前默认不启动 Nav2，因为 costmap/terrain layer 仍在调试中。确认 costmap 可用后再用 `ENABLE_NAV2=1` 恢复自动导航链路。
 - `src/lunar_rover_bringup/launch/fast_lio2_exploration_navigation.launch.py` 仍可用于调试，但当前推荐入口是 `scripts/restart_gated_mapping_exploration_navigation.sh`。
-- direct keyboard teleop 默认读取 `/dev/input/event3,/dev/input/event6,/dev/input/event9,/dev/input/event13`。如本机键盘设备变化，需要同步修改脚本中的 `--device` 参数。
+- direct keyboard teleop 默认自动发现 `/dev/input/by-id/*event-kbd`、`/dev/input/by-path/*event-kbd` 和系统 keyboard event 设备。只有需要限定某一把键盘时，才手动给 `scripts/run_direct_keyboard_teleop.sh --device ...`。
 
 ## 启动基础仿真
 

@@ -1,0 +1,10 @@
+<library path="lunar_rover_rviz_plugins">
+  <class
+    name="lunar_rover_mapping/RainbowOccupancyGrid"
+    type="lunar_rover_mapping::RainbowOccupancyGridDisplay"
+    base_class_type="rviz_common::Display">
+    <description>
+      Displays nav_msgs/OccupancyGrid cells as a flat 2D rainbow height map.
+    </description>
+  </class>
+</library>

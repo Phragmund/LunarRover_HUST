@@ -15,7 +15,7 @@ WALL_THICKNESS = 0.12
 WALL_HEIGHT = 1.0
 WALL_TRANSPARENCY = 0.30
 CEILING_THICKNESS = 0.03
-CEILING_TRANSPARENCY = 0.72
+CEILING_TRANSPARENCY = 1.00
 OBSTACLE_RADIUS = 0.10
 OBSTACLE_COUNT = 180
 SEED = 360335
@@ -157,13 +157,20 @@ def ceiling_xml() -> str:
     size_y = ROWS * CELL_PITCH + WALL_THICKNESS
     z = WALL_HEIGHT + CEILING_THICKNESS / 2.0
     return f"""
-        <visual name="maze_transparent_ceiling_visual">
+        <collision name="maze_lidar_ceiling_collision">
+          <laser_retro>1.0</laser_retro>
           <pose>0 0 {z:.3f} 0 0 0</pose>
           <geometry><box><size>{size_x:.3f} {size_y:.3f} {CEILING_THICKNESS:.3f}</size></box></geometry>
+        </collision>
+        <visual name="maze_transparent_ceiling_visual">
+          <laser_retro>1.0</laser_retro>
+          <pose>0 0 {z:.3f} 0 0 0</pose>
+          <cast_shadows>false</cast_shadows>
+          <geometry><box><size>{size_x:.3f} {size_y:.3f} {CEILING_THICKNESS:.3f}</size></box></geometry>
           <material>
-            <ambient>0.46 0.55 0.64 0.22</ambient>
-            <diffuse>0.58 0.70 0.82 0.22</diffuse>
-            <specular>0.04 0.05 0.06 1</specular>
+            <ambient>0 0 0 0</ambient>
+            <diffuse>0 0 0 0</diffuse>
+            <specular>0 0 0 0</specular>
           </material>
           <transparency>{CEILING_TRANSPARENCY:.2f}</transparency>
         </visual>"""

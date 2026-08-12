@@ -41,7 +41,7 @@ def generate_launch_description():
                     "sensor_noise": "false",
                     "spawn_x": "-3.92",
                     "spawn_y": "0.0",
-                    "spawn_z": "0.20",
+                    "spawn_z": "0.45",
                     "spawn_yaw": "0.0",
                 }.items(),
             ),

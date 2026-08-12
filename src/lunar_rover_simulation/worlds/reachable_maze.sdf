@@ -327,15 +327,22 @@
           <transparency>0.30</transparency>
         </visual>
 
-        <visual name="maze_transparent_ceiling_visual">
+        <collision name="maze_lidar_ceiling_collision">
+          <laser_retro>1.0</laser_retro>
           <pose>0 0 1.015 0 0 0</pose>
           <geometry><box><size>9.080 5.720 0.030</size></box></geometry>
+        </collision>
+        <visual name="maze_transparent_ceiling_visual">
+          <laser_retro>1.0</laser_retro>
+          <pose>0 0 1.015 0 0 0</pose>
+          <cast_shadows>false</cast_shadows>
+          <geometry><box><size>9.080 5.720 0.030</size></box></geometry>
           <material>
-            <ambient>0.46 0.55 0.64 0.22</ambient>
-            <diffuse>0.58 0.70 0.82 0.22</diffuse>
-            <specular>0.04 0.05 0.06 1</specular>
+            <ambient>0 0 0 0</ambient>
+            <diffuse>0 0 0 0</diffuse>
+            <specular>0 0 0 0</specular>
           </material>
-          <transparency>0.72</transparency>
+          <transparency>1.00</transparency>
         </visual>
       </link>
     </model>

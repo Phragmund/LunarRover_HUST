@@ -53,7 +53,10 @@ def _launch_setup(context):
     simulation_share = get_package_share_directory("lunar_rover_simulation")
     world_path = os.path.join(simulation_share, "worlds", f"{world_name}.sdf")
     controller_config = LaunchConfiguration("controller_config").perform(context)
-    bridge_config = os.path.join(simulation_share, "config", "bridge.yaml")
+    bridge_config = os.path.join(simulation_share, "config", "bridge_base.yaml")
+    sensor_bridge_config = os.path.join(
+        simulation_share, "config", "bridge_sensors.yaml"
+    )
     clock_bridge_config = os.path.join(
         tempfile.gettempdir(), f"lunar_rover_{world_name}_clock_bridge.yaml"
     )
@@ -225,6 +228,19 @@ def _launch_setup(context):
         ],
         output="screen",
     )
+    sensor_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="simulation_sensor_bridge",
+        parameters=[
+            {
+                "config_file": sensor_bridge_config,
+                "use_sim_time": True,
+            }
+        ],
+        condition=IfCondition(LaunchConfiguration("sensor_bridges")),
+        output="screen",
+    )
     mid360_livox_driver = Node(
         package="lunar_rover_simulation",
         executable="mid360_livox_sim_driver.py",
@@ -247,6 +263,7 @@ def _launch_setup(context):
                 "scan_lines": 11,
             }
         ],
+        condition=IfCondition(LaunchConfiguration("livox_drivers")),
         output="screen",
     )
     mid360_livox_imu_driver = Node(
@@ -263,6 +280,7 @@ def _launch_setup(context):
                 "imu_frame": "livox_imu_frame",
             }
         ],
+        condition=IfCondition(LaunchConfiguration("livox_drivers")),
         output="screen",
     )
     clock_bridge = Node(
@@ -292,6 +310,7 @@ def _launch_setup(context):
         gazebo,
         clock_bridge,
         bridge,
+        sensor_bridge,
         mid360_livox_driver,
         mid360_livox_imu_driver,
         robot_state_publisher,
@@ -306,7 +325,9 @@ def _launch_setup(context):
 
 def generate_launch_description():
     simulation_share = get_package_share_directory("lunar_rover_simulation")
+    description_share = get_package_share_directory("lunar_rover_description")
     model_path = os.path.join(simulation_share, "models")
+    description_resource_root = os.path.dirname(description_share)
     existing_resource_paths = (
         os.environ.get("GZ_SIM_RESOURCE_PATH", ""),
         os.environ.get("IGN_GAZEBO_RESOURCE_PATH", ""),
@@ -314,7 +335,7 @@ def generate_launch_description():
     resource_path = os.pathsep.join(
         dict.fromkeys(
             path
-            for path in (model_path, *existing_resource_paths)
+            for path in (model_path, description_resource_root, *existing_resource_paths)
             if path
         )
     )
@@ -349,6 +370,16 @@ def generate_launch_description():
                 "sensor_noise",
                 default_value="false",
                 description="Enable only Gazebo's built-in sensor noise model.",
+            ),
+            DeclareLaunchArgument(
+                "livox_drivers",
+                default_value="true",
+                description="Start the simulated Mid-360 ROS point cloud and IMU drivers.",
+            ),
+            DeclareLaunchArgument(
+                "sensor_bridges",
+                default_value="true",
+                description="Bridge simulated sensor topics from Gazebo into ROS.",
             ),
             DeclareLaunchArgument(
                 "controller_config",

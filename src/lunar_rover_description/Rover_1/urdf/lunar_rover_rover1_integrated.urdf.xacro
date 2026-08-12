@@ -1,0 +1,855 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="lunar_rover">
+  <xacro:arg name="use_sim" default="true" />
+  <xacro:arg name="sensor_noise" default="true" />
+  <xacro:arg name="controller_config" default="" />
+  <xacro:arg name="ros2_control_hardware_plugin" default="gz_ros2_control/GazeboSimSystem" />
+  <link name="base_link" />
+  <joint name="base_to_cad_joint" type="fixed">
+    <origin xyz="0.2745 0.135 0" rpy="0 0 -1.570796327" />
+    <parent link="base_link" />
+    <child link="cad_base_link" />
+  </joint>
+  <material name="sensor_gold">
+    <color rgba="0.72 0.52 0.12 1.0" />
+  </material>
+  <material name="camera_black">
+    <color rgba="0.04 0.05 0.05 1.0" />
+  </material>
+  <link name="cad_base_link">
+    <inertial>
+      <origin xyz="0.135 -0.27 -0.08" rpy="0 0 0" />
+      <mass value="2.66102812195056" />
+      <inertia ixx="0.0871730280399543" ixy="2.52653750807994E-17" ixz="-2.97276813408766E-17" iyy="0.10347857567854" iyz="-0.00112967041600876" izz="0.0397987616200948" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://lunar_rover_description/meshes/base_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision name="cad_base_link_chassis_collision">
+      <origin xyz="0.135 -0.27 -0.08" rpy="0 0 0" />
+      <geometry>
+        <box size="0.279 0.54 0.20" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="Left_bigrocker_Link">
+    <inertial>
+      <origin xyz="-0.11951969636961 0.15604688162279 0.00735982640416766" rpy="0 0 0" />
+      <mass value="0.67439545579626" />
+      <inertia ixx="0.000359243974983572" ixy="0.000122874386997477" ixz="-6.66882331680469E-08" iyy="0.000886427821175588" iyz="-1.31936193552274E-06" izz="0.00103852345526023" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://lunar_rover_description/meshes/Left_bigrocker_Link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.08023 0.15743 0.025" rpy="0 0 0" />
+      <geometry>
+        <box size="0.45238 0.37482 0.06" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="right_rocker_joint" type="revolute">
+    <origin xyz="0.296 -0.27 -0.03" rpy="-1.5708 0 1.5708" />
+    <parent link="cad_base_link" />
+    <child link="Left_bigrocker_Link" />
+    <axis xyz="0 0 -1" />
+    <limit lower="-0.45" upper="0.45" effort="180.0" velocity="1.5" />
+    <dynamics damping="12.0" friction="0.5" />
+  </joint>
+  <link name="Left_smallrocker_Link">
+    <inertial>
+      <origin xyz="-0.0213309620359554 0.133910043641305 0.0101376587914976" rpy="0 0 0" />
+      <mass value="0.977662571713298" />
+      <inertia ixx="0.000524075502155883" ixy="1.7204224377679E-05" ixz="3.03978610846935E-07" iyy="0.00126462319782756" iyz="-2.62454658279965E-06" izz="0.00140058100592311" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://lunar_rover_description/meshes/Left_smallrocker_Link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.02486 0.12617 0.025" rpy="0 0 0" />
+      <geometry>
+        <box size="0.40215 0.30210 0.055" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="right_bogie_joint" type="revolute">
+    <origin xyz="0.12096 0.061797 -0.0299" rpy="0 0 0" />
+    <parent link="Left_bigrocker_Link" />
+    <child link="Left_smallrocker_Link" />
+    <axis xyz="0 0 1" />
+    <limit lower="-0.61" upper="0.61" effort="120.0" velocity="1.8" />
+    <dynamics damping="8.0" friction="0.35" />
+  </joint>
+  <link name="LF_Link">
+    <inertial>
+      <origin xyz="-1.32935329411055E-13 2.60236276972137E-13 -5.55111512312578E-17" rpy="0 0 0" />
+      <mass value="0.623449062104894" />
+      <inertia ixx="0.000748502553145434" ixy="1.44701461822609E-20" ixz="3.74232737034773E-20" iyy="0.000748502553145434" iyz="3.45445951886511E-20" izz="0.00123723466374716" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://lunar_rover_description/meshes/LF_Link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.063" length="0.05" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="right_front_steering_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <mass value="0.05" />
+      <inertia ixx="0.00002" ixy="0" ixz="0" iyy="0.00002" iyz="0" izz="0.00002" />
+    </inertial>
+  </link>
+  <joint name="right_front_steering_joint" type="revolute">
+    <origin xyz="0.079563 0.23813 0.0001" rpy="0 0 0" />
+    <parent link="Left_smallrocker_Link" />
+    <child link="right_front_steering_link" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-1.0471975512" upper="1.0471975512" effort="40.0" velocity="1.2" />
+    <dynamics damping="0.8" friction="0.2" />
+  </joint>
+  <joint name="right_front_wheel_joint" type="continuous">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="right_front_steering_link" />
+    <child link="LF_Link" />
+    <axis xyz="0 0 1" />
+    <limit effort="70.0" velocity="12.0" />
+    <dynamics damping="0.08" friction="0.03" />
+  </joint>
+  <link name="LM_Link">
+    <inertial>
+      <origin xyz="-1.33004718350094E-13 2.60125254669674E-13 0" rpy="0 0 0" />
+      <mass value="0.623449062104894" />
+      <inertia ixx="0.000748502553145435" ixy="-5.6468863150286E-21" ixz="-3.1619185424253E-19" iyy="0.000748502553145435" iyz="3.10381935884684E-20" izz="0.00123723466374716" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://lunar_rover_description/meshes/LM_Link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.063" length="0.05" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="right_middle_wheel_joint" type="continuous">
+    <origin xyz="-0.13286 0.21354 -0.0001" rpy="0 0 0" />
+    <parent link="Left_smallrocker_Link" />
+    <child link="LM_Link" />
+    <axis xyz="0 0 1" />
+    <limit effort="70.0" velocity="12.0" />
+    <dynamics damping="0.08" friction="0.03" />
+  </joint>
+  <link name="LB_Link">
+    <inertial>
+      <origin xyz="-6.58695320510105E-13 -4.51194637207664E-13 5.55111512312578E-17" rpy="0 0 0" />
+      <mass value="0.623449062104894" />
+      <inertia ixx="0.000748502553145435" ixy="-5.64688631502867E-21" ixz="-6.76735045147817E-21" iyy="0.000748502553145435" iyz="6.34575975651418E-21" izz="0.00123723466374716" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://lunar_rover_description/meshes/LB_Link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.063" length="0.05" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="right_rear_steering_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <mass value="0.05" />
+      <inertia ixx="0.00002" ixy="0" ixz="0" iyy="0.00002" iyz="0" izz="0.00002" />
+    </inertial>
+  </link>
+  <joint name="right_rear_steering_joint" type="revolute">
+    <origin xyz="-0.20979 0.30639 0" rpy="0 0 0" />
+    <parent link="Left_bigrocker_Link" />
+    <child link="right_rear_steering_link" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-1.0471975512" upper="1.0471975512" effort="40.0" velocity="1.2" />
+    <dynamics damping="0.8" friction="0.2" />
+  </joint>
+  <joint name="right_rear_wheel_joint" type="continuous">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="right_rear_steering_link" />
+    <child link="LB_Link" />
+    <axis xyz="0 0 1" />
+    <limit effort="70.0" velocity="12.0" />
+    <dynamics damping="0.08" friction="0.03" />
+  </joint>
+  <link name="Right_bigrocker_Link">
+    <inertial>
+      <origin xyz="-0.136957555403586 0.141396165314059 -0.00734079878938477" rpy="0 0 0" />
+      <mass value="0.674395455781592" />
+      <inertia ixx="0.000338280477553281" ixy="6.00585519222765E-05" ixz="-8.38797074917229E-08" iyy="0.000907391317991293" iyz="1.31837916367076E-06" izz="0.00103852345481825" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://lunar_rover_description/meshes/Right_bigrocker_Link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="-0.09952 0.14457 -0.025" rpy="0 0 0" />
+      <geometry>
+        <box size="0.47518 0.34912 0.06" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_rocker_joint" type="revolute">
+    <origin xyz="-0.026 -0.27 -0.03" rpy="-1.5708 0 1.5708" />
+    <parent link="cad_base_link" />
+    <child link="Right_bigrocker_Link" />
+    <axis xyz="0 0 -1" />
+    <limit lower="-0.45" upper="0.45" effort="180.0" velocity="1.5" />
+    <dynamics damping="12.0" friction="0.5" />
+  </joint>
+  <link name="Right_smallrocker_Link">
+    <inertial>
+      <origin xyz="0.00750934323907551 0.135390248883595 -0.0101434383888438" rpy="0 0 0" />
+      <mass value="0.977662571887994" />
+      <inertia ixx="0.00056440386619048" ixy="0.000168922127395124" ixz="2.58837692035758E-07" iyy="0.00122429483621297" iyz="2.6293790424414E-06" izz="0.00140058100764939" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://lunar_rover_description/meshes/Right_smallrocker_Link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0.01129 0.12513 -0.025" rpy="0 0 0" />
+      <geometry>
+        <box size="0.39304 0.30000 0.055" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_bogie_joint" type="revolute">
+    <origin xyz="0.11314 0.075167 0.0301" rpy="0 0 0" />
+    <parent link="Right_bigrocker_Link" />
+    <child link="Right_smallrocker_Link" />
+    <axis xyz="0 0 1" />
+    <limit lower="-0.61" upper="0.61" effort="120.0" velocity="1.8" />
+    <dynamics damping="8.0" friction="0.35" />
+  </joint>
+  <link name="RF_Link">
+    <inertial>
+      <origin xyz="-3.46944695195361E-18 0 6.93889390390723E-18" rpy="0 0 0" />
+      <mass value="0.623449062104894" />
+      <inertia ixx="0.000748502553145434" ixy="-1.05879118406786E-20" ixz="-5.65121948077026E-19" iyy="0.000748502553145434" iyz="2.12731797978661E-20" izz="0.00123723466374716" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://lunar_rover_description/meshes/RF_Link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.063" length="0.05" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_front_steering_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <mass value="0.05" />
+      <inertia ixx="0.00002" ixy="0" ixz="0" iyy="0.00002" iyz="0" izz="0.00002" />
+    </inertial>
+  </link>
+  <joint name="left_front_steering_joint" type="revolute">
+    <origin xyz="0.12819 0.21589 0.0001" rpy="0 0 0" />
+    <parent link="Right_smallrocker_Link" />
+    <child link="left_front_steering_link" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-1.0471975512" upper="1.0471975512" effort="40.0" velocity="1.2" />
+    <dynamics damping="0.8" friction="0.2" />
+  </joint>
+  <joint name="left_front_wheel_joint" type="continuous">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="left_front_steering_link" />
+    <child link="RF_Link" />
+    <axis xyz="0 0 1" />
+    <limit effort="70.0" velocity="12.0" />
+    <dynamics damping="0.08" friction="0.03" />
+  </joint>
+  <link name="RM_Link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <mass value="0.623449062104895" />
+      <inertia ixx="0.000748502553145435" ixy="-1.97641021026002E-20" ixz="-5.65683557171579E-19" iyy="0.000748502553145435" iyz="2.22606363650714E-20" izz="0.00123723466374716" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://lunar_rover_description/meshes/RM_Link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.063" length="0.05" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_middle_wheel_joint" type="continuous">
+    <origin xyz="-0.084631 0.23683 -0.0001" rpy="0 0 0" />
+    <parent link="Right_smallrocker_Link" />
+    <child link="RM_Link" />
+    <axis xyz="0 0 1" />
+    <limit effort="70.0" velocity="12.0" />
+    <dynamics damping="0.08" friction="0.03" />
+  </joint>
+  <link name="RB_Link">
+    <inertial>
+      <origin xyz="0 5.55111512312578E-17 3.46944695195361E-18" rpy="0 0 0" />
+      <mass value="0.623449062104895" />
+      <inertia ixx="0.000748502553145435" ixy="2.29404756548026E-21" ixz="-5.08157673115411E-19" iyy="0.000748502553145435" iyz="-4.08279655159976E-20" izz="0.00123723466374716" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://lunar_rover_description/meshes/RB_Link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.063" length="0.05" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="left_rear_steering_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <mass value="0.05" />
+      <inertia ixx="0.00002" ixy="0" ixz="0" iyy="0.00002" iyz="0" izz="0.00002" />
+    </inertial>
+  </link>
+  <joint name="left_rear_steering_joint" type="revolute">
+    <origin xyz="-0.2443 0.28045 0" rpy="0 0 0" />
+    <parent link="Right_bigrocker_Link" />
+    <child link="left_rear_steering_link" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-1.0471975512" upper="1.0471975512" effort="40.0" velocity="1.2" />
+    <dynamics damping="0.8" friction="0.2" />
+  </joint>
+  <joint name="left_rear_wheel_joint" type="continuous">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="left_rear_steering_link" />
+    <child link="RB_Link" />
+    <axis xyz="0 0 1" />
+    <limit effort="70.0" velocity="12.0" />
+    <dynamics damping="0.08" friction="0.03" />
+  </joint>
+  <link name="sensor_mast_link">
+    <visual>
+      <origin xyz="0 0 0.0775" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.012" length="0.155" />
+      </geometry>
+      <material name="sensor_gold" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.0775" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.012" length="0.155" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.0775" rpy="0 0 0" />
+      <mass value="0.12" />
+      <inertia ixx="0.000242" ixy="0" ixz="0" iyy="0.000242" iyz="0" izz="0.0000173" />
+    </inertial>
+  </link>
+  <joint name="sensor_mast_joint" type="fixed">
+    <origin xyz="0.135 -0.21 0.02" rpy="0 0 0" />
+    <parent link="cad_base_link" />
+    <child link="sensor_mast_link" />
+  </joint>
+  <link name="mid360_link">
+    <visual>
+      <origin xyz="0 0 0.03" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.045" length="0.06" />
+      </geometry>
+      <material name="sensor_gold" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.03" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.045" length="0.06" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.03" rpy="0 0 0" />
+      <mass value="0.265" />
+      <inertia ixx="0.000162" ixy="0" ixz="0" iyy="0.000162" iyz="0" izz="0.000268" />
+    </inertial>
+  </link>
+  <joint name="mid360_joint" type="fixed">
+    <origin xyz="0 0 0.155" rpy="0 0.610865238 1.570796327" />
+    <parent link="sensor_mast_link" />
+    <child link="mid360_link" />
+  </joint>
+  <link name="livox_frame" />
+  <joint name="livox_frame_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="mid360_link" />
+    <child link="livox_frame" />
+  </joint>
+  <link name="livox_imu_frame" />
+  <joint name="livox_imu_frame_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="mid360_link" />
+    <child link="livox_imu_frame" />
+  </joint>
+  <link name="gemini335_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.035 0.12 0.032" />
+      </geometry>
+      <material name="camera_black" />
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <box size="0.035 0.12 0.032" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <mass value="0.30" />
+      <inertia ixx="0.000444" ixy="0" ixz="0" iyy="0.0000556" iyz="0" izz="0.000456" />
+    </inertial>
+  </link>
+  <joint name="gemini335_joint" type="fixed">
+    <origin xyz="0.135 0.0175 -0.075" rpy="0 0 1.570796327" />
+    <parent link="cad_base_link" />
+    <child link="gemini335_link" />
+  </joint>
+  <link name="gemini335_color_optical_frame" />
+  <joint name="gemini335_color_optical_joint" type="fixed">
+    <origin xyz="0.0175 0 0" rpy="-1.570796327 0 -1.570796327" />
+    <parent link="gemini335_link" />
+    <child link="gemini335_color_optical_frame" />
+  </joint>
+  <link name="gemini335_depth_optical_frame" />
+  <joint name="gemini335_depth_optical_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="gemini335_color_optical_frame" />
+    <child link="gemini335_depth_optical_frame" />
+  </joint>
+  <link name="camera_color_optical_frame" />
+  <joint name="camera_color_optical_alias_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="gemini335_color_optical_frame" />
+    <child link="camera_color_optical_frame" />
+  </joint>
+  <link name="camera_depth_optical_frame" />
+  <joint name="camera_depth_optical_alias_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="gemini335_depth_optical_frame" />
+    <child link="camera_depth_optical_frame" />
+  </joint>
+  <ros2_control name="LunarRoverRover1System" type="system">
+    <hardware>
+      <plugin>$(arg ros2_control_hardware_plugin)</plugin>
+    </hardware>
+    <joint name="left_front_steering_joint">
+      <command_interface name="position">
+        <param name="min">-1.0471975512</param>
+        <param name="max">1.0471975512</param>
+      </command_interface>
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="right_front_steering_joint">
+      <command_interface name="position">
+        <param name="min">-1.0471975512</param>
+        <param name="max">1.0471975512</param>
+      </command_interface>
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="left_rear_steering_joint">
+      <command_interface name="position">
+        <param name="min">-1.0471975512</param>
+        <param name="max">1.0471975512</param>
+      </command_interface>
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="right_rear_steering_joint">
+      <command_interface name="position">
+        <param name="min">-1.0471975512</param>
+        <param name="max">1.0471975512</param>
+      </command_interface>
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="left_front_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-12.0</param>
+        <param name="max">12.0</param>
+      </command_interface>
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="right_front_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-12.0</param>
+        <param name="max">12.0</param>
+      </command_interface>
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="left_middle_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-12.0</param>
+        <param name="max">12.0</param>
+      </command_interface>
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="right_middle_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-12.0</param>
+        <param name="max">12.0</param>
+      </command_interface>
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="left_rear_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-12.0</param>
+        <param name="max">12.0</param>
+      </command_interface>
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="right_rear_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-12.0</param>
+        <param name="max">12.0</param>
+      </command_interface>
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="left_rocker_joint">
+      <command_interface name="effort">
+        <param name="min">-180.0</param>
+        <param name="max">180.0</param>
+      </command_interface>
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="right_rocker_joint">
+      <command_interface name="effort">
+        <param name="min">-180.0</param>
+        <param name="max">180.0</param>
+      </command_interface>
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="left_bogie_joint">
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+    <joint name="right_bogie_joint">
+      <state_interface name="position" />
+      <state_interface name="velocity" />
+    </joint>
+  </ros2_control>
+  <xacro:if value="$(arg use_sim)">
+    <gazebo>
+      <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+        <parameters>$(arg controller_config)</parameters>
+      </plugin>
+      <plugin filename="libignition-gazebo-odometry-publisher-system.so" name="ignition::gazebo::systems::OdometryPublisher">
+        <odom_frame>world</odom_frame>
+        <robot_base_frame>base_link</robot_base_frame>
+        <odom_publish_frequency>50</odom_publish_frequency>
+        <odom_topic>/simulation/ground_truth/odometry</odom_topic>
+        <odom_covariance_topic>/simulation/ground_truth/odometry_with_covariance</odom_covariance_topic>
+        <tf_topic>/simulation/ground_truth/tf</tf_topic>
+        <dimensions>3</dimensions>
+        <gaussian_noise>0.0</gaussian_noise>
+      </plugin>
+      <plugin filename="libignition-gazebo-touchplugin-system.so" name="ignition::gazebo::systems::TouchPlugin">
+        <target>rock</target>
+        <namespace>simulation/rock_collision</namespace>
+        <time>0.001</time>
+        <enabled>true</enabled>
+      </plugin>
+      <plugin filename="libignition-gazebo-touchplugin-system.so" name="ignition::gazebo::systems::TouchPlugin">
+        <target>step</target>
+        <namespace>simulation/step_collision</namespace>
+        <time>0.001</time>
+        <enabled>true</enabled>
+      </plugin>
+    </gazebo>
+    <gazebo reference="RB_Link">
+      <mu1>0.80</mu1>
+      <mu2>0.50</mu2>
+      <kp>300000.0</kp>
+      <kd>60.0</kd>
+      <minDepth>0.001</minDepth>
+      <maxVel>0.10</maxVel>
+      <selfCollide>false</selfCollide>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="RM_Link">
+      <mu1>0.80</mu1>
+      <mu2>0.50</mu2>
+      <kp>300000.0</kp>
+      <kd>60.0</kd>
+      <minDepth>0.001</minDepth>
+      <maxVel>0.10</maxVel>
+      <selfCollide>false</selfCollide>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="RF_Link">
+      <mu1>0.80</mu1>
+      <mu2>0.50</mu2>
+      <kp>300000.0</kp>
+      <kd>60.0</kd>
+      <minDepth>0.001</minDepth>
+      <maxVel>0.10</maxVel>
+      <selfCollide>false</selfCollide>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="LB_Link">
+      <mu1>0.80</mu1>
+      <mu2>0.50</mu2>
+      <kp>300000.0</kp>
+      <kd>60.0</kd>
+      <minDepth>0.001</minDepth>
+      <maxVel>0.10</maxVel>
+      <selfCollide>false</selfCollide>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="LM_Link">
+      <mu1>0.80</mu1>
+      <mu2>0.50</mu2>
+      <kp>300000.0</kp>
+      <kd>60.0</kd>
+      <minDepth>0.001</minDepth>
+      <maxVel>0.10</maxVel>
+      <selfCollide>false</selfCollide>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="LF_Link">
+      <mu1>0.80</mu1>
+      <mu2>0.50</mu2>
+      <kp>300000.0</kp>
+      <kd>60.0</kd>
+      <minDepth>0.001</minDepth>
+      <maxVel>0.10</maxVel>
+      <selfCollide>false</selfCollide>
+      <material>Gazebo/DarkGrey</material>
+    </gazebo>
+    <gazebo reference="mid360_link">
+      <sensor name="mid360_gpu_lidar" type="gpu_lidar">
+        <always_on>true</always_on>
+        <visualize>true</visualize>
+        <update_rate>10</update_rate>
+        <topic>/mid360/scan</topic>
+        <gz_frame_id>livox_frame</gz_frame_id>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>1800</samples>
+              <resolution>1</resolution>
+              <min_angle>-3.141592654</min_angle>
+              <max_angle>3.141592654</max_angle>
+            </horizontal>
+            <vertical>
+              <samples>11</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.122173048</min_angle>
+              <max_angle>0.907571211</max_angle>
+            </vertical>
+          </scan>
+          <range>
+            <min>0.10</min>
+            <max>40.0</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.0</stddev>
+          </noise>
+        </lidar>
+      </sensor>
+      <sensor name="mid360_imu" type="imu">
+        <always_on>true</always_on>
+        <update_rate>200</update_rate>
+        <topic>/mid360/imu</topic>
+        <gz_frame_id>livox_imu_frame</gz_frame_id>
+        <imu>
+          <angular_velocity>
+            <x>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <xacro:if value="$(arg sensor_noise)">
+                  <stddev>0.0007</stddev>
+                </xacro:if>
+                <xacro:unless value="$(arg sensor_noise)">
+                  <stddev>0.0</stddev>
+                </xacro:unless>
+              </noise>
+            </x>
+            <y>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <xacro:if value="$(arg sensor_noise)">
+                  <stddev>0.0007</stddev>
+                </xacro:if>
+                <xacro:unless value="$(arg sensor_noise)">
+                  <stddev>0.0</stddev>
+                </xacro:unless>
+              </noise>
+            </y>
+            <z>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <xacro:if value="$(arg sensor_noise)">
+                  <stddev>0.0007</stddev>
+                </xacro:if>
+                <xacro:unless value="$(arg sensor_noise)">
+                  <stddev>0.0</stddev>
+                </xacro:unless>
+              </noise>
+            </z>
+          </angular_velocity>
+          <linear_acceleration>
+            <x>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <xacro:if value="$(arg sensor_noise)">
+                  <stddev>0.02</stddev>
+                </xacro:if>
+                <xacro:unless value="$(arg sensor_noise)">
+                  <stddev>0.0</stddev>
+                </xacro:unless>
+              </noise>
+            </x>
+            <y>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <xacro:if value="$(arg sensor_noise)">
+                  <stddev>0.02</stddev>
+                </xacro:if>
+                <xacro:unless value="$(arg sensor_noise)">
+                  <stddev>0.0</stddev>
+                </xacro:unless>
+              </noise>
+            </y>
+            <z>
+              <noise type="gaussian">
+                <mean>0.0</mean>
+                <xacro:if value="$(arg sensor_noise)">
+                  <stddev>0.02</stddev>
+                </xacro:if>
+                <xacro:unless value="$(arg sensor_noise)">
+                  <stddev>0.0</stddev>
+                </xacro:unless>
+              </noise>
+            </z>
+          </linear_acceleration>
+        </imu>
+      </sensor>
+    </gazebo>
+    <gazebo reference="gemini335_link">
+      <sensor name="gemini335_rgbd" type="rgbd_camera">
+        <always_on>true</always_on>
+        <visualize>true</visualize>
+        <update_rate>15</update_rate>
+        <topic>/gemini335</topic>
+        <gz_frame_id>gemini335_color_optical_frame</gz_frame_id>
+        <camera>
+          <optical_frame_id>gemini335_color_optical_frame</optical_frame_id>
+          <horizontal_fov>1.570796327</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>400</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.10</near>
+            <far>10.0</far>
+          </clip>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <xacro:if value="$(arg sensor_noise)">
+              <stddev>0.003</stddev>
+            </xacro:if>
+            <xacro:unless value="$(arg sensor_noise)">
+              <stddev>0.0</stddev>
+            </xacro:unless>
+          </noise>
+        </camera>
+      </sensor>
+    </gazebo>
+  </xacro:if>
+</robot>

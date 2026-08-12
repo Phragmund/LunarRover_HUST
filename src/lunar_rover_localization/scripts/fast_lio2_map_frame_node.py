@@ -137,6 +137,9 @@ class FastLio2MapFrameNode(Node):
             .value.strip()
             .lower()
         )
+        self.imu_mount_pitch = math.radians(
+            float(self.declare_parameter("imu_mount_pitch_deg", 35.273).value)
+        )
         self.imu_mount_pitch_samples = max(
             1, int(self.declare_parameter("imu_mount_pitch_samples", 80).value)
         )
@@ -172,6 +175,24 @@ class FastLio2MapFrameNode(Node):
             "map_cloud_topic", "/localization/lio_map_cloud"
         ).value
         self.restamp_outputs = bool(self.declare_parameter("restamp_outputs", True).value)
+        self.publish_odom = bool_value(self.declare_parameter("publish_odom", True).value)
+        self.publish_path = bool_value(self.declare_parameter("publish_path", True).value)
+        self.publish_registered_cloud = bool_value(
+            self.declare_parameter("publish_registered_cloud", True).value
+        )
+        self.publish_map_cloud = bool_value(
+            self.declare_parameter("publish_map_cloud", True).value
+        )
+        self.path_max_rate_hz = float(
+            self.declare_parameter("path_max_rate_hz", 0.0).value
+        )
+        self.path_max_poses = int(self.declare_parameter("path_max_poses", 0).value)
+        self.registered_cloud_max_rate_hz = float(
+            self.declare_parameter("registered_cloud_max_rate_hz", 0.0).value
+        )
+        self.map_cloud_max_rate_hz = float(
+            self.declare_parameter("map_cloud_max_rate_hz", 0.2).value
+        )
         self.max_abs_position = float(
             self.declare_parameter("max_abs_position", 1000.0).value
         )
@@ -199,16 +220,31 @@ class FastLio2MapFrameNode(Node):
         self.level_correction_anchor_position = bool_value(
             self.declare_parameter("level_correction_anchor_position", True).value
         )
+        self.fixed_level_correction_rpy = (
+            math.radians(
+                float(self.declare_parameter("level_correction_roll_deg", -0.58).value)
+            ),
+            math.radians(
+                float(self.declare_parameter("level_correction_pitch_deg", -0.67).value)
+            ),
+            math.radians(
+                float(self.declare_parameter("level_correction_yaw_deg", 0.007).value)
+            ),
+        )
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.map_from_lio = None
         self.lio_body_from_base = None
-        self.level_correction = (
-            None
-            if self.level_correction_source in ("startup_lio_pose", "lio", "startup")
-            else ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
-        )
+        if self.level_correction_source in ("startup_lio_pose", "lio", "startup"):
+            self.level_correction = None
+        elif self.level_correction_source in ("fixed", "fixed_rpy", "manual"):
+            self.level_correction = (
+                (0.0, 0.0, 0.0),
+                q_from_rpy(*self.fixed_level_correction_rpy),
+            )
+        else:
+            self.level_correction = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
         self.level_sample_count = 0
         self.level_roll_sin_sum = 0.0
         self.level_roll_cos_sum = 0.0
@@ -222,42 +258,99 @@ class FastLio2MapFrameNode(Node):
         self.imu_pitch_sample_count = 0
         self.imu_pitch_sum = 0.0
         self.last_pose_valid = False
+        self.last_path_publish_time_ns = None
+        self.last_registered_cloud_publish_time_ns = None
+        self.last_map_cloud_publish_time_ns = None
+        self.path_publish_period_ns = self.rate_period_ns(self.path_max_rate_hz)
+        self.registered_cloud_publish_period_ns = self.rate_period_ns(
+            self.registered_cloud_max_rate_hz
+        )
+        self.map_cloud_publish_period_ns = self.rate_period_ns(self.map_cloud_max_rate_hz)
         self.wait_timer = self.create_timer(0.1, self.try_initialize)
-        self.cloud_qos = QoSProfile(
+        self.cloud_input_qos = QoSProfile(
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+        )
+        self.cloud_output_qos = QoSProfile(
             history=HistoryPolicy.KEEP_LAST,
             depth=5,
             reliability=ReliabilityPolicy.RELIABLE,
         )
 
-        self.odom_pub = self.create_publisher(Odometry, self.odom_topic, 20)
-        self.path_pub = self.create_publisher(Path, self.path_topic, 10)
-        self.registered_pub = self.create_publisher(
-            PointCloud2, self.registered_topic, self.cloud_qos
+        self.odom_pub = (
+            self.create_publisher(Odometry, self.odom_topic, 20)
+            if self.publish_odom
+            else None
         )
-        self.map_cloud_pub = self.create_publisher(
-            PointCloud2, self.map_cloud_topic, self.cloud_qos
+        self.path_pub = (
+            self.create_publisher(Path, self.path_topic, 10)
+            if self.publish_path
+            else None
+        )
+        self.registered_pub = (
+            self.create_publisher(PointCloud2, self.registered_topic, self.cloud_output_qos)
+            if self.publish_registered_cloud
+            else None
+        )
+        self.map_cloud_pub = (
+            self.create_publisher(PointCloud2, self.map_cloud_topic, self.cloud_output_qos)
+            if self.publish_map_cloud
+            else None
         )
 
         self.create_subscription(Odometry, self.raw_odom_topic, self.on_odom, 20)
         if self.imu_mount_pitch_source in ("startup_imu_pitch", "imu", "measured"):
             self.create_subscription(Imu, self.imu_topic, self.on_imu, 50)
-        self.create_subscription(Path, self.raw_path_topic, self.on_path, 10)
-        self.create_subscription(
-            PointCloud2,
-            self.raw_registered_topic,
-            self.on_registered_cloud,
-            self.cloud_qos,
-        )
-        self.create_subscription(
-            PointCloud2,
-            self.raw_map_cloud_topic,
-            self.on_map_cloud,
-            self.cloud_qos,
-        )
+        if self.publish_path:
+            self.create_subscription(Path, self.raw_path_topic, self.on_path, 10)
+        if self.publish_registered_cloud:
+            self.create_subscription(
+                PointCloud2,
+                self.raw_registered_topic,
+                self.on_registered_cloud,
+                self.cloud_input_qos,
+            )
+        if self.publish_map_cloud:
+            self.create_subscription(
+                PointCloud2,
+                self.raw_map_cloud_topic,
+                self.on_map_cloud,
+                self.cloud_input_qos,
+            )
 
         self.get_logger().info(
-            "FAST-LIO2 map frame: raw camera_init products -> level map products"
+            "FAST-LIO2 map frame: raw camera_init products -> level map products; "
+            f"publish_odom={self.publish_odom}; publish_path={self.publish_path}; "
+            f"publish_registered_cloud={self.publish_registered_cloud}; "
+            f"publish_map_cloud={self.publish_map_cloud}; "
+            f"path_max_rate_hz={self.path_max_rate_hz:.3f}; "
+            f"path_max_poses={self.path_max_poses}; "
+            f"registered_cloud_max_rate_hz={self.registered_cloud_max_rate_hz:.3f}; "
+            f"map_cloud_max_rate_hz={self.map_cloud_max_rate_hz:.3f}"
         )
+        if self.level_correction_source in ("fixed", "fixed_rpy", "manual"):
+            roll, pitch, yaw = self.fixed_level_correction_rpy
+            self.get_logger().info(
+                "Using fixed FAST-LIO level correction: "
+                f"rpy=({math.degrees(roll):+.3f}, "
+                f"{math.degrees(pitch):+.3f}, {math.degrees(yaw):+.3f}) deg"
+            )
+
+    def rate_period_ns(self, max_rate_hz):
+        if not math.isfinite(max_rate_hz) or max_rate_hz <= 0.0:
+            return 0
+        return max(1, int(1.0e9 / max_rate_hz))
+
+    def cloud_publish_allowed(self, last_time_attr, period_ns):
+        if period_ns <= 0:
+            return True
+        now_ns = self.get_clock().now().nanoseconds
+        last_ns = getattr(self, last_time_attr)
+        if last_ns is None or now_ns - last_ns >= period_ns:
+            setattr(self, last_time_attr, now_ns)
+            return True
+        return False
 
     def on_imu(self, msg):
         if self.calibrated_imu_pitch is not None:
@@ -318,6 +411,12 @@ class FastLio2MapFrameNode(Node):
                 q_from_rpy(urdf_roll, self.calibrated_imu_pitch, urdf_yaw)
             )
             pitch_source = "startup_imu_pitch"
+        elif self.imu_mount_pitch_source in ("fixed", "fixed_pitch", "manual"):
+            urdf_roll, _, urdf_yaw = rpy_from_q(base_from_lio_body_q)
+            base_from_lio_body_q = q_normalize(
+                q_from_rpy(urdf_roll, self.imu_mount_pitch, urdf_yaw)
+            )
+            pitch_source = "fixed"
         elif abs(self.imu_mount_pitch_correction) > 0.0:
             base_from_lio_body_q = q_normalize(
                 q_multiply(
@@ -334,6 +433,7 @@ class FastLio2MapFrameNode(Node):
             f"Using URDF-derived {self.base_frame}->{self.lio_body_frame} as "
             f"{self.map_frame}->{self.raw_lio_map_frame}; "
             f"pitch={math.degrees(pitch):.3f} deg; pitch_source={pitch_source}; "
+            f"fixed_pitch={math.degrees(self.imu_mount_pitch):.3f} deg; "
             f"pitch_correction={math.degrees(self.imu_mount_pitch_correction):.3f} deg"
         )
         self.wait_timer.cancel()
@@ -479,11 +579,6 @@ class FastLio2MapFrameNode(Node):
     def on_odom(self, msg):
         if not self.initialized():
             return
-        out = deepcopy(msg)
-        out.header.frame_id = self.map_frame
-        if self.restamp_outputs:
-            out.header.stamp = self.get_clock().now().to_msg()
-        out.child_frame_id = self.base_frame
         uncorrected_t, uncorrected_q = self.raw_pose_to_map_base_uncorrected(
             msg.pose.pose.position, msg.pose.pose.orientation
         )
@@ -499,10 +594,24 @@ class FastLio2MapFrameNode(Node):
             )
             return
         self.last_pose_valid = True
+        if not self.publish_odom:
+            return
+        out = deepcopy(msg)
+        out.header.frame_id = self.map_frame
+        if self.restamp_outputs:
+            out.header.stamp = self.get_clock().now().to_msg()
+        out.child_frame_id = self.base_frame
         self.fill_pose(out.pose.pose, t, q)
         self.odom_pub.publish(out)
 
     def on_path(self, msg):
+        if not self.publish_path:
+            return
+        if not self.cloud_publish_allowed(
+            "last_path_publish_time_ns",
+            self.path_publish_period_ns,
+        ):
+            return
         if not self.initialized() or not self.level_initialized():
             return
         out = Path()
@@ -510,7 +619,10 @@ class FastLio2MapFrameNode(Node):
         out.header.frame_id = self.map_frame
         if self.restamp_outputs:
             out.header.stamp = self.get_clock().now().to_msg()
-        for pose_stamped in msg.poses:
+        poses = msg.poses
+        if self.path_max_poses > 0 and len(poses) > self.path_max_poses:
+            poses = poses[-self.path_max_poses :]
+        for pose_stamped in poses:
             pose_out = PoseStamped()
             pose_out.header = pose_stamped.header
             pose_out.header.frame_id = self.map_frame
@@ -574,11 +686,25 @@ class FastLio2MapFrameNode(Node):
         return point_cloud2.create_cloud(header, compact_fields, points)
 
     def on_registered_cloud(self, msg):
+        if not self.publish_registered_cloud:
+            return
+        if not self.cloud_publish_allowed(
+            "last_registered_cloud_publish_time_ns",
+            self.registered_cloud_publish_period_ns,
+        ):
+            return
         out = self.transform_cloud(msg)
         if out is not None:
             self.registered_pub.publish(out)
 
     def on_map_cloud(self, msg):
+        if not self.publish_map_cloud:
+            return
+        if not self.cloud_publish_allowed(
+            "last_map_cloud_publish_time_ns",
+            self.map_cloud_publish_period_ns,
+        ):
+            return
         out = self.transform_cloud(msg)
         if out is not None:
             self.map_cloud_pub.publish(out)

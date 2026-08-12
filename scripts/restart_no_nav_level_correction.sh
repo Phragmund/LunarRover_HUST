@@ -29,7 +29,7 @@ ros2 run lunar_rover_mapping composite_wheel_imu_odometry_node.py \
 
 sleep 3
 
-echo "[$(date +%T)] starting FAST-LIO localization with startup level correction"
+echo "[$(date +%T)] starting FAST-LIO localization with fixed map leveling"
 ros2 launch lunar_rover_localization fast_lio2_localization.launch.py \
   run_fast_lio2:=true \
   direct_fast_lio_node:=true \
@@ -37,14 +37,12 @@ ros2 launch lunar_rover_localization fast_lio2_localization.launch.py \
   run_map_frame_node:=true \
   run_input_normalizer:=false \
   run_sim_imu_adapter:=false \
-  imu_mount_pitch_source:=startup_imu_pitch \
-  imu_mount_pitch_samples:=80 \
-  imu_mount_pitch_max_gyro_radps:=0.02 \
-  level_correction_source:=startup_lio_pose \
-  level_correction_samples:=40 \
-  level_correction_start_delay_sec:=20.0 \
-  level_correction_preserve_yaw:=true \
-  level_correction_anchor_position:=true &
+  imu_mount_pitch_source:=fixed \
+  imu_mount_pitch_deg:=35.273 \
+  level_correction_source:=fixed \
+  level_correction_roll_deg:=-0.58 \
+  level_correction_pitch_deg:=-0.67 \
+  level_correction_yaw_deg:=0.007 &
 
 sleep 8
 

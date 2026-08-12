@@ -1,6 +1,6 @@
 controller_manager:
   ros__parameters:
-    update_rate: 100
+    update_rate: 1000
     use_sim_time: true
 
     joint_state_broadcaster:
@@ -36,7 +36,7 @@ rover_controller:
     command_timeout: 0.25
     steering_alignment_tolerance: 0.08
     max_steering_rate: 1.2
-    max_wheel_angular_acceleration: 10.0
+    max_wheel_angular_acceleration: 20.0
     stop_wheels_until_steered: true
 
 rocker_differential_controller:
@@ -47,5 +47,5 @@ rocker_differential_controller:
     coupling_sign: 1.0
     equilibrium_offset: 0.0
     stiffness: 120.0
-    damping: 18.0
+    damping: 22.0
     max_effort: 120.0

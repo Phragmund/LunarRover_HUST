@@ -35,6 +35,8 @@ def _launch_setup(context):
                     "headless": LaunchConfiguration("headless"),
                     "rviz": LaunchConfiguration("rviz"),
                     "sensor_noise": LaunchConfiguration("sensor_noise"),
+                    "livox_drivers": LaunchConfiguration("livox_drivers"),
+                    "sensor_bridges": LaunchConfiguration("sensor_bridges"),
                     "controller_config": str(
                         control_share / "config" / "controllers.yaml"
                     ),
@@ -88,6 +90,16 @@ def generate_launch_description():
                 "sensor_noise",
                 default_value="false",
                 description="Enable only Gazebo's sensor noise model.",
+            ),
+            DeclareLaunchArgument(
+                "livox_drivers",
+                default_value="true",
+                description="Start the simulated Mid-360 ROS point cloud and IMU drivers.",
+            ),
+            DeclareLaunchArgument(
+                "sensor_bridges",
+                default_value="true",
+                description="Bridge simulated sensor topics from Gazebo into ROS.",
             ),
             OpaqueFunction(function=_launch_setup),
         ]

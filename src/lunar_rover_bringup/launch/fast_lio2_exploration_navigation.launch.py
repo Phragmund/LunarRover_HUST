@@ -40,21 +40,25 @@ def generate_launch_description():
             DeclareLaunchArgument("sensor_noise", default_value="false"),
             DeclareLaunchArgument("spawn_x", default_value="-3.92"),
             DeclareLaunchArgument("spawn_y", default_value="0.0"),
-            DeclareLaunchArgument("spawn_z", default_value="0.20"),
+            DeclareLaunchArgument("spawn_z", default_value="0.45"),
             DeclareLaunchArgument("spawn_yaw", default_value="0.0"),
             DeclareLaunchArgument("start_exploration", default_value="true"),
             DeclareLaunchArgument("run_fast_lio2", default_value="true"),
             DeclareLaunchArgument("fast_lio_package", default_value="auto"),
             DeclareLaunchArgument("fast_lio_launch_file", default_value="auto"),
             DeclareLaunchArgument("direct_fast_lio_node", default_value="true"),
-            DeclareLaunchArgument("imu_mount_pitch_source", default_value="startup_imu_pitch"),
+            DeclareLaunchArgument("imu_mount_pitch_source", default_value="fixed"),
+            DeclareLaunchArgument("imu_mount_pitch_deg", default_value="35.273"),
             DeclareLaunchArgument("imu_mount_pitch_samples", default_value="80"),
             DeclareLaunchArgument("imu_mount_pitch_max_gyro_radps", default_value="0.02"),
-            DeclareLaunchArgument("level_correction_source", default_value="startup_lio_pose"),
+            DeclareLaunchArgument("level_correction_source", default_value="fixed"),
             DeclareLaunchArgument("level_correction_samples", default_value="40"),
             DeclareLaunchArgument("level_correction_start_delay_sec", default_value="8.0"),
             DeclareLaunchArgument("level_correction_preserve_yaw", default_value="true"),
             DeclareLaunchArgument("level_correction_anchor_position", default_value="true"),
+            DeclareLaunchArgument("level_correction_roll_deg", default_value="-0.58"),
+            DeclareLaunchArgument("level_correction_pitch_deg", default_value="-0.67"),
+            DeclareLaunchArgument("level_correction_yaw_deg", default_value="0.007"),
             DeclareLaunchArgument("fast_lio_start_delay_sec", default_value="6.0"),
             DeclareLaunchArgument("terrain_start_delay_sec", default_value="9.0"),
             DeclareLaunchArgument("navigation_start_delay_sec", default_value="12.0"),
@@ -96,6 +100,9 @@ def generate_launch_description():
                             "imu_mount_pitch_source": LaunchConfiguration(
                                 "imu_mount_pitch_source"
                             ),
+                            "imu_mount_pitch_deg": LaunchConfiguration(
+                                "imu_mount_pitch_deg"
+                            ),
                             "imu_mount_pitch_samples": LaunchConfiguration(
                                 "imu_mount_pitch_samples"
                             ),
@@ -116,6 +123,15 @@ def generate_launch_description():
                             ),
                             "level_correction_anchor_position": LaunchConfiguration(
                                 "level_correction_anchor_position"
+                            ),
+                            "level_correction_roll_deg": LaunchConfiguration(
+                                "level_correction_roll_deg"
+                            ),
+                            "level_correction_pitch_deg": LaunchConfiguration(
+                                "level_correction_pitch_deg"
+                            ),
+                            "level_correction_yaw_deg": LaunchConfiguration(
+                                "level_correction_yaw_deg"
                             ),
                         },
                     )
@@ -165,6 +181,37 @@ def generate_launch_description():
                         "alpha": 0.30,
                         "outline_alpha": 0.30,
                         "outline_width": 0.025,
+                        "map_origin_world_x": LaunchConfiguration("spawn_x"),
+                        "map_origin_world_y": LaunchConfiguration("spawn_y"),
+                        "map_origin_world_z": LaunchConfiguration("spawn_z"),
+                        "map_origin_world_yaw": LaunchConfiguration("spawn_yaw"),
+                    }
+                ],
+                output="screen",
+            ),
+            Node(
+                package="lunar_rover_simulation",
+                executable="world_model_marker_node.py",
+                name="world_collision_marker",
+                parameters=[
+                    {
+                        "use_sim_time": True,
+                        "world_name": LaunchConfiguration("world"),
+                        "frame_id": "map",
+                        "marker_topic": "/simulation/world_collision_markers",
+                        "include_visual": False,
+                        "include_collision": True,
+                        "marker_namespace": "world_collision",
+                        "outline_namespace": "world_collision_outline",
+                        "alpha": 0.16,
+                        "outline_alpha": 0.85,
+                        "outline_width": 0.018,
+                        "color_r": 0.05,
+                        "color_g": 0.85,
+                        "color_b": 1.0,
+                        "outline_color_r": 0.05,
+                        "outline_color_g": 0.95,
+                        "outline_color_b": 1.0,
                         "map_origin_world_x": LaunchConfiguration("spawn_x"),
                         "map_origin_world_y": LaunchConfiguration("spawn_y"),
                         "map_origin_world_z": LaunchConfiguration("spawn_z"),

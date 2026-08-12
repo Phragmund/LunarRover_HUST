@@ -44,6 +44,20 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /simulation/world_model_markers
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Simulation world collisions
+      Namespaces:
+        world_collision_pits: true
+        world_collision: true
+        world_collision_outline: true
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /simulation/world_collision_markers
+      Value: true
     - Alpha: 0.85
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -106,7 +120,19 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
-    - Alpha: 0.6
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: false
+      Name: Terrain height rainbow
+      Namespaces:
+        terrain_height_rainbow: true
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /terrain/height_markers
+      Value: false
+    - Alpha: 0.65
       Class: rviz_default_plugins/Map
       Color Scheme: costmap
       Draw Behind: false
@@ -114,7 +140,7 @@ Visualization Manager:
       Name: /terrain/traversability
       Topic:
         Depth: 1
-        Durability Policy: Volatile
+        Durability Policy: Transient Local
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /terrain/traversability
