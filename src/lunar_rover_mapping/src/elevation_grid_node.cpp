@@ -77,6 +77,8 @@ public:
     input_topic_ = declare_parameter<std::string>("input_topic", "/livox/points");
     elevation_topic_ = declare_parameter<std::string>(
       "elevation_topic", "/terrain/elevation_cloud");
+    heightmap_topic_ = declare_parameter<std::string>(
+      "heightmap_topic", "/terrain/elevation_map");
     traversability_topic_ = declare_parameter<std::string>(
       "traversability_topic", "/terrain/traversability");
     current_voxel_topic_ = declare_parameter<std::string>(
@@ -93,6 +95,8 @@ public:
     min_points_per_cell_ = declare_parameter<int>("min_points_per_cell", 2);
     min_z_ = declare_parameter<double>("min_z", -0.60);
     max_z_ = declare_parameter<double>("max_z", 1.80);
+    heightmap_min_z_ = declare_parameter<double>("heightmap_min_z", -0.60);
+    heightmap_max_z_ = declare_parameter<double>("heightmap_max_z", 1.80);
     obstacle_height_ = declare_parameter<double>("obstacle_height", 0.28);
     roughness_height_ = declare_parameter<double>("roughness_height", 0.08);
     publish_current_voxels_ = declare_parameter<bool>("publish_current_voxels", true);
@@ -104,6 +108,8 @@ public:
     cells_.resize(static_cast<std::size_t>(width_cells_ * height_cells_));
     elevation_publisher_ = create_publisher<sensor_msgs::msg::PointCloud2>(
       elevation_topic_, rclcpp::QoS(2).reliable());
+    heightmap_publisher_ = create_publisher<nav_msgs::msg::OccupancyGrid>(
+      heightmap_topic_, rclcpp::QoS(1).reliable().transient_local());
     traversability_publisher_ = create_publisher<nav_msgs::msg::OccupancyGrid>(
       traversability_topic_, rclcpp::QoS(2).reliable());
     current_voxel_publisher_ = create_publisher<sensor_msgs::msg::PointCloud2>(
@@ -118,7 +124,7 @@ public:
 private:
   void validate_parameters() const
   {
-    if (input_topic_.empty() || elevation_topic_.empty() ||
+    if (input_topic_.empty() || elevation_topic_.empty() || heightmap_topic_.empty() ||
       traversability_topic_.empty() || current_voxel_topic_.empty() ||
       map_frame_.empty() || base_frame_.empty())
     {
@@ -137,6 +143,11 @@ private:
     }
     if (!std::isfinite(min_z_) || !std::isfinite(max_z_) || min_z_ >= max_z_) {
       throw std::invalid_argument("min_z and max_z must be finite and ordered");
+    }
+    if (!std::isfinite(heightmap_min_z_) || !std::isfinite(heightmap_max_z_) ||
+      heightmap_min_z_ >= heightmap_max_z_)
+    {
+      throw std::invalid_argument("heightmap_min_z and heightmap_max_z must be finite and ordered");
     }
   }
 
@@ -186,6 +197,7 @@ private:
       publish_current_voxel_cloud(cloud.header.stamp, cloud_map);
     }
     publish_elevation_cloud(cloud.header.stamp, origin_x, origin_y);
+    publish_heightmap(cloud.header.stamp, origin_x, origin_y);
     publish_traversability(cloud.header.stamp, origin_x, origin_y);
   }
 
@@ -349,6 +361,39 @@ private:
     current_voxel_publisher_->publish(voxels);
   }
 
+  void publish_heightmap(
+    const rclcpp::Time & stamp,
+    const double origin_x,
+    const double origin_y)
+  {
+    nav_msgs::msg::OccupancyGrid grid;
+    grid.header.stamp = stamp;
+    grid.header.frame_id = map_frame_;
+    grid.info.resolution = static_cast<float>(cell_size_);
+    grid.info.width = static_cast<std::uint32_t>(width_cells_);
+    grid.info.height = static_cast<std::uint32_t>(height_cells_);
+    grid.info.origin.position.x = origin_x;
+    grid.info.origin.position.y = origin_y;
+    grid.info.origin.orientation.w = 1.0;
+    grid.data.resize(static_cast<std::size_t>(width_cells_ * height_cells_), -1);
+
+    const double height_range = heightmap_max_z_ - heightmap_min_z_;
+    for (int row = 0; row < height_cells_; ++row) {
+      for (int column = 0; column < width_cells_; ++column) {
+        const auto index = static_cast<std::size_t>(row * width_cells_ + column);
+        const auto & cell = cells_[index];
+        if (cell.count < min_points_per_cell_) {
+          continue;
+        }
+        const double mean_z = cell.sum_z / static_cast<double>(cell.count);
+        const double normalized = std::clamp(
+          (mean_z - heightmap_min_z_) / height_range, 0.0, 1.0);
+        grid.data[index] = static_cast<int8_t>(std::lround(normalized * 100.0));
+      }
+    }
+    heightmap_publisher_->publish(grid);
+  }
+
   void publish_traversability(
     const rclcpp::Time & stamp,
     const double origin_x,
@@ -377,6 +422,7 @@ private:
 
   std::string input_topic_;
   std::string elevation_topic_;
+  std::string heightmap_topic_;
   std::string traversability_topic_;
   std::string current_voxel_topic_;
   std::string map_frame_;
@@ -391,6 +437,8 @@ private:
   int min_points_per_cell_{2};
   double min_z_{-0.60};
   double max_z_{1.80};
+  double heightmap_min_z_{-0.60};
+  double heightmap_max_z_{1.80};
   double obstacle_height_{0.28};
   double roughness_height_{0.08};
   bool publish_current_voxels_{true};
@@ -401,6 +449,7 @@ private:
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscription_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr elevation_publisher_;
+  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr heightmap_publisher_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr current_voxel_publisher_;
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr traversability_publisher_;
 };

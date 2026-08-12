@@ -1,23 +1,29 @@
 elevation_grid:
   ros__parameters:
     use_sim_time: true
-    input_topic: /livox/points
+    # Use the corrected FAST-LIO map frame so this layer shares map coordinates
+    # with the traversability costmap.
+    input_topic: /localization/cloud_registered
     elevation_topic: /terrain/elevation_cloud
-    traversability_topic: /terrain/traversability
-    current_voxel_topic: /terrain/current_voxels
+    heightmap_topic: /terrain/elevation_map
+    traversability_topic: /terrain/elevation_roughness
+    current_voxel_topic: /terrain/elevation_voxels
     map_frame: map
     base_frame: base_link
-    cell_size: 0.10
-    width_cells: 160
-    height_cells: 160
+    cell_size: 0.05
+    width_cells: 600
+    height_cells: 440
     rolling_window: false
-    origin_x: -8.0
-    origin_y: -8.0
+    accumulate: true
+    origin_x: -6.0
+    origin_y: -11.0
     min_points_per_cell: 2
     min_z: -0.60
     max_z: 1.80
+    heightmap_min_z: -0.60
+    heightmap_max_z: 1.80
     obstacle_height: 0.28
     roughness_height: 0.08
-    publish_current_voxels: true
+    publish_current_voxels: false
     current_voxel_size: 0.10
     transform_timeout: 0.10

@@ -50,8 +50,14 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 install(
+  DIRECTORY routes
+  DESTINATION share/${PROJECT_NAME}
+)
+install(
   PROGRAMS
     scripts/frontier_exploration_test.py
+    scripts/generate_image_cave_centerline_route.py
+    scripts/image_cave_waypoint_follower.py
     scripts/chassis_cmd_mux_node.py
     scripts/keyboard_rover_teleop.py
     scripts/nav2_lifecycle_bringup_node.py
