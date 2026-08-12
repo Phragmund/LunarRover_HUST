@@ -32,7 +32,7 @@ Visualization Manager:
       Name: RobotModel
       Value: true
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
+      Enabled: false
       Name: Simulation world model
       Namespaces:
         world_model: true

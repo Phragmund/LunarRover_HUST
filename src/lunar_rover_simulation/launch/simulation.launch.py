@@ -22,6 +22,7 @@ from launch.substitutions import (
     PathJoinSubstitution,
 )
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
 
 
@@ -103,17 +104,20 @@ def _launch_setup(context):
         ]
     )
     robot_description = {
-        "robot_description": Command(
-            [
-                PathJoinSubstitution([FindExecutable(name="xacro")]),
-                " ",
-                xacro_file,
-                " use_sim:=true",
-                " sensor_noise:=",
-                LaunchConfiguration("sensor_noise"),
-                " controller_config:=",
-                controller_config,
-            ]
+        "robot_description": ParameterValue(
+            Command(
+                [
+                    PathJoinSubstitution([FindExecutable(name="xacro")]),
+                    " ",
+                    xacro_file,
+                    " use_sim:=true",
+                    " sensor_noise:=",
+                    LaunchConfiguration("sensor_noise"),
+                    " controller_config:=",
+                    controller_config,
+                ]
+            ),
+            value_type=str,
         ),
         "use_sim_time": True,
     }

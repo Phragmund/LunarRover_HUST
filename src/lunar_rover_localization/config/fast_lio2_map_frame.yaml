@@ -39,6 +39,16 @@ fast_lio2_map_frame:
     level_correction_roll_deg: -0.58
     level_correction_pitch_deg: -0.67
     level_correction_yaw_deg: 0.007
+    ground_slope_correction_enabled: true
+    ground_slope_correction_rate_hz: 1.0
+    ground_slope_grid_resolution: 0.8
+    ground_slope_ground_band: 0.12
+    ground_slope_min_points_per_cell: 8
+    ground_slope_min_cells: 80
+    ground_slope_cloud_stride: 2
+    ground_slope_max_points_per_cloud: 250000
+    ground_slope_max_correction_deg: 6.0
+    ground_slope_residual_limit: 0.12
 
 fast_lio2_map_frame_visualization:
   ros__parameters:
@@ -81,3 +91,13 @@ fast_lio2_map_frame_visualization:
     level_correction_roll_deg: -0.58
     level_correction_pitch_deg: -0.67
     level_correction_yaw_deg: 0.007
+    ground_slope_correction_enabled: true
+    ground_slope_correction_rate_hz: 1.0
+    ground_slope_grid_resolution: 0.8
+    ground_slope_ground_band: 0.12
+    ground_slope_min_points_per_cell: 8
+    ground_slope_min_cells: 80
+    ground_slope_cloud_stride: 2
+    ground_slope_max_points_per_cloud: 250000
+    ground_slope_max_correction_deg: 6.0
+    ground_slope_residual_limit: 0.12

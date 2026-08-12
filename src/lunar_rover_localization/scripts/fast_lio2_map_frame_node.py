@@ -125,6 +125,32 @@ def point_field_size(datatype):
     }.get(datatype)
 
 
+class GroundSlopeCell:
+    def __init__(self):
+        self.points = []
+
+    def add(self, x, y, z):
+        self.points.append((x, y, z))
+
+    def representative_point(self, ground_band):
+        if not self.points:
+            return None
+        ordered_z = sorted(point[2] for point in self.points)
+        # The lower decile rejects ceilings and obstacles without relying on one noisy minimum.
+        reference_z = ordered_z[(len(ordered_z) - 1) // 10]
+        ground_points = [
+            point for point in self.points if point[2] <= reference_z + ground_band
+        ]
+        if not ground_points:
+            return None
+        scale = 1.0 / float(len(ground_points))
+        return (
+            sum(point[0] for point in ground_points) * scale,
+            sum(point[1] for point in ground_points) * scale,
+            sum(point[2] for point in ground_points) * scale,
+        )
+
+
 class FastLio2MapFrameNode(Node):
     def __init__(self):
         super().__init__("fast_lio2_map_frame")
@@ -231,6 +257,44 @@ class FastLio2MapFrameNode(Node):
                 float(self.declare_parameter("level_correction_yaw_deg", 0.007).value)
             ),
         )
+        self.ground_slope_correction_enabled = bool_value(
+            self.declare_parameter("ground_slope_correction_enabled", False).value
+        )
+        self.ground_slope_correction_rate_hz = float(
+            self.declare_parameter("ground_slope_correction_rate_hz", 1.0).value
+        )
+        self.ground_slope_grid_resolution = max(
+            0.05,
+            float(self.declare_parameter("ground_slope_grid_resolution", 0.25).value),
+        )
+        self.ground_slope_ground_band = max(
+            0.01,
+            float(self.declare_parameter("ground_slope_ground_band", 0.15).value),
+        )
+        self.ground_slope_min_points_per_cell = max(
+            1,
+            int(self.declare_parameter("ground_slope_min_points_per_cell", 3).value),
+        )
+        self.ground_slope_min_cells = max(
+            3,
+            int(self.declare_parameter("ground_slope_min_cells", 80).value),
+        )
+        self.ground_slope_cloud_stride = max(
+            1,
+            int(self.declare_parameter("ground_slope_cloud_stride", 8).value),
+        )
+        self.ground_slope_max_points_per_cloud = max(
+            1,
+            int(self.declare_parameter("ground_slope_max_points_per_cloud", 12000).value),
+        )
+        self.ground_slope_max_correction_deg = max(
+            0.0,
+            float(self.declare_parameter("ground_slope_max_correction_deg", 6.0).value),
+        )
+        self.ground_slope_residual_limit = max(
+            0.01,
+            float(self.declare_parameter("ground_slope_residual_limit", 0.12).value),
+        )
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -245,6 +309,8 @@ class FastLio2MapFrameNode(Node):
             )
         else:
             self.level_correction = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+        self.ground_slope_correction = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+        self.ground_slope_cells = {}
         self.level_sample_count = 0
         self.level_roll_sin_sum = 0.0
         self.level_roll_cos_sum = 0.0
@@ -267,6 +333,12 @@ class FastLio2MapFrameNode(Node):
         )
         self.map_cloud_publish_period_ns = self.rate_period_ns(self.map_cloud_max_rate_hz)
         self.wait_timer = self.create_timer(0.1, self.try_initialize)
+        self.ground_slope_timer = None
+        if self.ground_slope_correction_enabled:
+            slope_period = 1.0 / max(0.1, self.ground_slope_correction_rate_hz)
+            self.ground_slope_timer = self.create_timer(
+                slope_period, self.update_ground_slope_correction
+            )
         self.cloud_input_qos = QoSProfile(
             history=HistoryPolicy.KEEP_LAST,
             depth=1,
@@ -311,7 +383,7 @@ class FastLio2MapFrameNode(Node):
                 self.on_registered_cloud,
                 self.cloud_input_qos,
             )
-        if self.publish_map_cloud:
+        if self.publish_map_cloud or self.ground_slope_correction_enabled:
             self.create_subscription(
                 PointCloud2,
                 self.raw_map_cloud_topic,
@@ -327,7 +399,8 @@ class FastLio2MapFrameNode(Node):
             f"path_max_rate_hz={self.path_max_rate_hz:.3f}; "
             f"path_max_poses={self.path_max_poses}; "
             f"registered_cloud_max_rate_hz={self.registered_cloud_max_rate_hz:.3f}; "
-            f"map_cloud_max_rate_hz={self.map_cloud_max_rate_hz:.3f}"
+            f"map_cloud_max_rate_hz={self.map_cloud_max_rate_hz:.3f}; "
+            f"ground_slope_correction={self.ground_slope_correction_enabled}"
         )
         if self.level_correction_source in ("fixed", "fixed_rpy", "manual"):
             roll, pitch, yaw = self.fixed_level_correction_rpy
@@ -454,6 +527,22 @@ class FastLio2MapFrameNode(Node):
         )
         return False
 
+    def current_level_correction(self):
+        if self.level_correction is None:
+            return None
+        return compose(*self.ground_slope_correction, *self.level_correction)
+
+    def base_map_from_lio(self):
+        if self.level_correction is None:
+            return None
+        return compose(*self.level_correction, *self.map_from_lio)
+
+    def active_map_from_lio(self):
+        correction = self.current_level_correction()
+        if correction is None:
+            return None
+        return compose(*correction, *self.map_from_lio)
+
     def raw_pose_to_map_base_uncorrected(self, position, orientation):
         raw_t = (float(position.x), float(position.y), float(position.z))
         raw_q = q_tuple(orientation)
@@ -465,9 +554,10 @@ class FastLio2MapFrameNode(Node):
         return self.apply_level_correction(t, q)
 
     def apply_level_correction(self, t, q):
-        if self.level_correction is None:
+        correction = self.current_level_correction()
+        if correction is None:
             return t, q
-        return compose(*self.level_correction, t, q)
+        return compose(*correction, t, q)
 
     def average_angle(self, sin_sum, cos_sum):
         return math.atan2(sin_sum, cos_sum)
@@ -557,6 +647,218 @@ class FastLio2MapFrameNode(Node):
             f"preserve_yaw={self.level_correction_preserve_yaw}"
         )
         return True
+
+    def ground_slope_cell_key(self, x, y):
+        return (
+            int(math.floor(x / self.ground_slope_grid_resolution)),
+            int(math.floor(y / self.ground_slope_grid_resolution)),
+        )
+
+    def ingest_ground_slope_cloud(self, msg):
+        if not self.ground_slope_correction_enabled:
+            return
+        if not self.initialized() or not self.level_initialized():
+            return
+        map_from_lio = self.base_map_from_lio()
+        if map_from_lio is None:
+            return
+
+        # A FAST-LIO map cloud is a complete snapshot. Rebuild the cells from this
+        # snapshot so repeated publications cannot bias the estimate over time.
+        cells = {}
+        map_t, map_q = map_from_lio
+        used = 0
+        seen = 0
+        for point in point_cloud2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True):
+            seen += 1
+            if seen % self.ground_slope_cloud_stride != 0:
+                continue
+            if used >= self.ground_slope_max_points_per_cloud:
+                break
+            x, y, z = rotate(map_q, (point[0], point[1], point[2]))
+            x += map_t[0]
+            y += map_t[1]
+            z += map_t[2]
+            if not math.isfinite(x) or not math.isfinite(y) or not math.isfinite(z):
+                continue
+            key = self.ground_slope_cell_key(x, y)
+            cell = cells.get(key)
+            if cell is None:
+                cell = GroundSlopeCell()
+                cells[key] = cell
+            cell.add(x, y, z)
+            used += 1
+        self.ground_slope_cells = cells
+
+    def ground_slope_points(self):
+        points = []
+        for cell in self.ground_slope_cells.values():
+            if len(cell.points) < self.ground_slope_min_points_per_cell:
+                continue
+            point = cell.representative_point(self.ground_slope_ground_band)
+            if point is not None:
+                points.append(point)
+        return points
+
+    @staticmethod
+    def plane_residuals(points, slope_x, slope_y, intercept):
+        return [
+            z - (slope_x * x + slope_y * y + intercept)
+            for x, y, z in points
+        ]
+
+    @staticmethod
+    def solve_3x3(matrix, vector):
+        augmented = [list(row) + [value] for row, value in zip(matrix, vector)]
+        for col in range(3):
+            pivot = max(range(col, 3), key=lambda row: abs(augmented[row][col]))
+            if abs(augmented[pivot][col]) < 1.0e-9:
+                return None
+            if pivot != col:
+                augmented[col], augmented[pivot] = augmented[pivot], augmented[col]
+            pivot_value = augmented[col][col]
+            for item in range(col, 4):
+                augmented[col][item] /= pivot_value
+            for row in range(3):
+                if row == col:
+                    continue
+                factor = augmented[row][col]
+                if factor == 0.0:
+                    continue
+                for item in range(col, 4):
+                    augmented[row][item] -= factor * augmented[col][item]
+        return augmented[0][3], augmented[1][3], augmented[2][3]
+
+    @staticmethod
+    def fit_ground_plane(points):
+        count = float(len(points))
+        sx = sy = sz = 0.0
+        sxx = sxy = syy = 0.0
+        sxz = syz = 0.0
+        for x, y, z in points:
+            sx += x
+            sy += y
+            sz += z
+            sxx += x * x
+            sxy += x * y
+            syy += y * y
+            sxz += x * z
+            syz += y * z
+        solution = FastLio2MapFrameNode.solve_3x3(
+            ((sxx, sxy, sx), (sxy, syy, sy), (sx, sy, count)),
+            (sxz, syz, sz),
+        )
+        if solution is None:
+            return None
+        slope_x, slope_y, intercept = solution
+        normal = q_normalize((-slope_x, -slope_y, 1.0, 0.0))[:3]
+        centroid = (sx / count, sy / count, sz / count)
+        return normal, centroid, slope_x, slope_y, intercept
+
+    @staticmethod
+    def vector_dot(a, b):
+        return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+    @staticmethod
+    def vector_cross(a, b):
+        return (
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0],
+        )
+
+    @staticmethod
+    def q_from_two_vectors(source, target):
+        dot = max(-1.0, min(1.0, FastLio2MapFrameNode.vector_dot(source, target)))
+        if dot < -0.999999:
+            axis = (1.0, 0.0, 0.0) if abs(source[0]) < 0.9 else (0.0, 1.0, 0.0)
+            cross = FastLio2MapFrameNode.vector_cross(source, axis)
+            norm = math.sqrt(FastLio2MapFrameNode.vector_dot(cross, cross))
+            if norm <= 0.0:
+                return (0.0, 0.0, 0.0, 1.0)
+            return (cross[0] / norm, cross[1] / norm, cross[2] / norm, 0.0)
+        cross = FastLio2MapFrameNode.vector_cross(source, target)
+        return q_normalize((cross[0], cross[1], cross[2], 1.0 + dot))
+
+    def update_ground_slope_correction(self):
+        if not self.ground_slope_correction_enabled:
+            return
+        if not self.initialized() or not self.level_initialized():
+            return
+        points = self.ground_slope_points()
+        if len(points) < self.ground_slope_min_cells:
+            self.get_logger().warn(
+                "Waiting for ground slope correction samples: "
+                f"{len(points)}/{self.ground_slope_min_cells} cells",
+                throttle_duration_sec=5.0,
+            )
+            return
+        # Each point is one grid's statistical ground height. Their mean defines
+        # the reference height; fitting residuals estimates only the map-wide drift.
+        reference_height = sum(point[2] for point in points) / float(len(points))
+        residual_points = [(x, y, z - reference_height) for x, y, z in points]
+        fit = self.fit_ground_plane(residual_points)
+        if fit is None:
+            self.get_logger().warn(
+                "Cannot fit ground slope plane; ground cells are degenerate",
+                throttle_duration_sec=5.0,
+            )
+            return
+        _normal, _centroid, slope_x, slope_y, intercept = fit
+        residuals = self.plane_residuals(residual_points, slope_x, slope_y, intercept)
+        inlier_points = [
+            point
+            for point, residual in zip(residual_points, residuals)
+            if abs(residual) <= self.ground_slope_residual_limit
+        ]
+        if len(inlier_points) < self.ground_slope_min_cells:
+            self.get_logger().warn(
+                "Waiting for consistent ground-height residuals: "
+                f"{len(inlier_points)}/{self.ground_slope_min_cells} cells",
+                throttle_duration_sec=5.0,
+            )
+            return
+        fit = self.fit_ground_plane(inlier_points)
+        if fit is None:
+            return
+        normal, centroid, slope_x, slope_y, _intercept = fit
+        correction_q = self.q_from_two_vectors(normal, (0.0, 0.0, 1.0))
+        angle = 2.0 * math.atan2(
+            math.sqrt(
+                correction_q[0] * correction_q[0]
+                + correction_q[1] * correction_q[1]
+                + correction_q[2] * correction_q[2]
+            ),
+            abs(correction_q[3]),
+        )
+        max_angle = math.radians(self.ground_slope_max_correction_deg)
+        if max_angle > 0.0 and angle > max_angle:
+            self.get_logger().warn(
+                "Rejecting ground slope correction because it is too large: "
+                f"{math.degrees(angle):.3f} deg > {self.ground_slope_max_correction_deg:.3f} deg",
+                throttle_duration_sec=5.0,
+            )
+            return
+
+        # Fit coordinates were centered on the mean grid height. Restore that
+        # height for the rigid-transform anchor in the base map frame.
+        anchor = (centroid[0], centroid[1], centroid[2] + reference_height)
+        rotated_anchor = rotate(correction_q, anchor)
+        correction_t = (
+            anchor[0] - rotated_anchor[0],
+            anchor[1] - rotated_anchor[1],
+            anchor[2] - rotated_anchor[2],
+        )
+        self.ground_slope_correction = (correction_t, correction_q)
+        self.get_logger().info(
+            "Updated full-map ground-height correction: "
+            f"cells={len(points)} inliers={len(inlier_points)} "
+            f"reference_z={reference_height:+.3f} m "
+            f"angle={math.degrees(angle):.3f} deg "
+            f"slope_x={math.degrees(math.atan(slope_x)):+.3f} deg "
+            f"slope_y={math.degrees(math.atan(slope_y)):+.3f} deg",
+            throttle_duration_sec=5.0,
+        )
 
     def pose_is_valid(self, t, q):
         values = (*t, *q)
@@ -669,7 +971,10 @@ class FastLio2MapFrameNode(Node):
             self.get_logger().warn("PointCloud2 has no x/y/z fields", throttle_duration_sec=2.0)
             return None
 
-        map_t, map_q = compose(*self.level_correction, *self.map_from_lio)
+        map_from_lio = self.active_map_from_lio()
+        if map_from_lio is None:
+            return None
+        map_t, map_q = map_from_lio
         points = []
         for point in point_cloud2.read_points(msg, field_names=names, skip_nans=True):
             values = list(point)
@@ -698,6 +1003,7 @@ class FastLio2MapFrameNode(Node):
             self.registered_pub.publish(out)
 
     def on_map_cloud(self, msg):
+        self.ingest_ground_slope_cloud(msg)
         if not self.publish_map_cloud:
             return
         if not self.cloud_publish_allowed(
