@@ -13,7 +13,19 @@ terrain_mapper:
     origin_x: -11.0
     origin_y: -8.0
     min_z: -0.80
-    max_z: 1.80
+    # The maze has a transparent LiDAR-visible ceiling (laser_retro=1.0) at
+    # 1.0 m above the floor.  In THIS map frame (rover spawn at z=0.45,
+    # FAST-LIO z origin ~0.215 m above the floor) that puts the floor at
+    # z~-0.215 and the ceiling at z~+0.785.  With max_z=1.80 the ceiling hits
+    # land in the SAME cells as the ground, and with a sparse 11-line LiDAR
+    # many cells catch ONLY ceiling points -> mean_z=+0.785 vs neighbouring
+    # floor cells at -0.215 -> fake 85 deg slope -> flat open floor marked
+    # LETHAL ("平地被打成紫").  Capping max_z below the ceiling (0.60 < 0.785)
+    # drops the ceiling hits entirely.  The 1 m walls are still detected via
+    # their face points (floor .. +0.60, height_range>0.28) and the 7 cm
+    # obstacles stay visible.  NOTE: this value is map-frame z; it must sit
+    # above the wall-face band but below the ceiling for the current spawn.
+    max_z: 0.60
     min_points_per_cell: 2
     cautious_step_height: 0.12
     lethal_step_height: 0.28
@@ -23,7 +35,12 @@ terrain_mapper:
     ceiling_filter_enabled: true
     ceiling_filter_bin_size: 0.05
     ceiling_filter_min_gap: 0.40
-    ceiling_filter_min_cluster_points: 2
+    # A sparse 11-line LiDAR often puts exactly ONE ground hit in a cell (plus
+    # the ceiling above it).  Requiring >=2 points per cluster made the filter
+    # reject those cells, returning RAW stats and leaking the ceiling into
+    # height_range -> false lethal on flat floor.  min_cluster_points=1 lets a
+    # single-point ground cluster survive the filter as a safety net.
+    ceiling_filter_min_cluster_points: 1
     ceiling_filter_ground_cluster_max_height: 0.45
     unknown_is_risky: false
     max_points_per_cloud: 60000
