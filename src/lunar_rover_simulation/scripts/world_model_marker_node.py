@@ -125,6 +125,20 @@ class WorldModelMarkerNode(Node):
         self.outline_color_b = float(
             self.declare_parameter("outline_color_b", 0.20).value
         )
+        # Obstacles (rocks, cylinders -- any non-box shape) are rendered in a
+        # distinct colour so they stand out from the wall boxes in the ground-
+        # truth overlay, letting the operator eyeball whether the terrain
+        # costmap's LETHAL blobs line up with the real rocks.
+        self.obstacle_color_r = float(
+            self.declare_parameter("obstacle_color_r", 0.90).value
+        )
+        self.obstacle_color_g = float(
+            self.declare_parameter("obstacle_color_g", 0.10).value
+        )
+        self.obstacle_color_b = float(
+            self.declare_parameter("obstacle_color_b", 0.10).value
+        )
+        self.obstacle_alpha = float(self.declare_parameter("obstacle_alpha", 0.85).value)
         self.map_origin_world_x = float(
             self.declare_parameter("map_origin_world_x", 0.0).value
         )
@@ -248,6 +262,9 @@ class WorldModelMarkerNode(Node):
                         if marker.type == Marker.CUBE:
                             markers.markers.append(self.make_box_outline(marker_id, marker))
                             marker_id += 1
+                        elif marker.type == Marker.SPHERE:
+                            markers.markers.append(self.make_sphere_outline(marker_id, marker))
+                            marker_id += 1
         if self.include_collision and self.include_pit_markers:
             for marker in self.load_pit_markers(root, path, marker_id):
                 markers.markers.append(marker)
@@ -334,27 +351,23 @@ class WorldModelMarkerNode(Node):
         marker.pose.orientation.y = pose[1][1]
         marker.pose.orientation.z = pose[1][2]
         marker.pose.orientation.w = pose[1][3]
-        marker.color.r = self.color_r
-        marker.color.g = self.color_g
-        marker.color.b = self.color_b
-        marker.color.a = self.alpha
         marker.text = f"{model.get('name', 'model')}/{shape.get('name', 'shape')}"
 
+        is_obstacle = False
         if box is not None:
             size = parse_floats(box.findtext("size"), expected=3)
             if size is None:
                 return None
             marker.type = Marker.CUBE
             marker.scale.x, marker.scale.y, marker.scale.z = size
-            return marker
-        if sphere is not None:
+        elif sphere is not None:
             radius = float(sphere.findtext("radius", default="0"))
             if radius <= 0.0:
                 return None
             marker.type = Marker.SPHERE
             marker.scale.x = marker.scale.y = marker.scale.z = radius * 2.0
-            return marker
-        if cylinder is not None:
+            is_obstacle = True
+        elif cylinder is not None:
             radius = float(cylinder.findtext("radius", default="0"))
             length = float(cylinder.findtext("length", default="0"))
             if radius <= 0.0 or length <= 0.0:
@@ -362,8 +375,21 @@ class WorldModelMarkerNode(Node):
             marker.type = Marker.CYLINDER
             marker.scale.x = marker.scale.y = radius * 2.0
             marker.scale.z = length
-            return marker
-        return None
+            is_obstacle = True
+        else:
+            return None
+
+        if is_obstacle:
+            marker.color.r = self.obstacle_color_r
+            marker.color.g = self.obstacle_color_g
+            marker.color.b = self.obstacle_color_b
+            marker.color.a = self.obstacle_alpha
+        else:
+            marker.color.r = self.color_r
+            marker.color.g = self.color_g
+            marker.color.b = self.color_b
+            marker.color.a = self.alpha
+        return marker
 
     def make_box_outline(self, marker_id, box_marker):
         marker = Marker()
@@ -421,6 +447,48 @@ class WorldModelMarkerNode(Node):
         for start, end in edges:
             marker.points.append(corners[start])
             marker.points.append(corners[end])
+        return marker
+
+    def make_sphere_outline(self, marker_id, sphere_marker):
+        marker = Marker()
+        marker.header.frame_id = self.frame_id
+        marker.ns = self.outline_namespace
+        marker.id = marker_id
+        marker.action = Marker.ADD
+        marker.type = Marker.LINE_LIST
+        marker.pose.orientation.w = 1.0
+        marker.scale.x = self.outline_width
+        marker.color.r = self.obstacle_color_r
+        marker.color.g = self.obstacle_color_g
+        marker.color.b = self.obstacle_color_b
+        marker.color.a = self.obstacle_alpha
+
+        q = (
+            sphere_marker.pose.orientation.x,
+            sphere_marker.pose.orientation.y,
+            sphere_marker.pose.orientation.z,
+            sphere_marker.pose.orientation.w,
+        )
+        center = (
+            sphere_marker.pose.position.x,
+            sphere_marker.pose.position.y,
+            sphere_marker.pose.position.z,
+        )
+        radius = sphere_marker.scale.x * 0.5
+        segments = 40
+        for index in range(segments):
+            angle0 = 2.0 * math.pi * index / segments
+            angle1 = 2.0 * math.pi * (index + 1) / segments
+            for angle in (angle0, angle1):
+                local = (radius * math.cos(angle), radius * math.sin(angle), 0.0)
+                rotated = rotate(q, local)
+                marker.points.append(
+                    Point(
+                        x=center[0] + rotated[0],
+                        y=center[1] + rotated[1],
+                        z=center[2] + rotated[2],
+                    )
+                )
         return marker
 
     def publish(self):

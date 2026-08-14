@@ -158,7 +158,11 @@ void TerrainLayer::updateCosts(
         continue;
       }
       const unsigned char old_cost = master_grid.getCost(i, j);
-      master_grid.setCost(i, j, std::max(old_cost, terrain_cost));
+      const unsigned char new_cost =
+        (old_cost == nav2_costmap_2d::NO_INFORMATION)
+        ? terrain_cost
+        : std::max(old_cost, terrain_cost);
+      master_grid.setCost(i, j, new_cost);
     }
   }
   current_ = true;

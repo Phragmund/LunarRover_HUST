@@ -78,7 +78,7 @@ fast_lio2_map_frame_visualization:
     publish_map_cloud: true
     path_max_rate_hz: 0.5
     path_max_poses: 500
-    registered_cloud_max_rate_hz: 3.0
+    registered_cloud_max_rate_hz: 0.5
     map_cloud_max_rate_hz: 0.2
     max_abs_position: 1000.0
     require_valid_pose_for_clouds: true

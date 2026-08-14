@@ -665,6 +665,14 @@
             <near>0.26</near>
             <far>20.0</far>
           </clip>
+          <!-- Gemini 335 depth min range is ~0.3 m, not the colour camera 0.26 m. -->
+          <depth_camera>
+            <output>depths</output>
+            <clip>
+              <near>0.30</near>
+              <far>10.0</far>
+            </clip>
+          </depth_camera>
           <noise>
             <type>gaussian</type>
             <mean>0.0</mean>
