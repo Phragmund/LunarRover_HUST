@@ -37,7 +37,12 @@ def generate_launch_description():
                 }.items(),
             ),
             TimerAction(
-                period=3.0,
+                # Cold-start I/O can push controller/planner construction past
+                # the old 3 s delay, so nav2_lifecycle_bringup would poll
+                # get_state while the node was still constructing and time out.
+                # Give construction headroom; the bringup script also retries a
+                # transient None state now.
+                period=10.0,
                 actions=[
                     Node(
                         package="lunar_rover_navigation",
@@ -47,7 +52,7 @@ def generate_launch_description():
                             {
                                 "use_sim_time": True,
                                 "wait_timeout": 90.0,
-                                "call_timeout": 10.0,
+                                "call_timeout": 20.0,
                             }
                         ],
                         output="screen",

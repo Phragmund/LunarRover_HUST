@@ -66,6 +66,11 @@ bt_navigator_navigate_to_pose_rclcpp_node:
 controller_server:
   ros__parameters:
     use_sim_time: true
+    # The map->odom TF is stamped with the LIO data time (not now()), which
+    # lags the current /clock by ~30 ms of pipeline latency.  Without a
+    # transform_tolerance the controller's odom->map lookup at now() fails
+    # with "extrapolation into the future" and aborts every follow_path goal.
+    transform_tolerance: 0.2
     controller_frequency: 20.0
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.5
@@ -223,6 +228,7 @@ map_saver:
 planner_server:
   ros__parameters:
     use_sim_time: true
+    transform_tolerance: 0.2
     expected_planner_frequency: 5.0
     planner_plugins: [GridBased]
     GridBased:
@@ -251,10 +257,18 @@ planner_server:
       angle_quantization_bins: 72
       reverse_penalty: 1.5
       allow_reverse_expansion: true
-      lookup_table_size: 20.0
+      lookup_table_size: 14.0
       use_final_approach_orientation: false
-      downsample_costmap: false
-      downsampling_factor: 1
+      # The global costmap is 0.025 m/cell, so a 20 m lookup table means an
+      # 800-cell-radius Reeds-Shepp heuristic grid (~2.6M cells) that
+      # SmacPlannerHybrid precomputes at configure() time.  Under full sim
+      # load that took ~33 s, blowing past nav2_lifecycle_bringup's
+      # call_timeout and killing planner activation ("failed to reach
+      # inactive").  Downsampling the search costmap 2x and shrinking the
+      # lookup table to 14 m (the maze is ~9 m across) cuts the precompute
+      # to ~0.3M cells.
+      downsample_costmap: true
+      downsampling_factor: 2
 
 smoother_server:
   ros__parameters:
