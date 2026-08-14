@@ -215,7 +215,14 @@ class MapOdomTfBridge(Node):
         )
 
         transform = TransformStamped()
-        transform.header.stamp = now_stamp
+        # Stamp the map->odom transform with the LIO data timestamp, NOT
+        # get_clock().now().  Downstream consumers (terrain_mapper raytrace,
+        # Nav2 planner) look up base_link->map at the *data* stamp of the
+        # cloud/goal, and the Mid-360 driver stamps its clouds with the raw
+        # IMU clock.  Using now() here made map->odom lag the data by tens of
+        # ms, which disabled the raytrace ("extrapolation into the future")
+        # and left the whole terrain map UNKNOWN.
+        transform.header.stamp = self.latest_lio.header.stamp
         transform.header.frame_id = self.map_frame
         transform.child_frame_id = self.odom_frame
         transform.transform.translation.x = map_odom_t[0]

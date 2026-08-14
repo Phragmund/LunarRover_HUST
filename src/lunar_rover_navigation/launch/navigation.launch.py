@@ -47,7 +47,7 @@ def generate_launch_description():
                             {
                                 "use_sim_time": True,
                                 "wait_timeout": 90.0,
-                                "call_timeout": 10.0,
+                                "call_timeout": 20.0,
                             }
                         ],
                         output="screen",
