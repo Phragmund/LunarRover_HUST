@@ -61,13 +61,19 @@ wait_for_lifecycle_active() {
   local deadline=$((SECONDS + timeout_sec))
   echo "[$(date +%T)] waiting for lifecycle node $node to become active"
   while (( SECONDS < deadline )); do
-    if ros2 lifecycle get "$node" 2>/dev/null | grep -q "active"; then
+    if timeout 3 ros2 lifecycle get "$node" 2>/dev/null | grep -q "active"; then
       return 0
     fi
     sleep 1
   done
   echo "Timed out waiting for $node to become active" >&2
   return 1
+}
+
+read_ground_truth_z_once() {
+  timeout 5 ros2 topic echo --once /simulation/ground_truth/odometry \
+    --field pose.pose.position.z 2>/dev/null |
+    awk 'NF && $1 != "---" {print $1; exit}'
 }
 
 nav2_enabled="${ENABLE_NAV2:-false}"
@@ -79,7 +85,7 @@ case "${nav2_enabled,,}" in
     nav2_enabled=false
     ;;
 esac
-cloud_fusion_enabled="${ENABLE_CLOUD_FUSION:-false}"
+cloud_fusion_enabled="${ENABLE_CLOUD_FUSION:-true}"
 case "${cloud_fusion_enabled,,}" in
   1|true|yes|on)
     cloud_fusion_enabled=true
@@ -95,6 +101,38 @@ case "${cruise_enabled,,}" in
     ;;
   *)
     cruise_enabled=false
+    ;;
+esac
+truth_mode="${TRUTH_LOCALIZATION_MODE:-}"
+if [[ -z "$truth_mode" ]]; then
+  truth_mode="${USE_TRUTH_LOCALIZATION:-false}"
+fi
+case "${truth_mode,,}" in
+  1|true|yes|on|replace|replace_fastlio|full)
+    truth_mode=replace_fastlio
+    ;;
+  0|false|no|off|none)
+    truth_mode=off
+    ;;
+  *)
+    echo "Unknown TRUTH_LOCALIZATION_MODE/USE_TRUTH_LOCALIZATION value: $truth_mode" >&2
+    echo "Expected off or replace_fastlio" >&2
+    exit 2
+    ;;
+esac
+if [[ -n "${ENABLE_COSTMAP:-}" ]]; then
+  costmap_enabled="$ENABLE_COSTMAP"
+elif [[ "$truth_mode" == "off" ]]; then
+  costmap_enabled=true
+else
+  costmap_enabled=false
+fi
+case "${costmap_enabled,,}" in
+  1|true|yes|on)
+    costmap_enabled=true
+    ;;
+  *)
+    costmap_enabled=false
     ;;
 esac
 
@@ -121,6 +159,7 @@ else
   map_origin_z="$spawn_z"
   map_origin_z_source="spawn_z"
 fi
+truth_base_height_above_ground="${TRUTH_BASE_HEIGHT_ABOVE_GROUND:-0.1825}"
 sim_settle_sec="${SIM_SETTLE_SEC:-12}"
 if [[ "$world" == "image_cave" ]]; then
   clock_timeout_sec="${CLOCK_TIMEOUT_SEC:-180}"
@@ -153,12 +192,30 @@ case "${gui_enabled,,}" in
     gui_enabled=true
     ;;
 esac
+world_model_enabled="${ENABLE_WORLD_MODEL:-false}"
+case "${world_model_enabled,,}" in
+  1|true|yes|on)
+    world_model_enabled=true
+    ;;
+  *)
+    world_model_enabled=false
+    ;;
+esac
+elevation_grid_enabled="${ENABLE_ELEVATION_GRID:-false}"
+case "${elevation_grid_enabled,,}" in
+  1|true|yes|on)
+    elevation_grid_enabled=true
+    ;;
+  *)
+    elevation_grid_enabled=false
+    ;;
+esac
 
-echo "[$(date +%T)] starting sim: world=$world spawn_z=$spawn_z map_origin_z=$map_origin_z source=$map_origin_z_source delayed_livox_drivers=$delay_livox_drivers cloud_fusion=$cloud_fusion_enabled gui=$gui_enabled"
+echo "[$(date +%T)] starting sim: world=$world spawn_z=$spawn_z map_origin_z=$map_origin_z source=$map_origin_z_source delayed_livox_drivers=$delay_livox_drivers cloud_fusion=$cloud_fusion_enabled gui=$gui_enabled truth_mode=$truth_mode costmap=$costmap_enabled nav2=$nav2_enabled world_model=$world_model_enabled elevation_grid=$elevation_grid_enabled"
 ros2 launch lunar_rover_bringup bringup.launch.py \
   mode:=sim \
   world:="$world" \
-  gui:="$gui_enabled" \
+  gui:=false \
   headless:=false \
   rviz:=false \
   sensor_noise:=false \
@@ -170,10 +227,29 @@ ros2 launch lunar_rover_bringup bringup.launch.py \
   spawn_yaw:="$spawn_yaw" &
 
 wait_for_topic_once /clock "$clock_timeout_sec"
+
+if [[ "$gui_enabled" == "true" ]]; then
+  echo "[$(date +%T)] starting separate Gazebo GUI client"
+  export IGN_GAZEBO_RESOURCE_PATH="$PWD/install/lunar_rover_simulation/share/lunar_rover_simulation/models:$PWD/install/lunar_rover_description/share:${IGN_GAZEBO_RESOURCE_PATH:-}"
+  export GZ_SIM_RESOURCE_PATH="$IGN_GAZEBO_RESOURCE_PATH"
+  ign gazebo -g &
+fi
+
 wait_for_topic_once /simulation/ground_truth/odometry "$ground_truth_timeout_sec"
 wait_for_controllers_active "$controller_timeout_sec"
 echo "[$(date +%T)] Gazebo ground truth is live; waiting ${sim_settle_sec}s before Livox ROS drivers"
 sleep "$sim_settle_sec"
+
+if [[ "$truth_mode" == "replace_fastlio" && "$map_origin_z_source" != "manual" ]]; then
+  settled_truth_z="$(read_ground_truth_z_once || true)"
+  if [[ "$settled_truth_z" =~ ^-?[0-9]+([.][0-9]+)?([eE][-+]?[0-9]+)?$ ]]; then
+    map_origin_z="$(awk -v base_z="$settled_truth_z" -v clearance="$truth_base_height_above_ground" 'BEGIN { printf "%.9f", base_z - clearance }')"
+    map_origin_z_source="settled_truth_ground_z"
+    echo "[$(date +%T)] truth mode map_origin_z adjusted to settled ground z=$map_origin_z (base_z=$settled_truth_z clearance=$truth_base_height_above_ground)"
+  else
+    echo "[$(date +%T)] could not read settled truth z; keeping map_origin_z=$map_origin_z source=$map_origin_z_source" >&2
+  fi
+fi
 
 if [[ "$delay_livox_drivers" == "true" ]]; then
   echo "[$(date +%T)] starting delayed Gazebo sensor bridge"
@@ -217,27 +293,35 @@ if [[ "$delay_livox_drivers" == "true" ]]; then
   wait_for_topic_once /livox/imu 45
 fi
 
-echo "[$(date +%T)] starting composite odometry"
-ros2 run lunar_rover_mapping composite_wheel_imu_odometry_node.py \
-  --ros-args \
-  -r __node:=composite_wheel_imu_odometry \
-  --params-file install/lunar_rover_mapping/share/lunar_rover_mapping/config/composite_odometry.yaml &
+if [[ "$truth_mode" == "off" ]]; then
+  echo "[$(date +%T)] starting composite odometry"
+  ros2 run lunar_rover_mapping composite_wheel_imu_odometry_node.py \
+    --ros-args \
+    -r __node:=composite_wheel_imu_odometry \
+    --params-file install/lunar_rover_mapping/share/lunar_rover_mapping/config/composite_odometry.yaml &
+else
+  echo "[$(date +%T)] skipping composite odometry (truth localization replaces FAST-LIO)"
+fi
 
-echo "[$(date +%T)] starting world model marker and RViz"
-ros2 run lunar_rover_simulation world_model_marker_node.py \
-  --ros-args \
-  -r __node:=world_model_marker \
-  -p use_sim_time:=true \
-  -p world_name:="$world" \
-  -p frame_id:=map \
-  -p marker_topic:=/simulation/world_model_markers \
-  -p alpha:=0.30 \
-  -p outline_alpha:=0.30 \
-  -p outline_width:=0.025 \
-  -p map_origin_world_x:="$spawn_x" \
-  -p map_origin_world_y:="$spawn_y" \
-  -p map_origin_world_z:="$map_origin_z" \
-  -p map_origin_world_yaw:="$spawn_yaw" &
+if [[ "$world_model_enabled" == "true" ]]; then
+  echo "[$(date +%T)] starting world visual model marker"
+  ros2 run lunar_rover_simulation world_model_marker_node.py \
+    --ros-args \
+    -r __node:=world_model_marker \
+    -p use_sim_time:=true \
+    -p world_name:="$world" \
+    -p frame_id:=map \
+    -p marker_topic:=/simulation/world_model_markers \
+    -p alpha:=0.30 \
+    -p outline_alpha:=0.30 \
+    -p outline_width:=0.025 \
+    -p map_origin_world_x:="$spawn_x" \
+    -p map_origin_world_y:="$spawn_y" \
+    -p map_origin_world_z:="$map_origin_z" \
+    -p map_origin_world_yaw:="$spawn_yaw" &
+else
+  echo "[$(date +%T)] skipping world visual model marker"
+fi
 
 echo "[$(date +%T)] starting world collision marker z_offset=$collision_marker_z_offset"
 ros2 run lunar_rover_simulation world_model_marker_node.py \
@@ -272,42 +356,57 @@ rviz2 -d install/lunar_rover_mapping/share/lunar_rover_mapping/rviz/mapping.rviz
 
 sleep 6
 
-echo "[$(date +%T)] starting FAST-LIO localization with fixed map leveling"
-ros2 launch lunar_rover_localization fast_lio2_localization.launch.py \
-  run_fast_lio2:=true \
-  direct_fast_lio_node:=true \
-  run_tf_bridge:=true \
-  run_map_frame_node:=true \
-  run_input_normalizer:=false \
-  run_sim_imu_adapter:=false \
-  imu_mount_pitch_source:=fixed \
-  imu_mount_pitch_deg:=35.273 \
-  level_correction_source:=fixed \
-  level_correction_roll_deg:=-0.58 \
-  level_correction_pitch_deg:=-0.67 \
-  level_correction_yaw_deg:=0.007 &
+if [[ "$truth_mode" == "replace_fastlio" ]]; then
+  echo "[$(date +%T)] starting ground-truth localization (replaces FAST-LIO)"
+  ros2 run lunar_rover_localization truth_localization_node.py \
+    --ros-args \
+    -r __node:=truth_localization \
+    -p use_sim_time:=true \
+    -p map_origin_world_x:="$spawn_x" \
+    -p map_origin_world_y:="$spawn_y" \
+    -p map_origin_world_z:="$map_origin_z" \
+    -p map_origin_world_yaw:="$spawn_yaw" &
+else
+  echo "[$(date +%T)] starting FAST-LIO localization with fixed map leveling"
+  ros2 launch lunar_rover_localization fast_lio2_localization.launch.py \
+    run_fast_lio2:=true \
+    direct_fast_lio_node:=true \
+    run_tf_bridge:=true \
+    run_map_frame_node:=true \
+    run_input_normalizer:=false \
+    run_sim_imu_adapter:=false \
+    imu_mount_pitch_source:=fixed \
+    imu_mount_pitch_deg:=35.273 \
+    level_correction_source:=fixed \
+    level_correction_roll_deg:=-0.58 \
+    level_correction_pitch_deg:=-0.67 \
+    level_correction_yaw_deg:=0.007 &
+fi
 
 wait_for_topic_once /localization/lio_odometry 45
 echo "[$(date +%T)] FAST-LIO corrected odometry is live; starting terrain mapping"
 
 ros2 launch lunar_rover_mapping terrain_mapping.launch.py \
   params_file:=install/lunar_rover_mapping/share/lunar_rover_mapping/config/terrain_mapper.yaml \
-  enable_cloud_fusion:="$cloud_fusion_enabled" &
+  enable_cloud_fusion:="$cloud_fusion_enabled" \
+  enable_elevation_grid:="$elevation_grid_enabled" &
 
 sleep 2
 
-if [[ "$nav2_enabled" == "true" ]]; then
-  echo "[$(date +%T)] starting Nav2 and command mux after level correction"
+if [[ "$costmap_enabled" == "true" || "$nav2_enabled" == "true" ]]; then
+  echo "[$(date +%T)] starting Nav2 costmap stack and command mux after level correction"
   ros2 launch lunar_rover_navigation navigation.launch.py \
     params_file:=install/lunar_rover_navigation/share/lunar_rover_navigation/config/nav2_fast_lio2_params.yaml &
 
-  wait_for_lifecycle_active /bt_navigator 60
+  wait_for_lifecycle_active /bt_navigator 90
 
   echo "[$(date +%T)] starting direct keyboard teleop through command mux"
   scripts/run_direct_keyboard_teleop.sh \
     --no-acl &
 
-  if [[ "$cruise_enabled" == "true" ]]; then
+  if [[ "$nav2_enabled" != "true" ]]; then
+    echo "[$(date +%T)] Nav2 costmap is active; autonomous frontier/cruise goals are disabled"
+  elif [[ "$cruise_enabled" == "true" ]]; then
     echo "[$(date +%T)] starting image_cave centerline waypoint cruise"
     ros2 run lunar_rover_navigation image_cave_waypoint_follower.py \
       --ros-args \

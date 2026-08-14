@@ -112,9 +112,21 @@ class MapOdomTfBridge(Node):
             self.declare_parameter("max_abs_lio_position", 1000.0).value
         )
         self.publish_period = float(self.declare_parameter("publish_period", 0.02).value)
+        self.stamp_mode = (
+            self.declare_parameter("stamp_mode", "now").value.strip().lower()
+        )
+        if self.stamp_mode not in ("now", "data"):
+            self.get_logger().warn(
+                f"Unsupported stamp_mode '{self.stamp_mode}', falling back to 'now'"
+            )
+            self.stamp_mode = "now"
 
         self.latest_lio = None
         self.latest_local = None
+        self.cached_lio_stamp = None
+        self.cached_transform_stamp = None
+        self.cached_map_odom_t = None
+        self.cached_map_odom_q = None
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.broadcaster = TransformBroadcaster(self)
@@ -122,7 +134,8 @@ class MapOdomTfBridge(Node):
         self.create_subscription(Odometry, self.local_odom_topic, self.on_local, 50)
         self.create_timer(self.publish_period, self.publish_transform)
         self.get_logger().info(
-            f"map->odom bridge: {self.lio_topic} with {self.local_odom_topic}"
+            f"map->odom bridge: {self.lio_topic} with {self.local_odom_topic}; "
+            f"stamp_mode={self.stamp_mode}"
         )
 
     @staticmethod
@@ -189,6 +202,31 @@ class MapOdomTfBridge(Node):
             )
             return
 
+        lio_stamp_key = (
+            self.latest_lio.header.stamp.sec,
+            self.latest_lio.header.stamp.nanosec,
+        )
+        if self.cached_lio_stamp != lio_stamp_key:
+            self.update_cached_transform(lio_stamp_key)
+        if self.cached_map_odom_t is None or self.cached_map_odom_q is None:
+            return
+
+        transform = TransformStamped()
+        transform.header.stamp = (
+            now_stamp if self.stamp_mode == "now" else self.cached_transform_stamp
+        )
+        transform.header.frame_id = self.map_frame
+        transform.child_frame_id = self.odom_frame
+        transform.transform.translation.x = self.cached_map_odom_t[0]
+        transform.transform.translation.y = self.cached_map_odom_t[1]
+        transform.transform.translation.z = self.cached_map_odom_t[2]
+        transform.transform.rotation.x = self.cached_map_odom_q[0]
+        transform.transform.rotation.y = self.cached_map_odom_q[1]
+        transform.transform.rotation.z = self.cached_map_odom_q[2]
+        transform.transform.rotation.w = self.cached_map_odom_q[3]
+        self.broadcaster.sendTransform(transform)
+
+    def update_cached_transform(self, lio_stamp_key):
         map_base = pose_as_base(
             self.latest_lio, self.base_frame, self.tf_buffer, self.get_logger(), "LIO odometry"
         )
@@ -214,25 +252,16 @@ class MapOdomTfBridge(Node):
             map_base_t[2] + rotated_base_odom_t[2],
         )
 
-        transform = TransformStamped()
-        # Stamp the map->odom transform with the LIO data timestamp, NOT
-        # get_clock().now().  Downstream consumers (terrain_mapper raytrace,
-        # Nav2 planner) look up base_link->map at the *data* stamp of the
-        # cloud/goal, and the Mid-360 driver stamps its clouds with the raw
-        # IMU clock.  Using now() here made map->odom lag the data by tens of
-        # ms, which disabled the raytrace ("extrapolation into the future")
-        # and left the whole terrain map UNKNOWN.
-        transform.header.stamp = self.latest_lio.header.stamp
-        transform.header.frame_id = self.map_frame
-        transform.child_frame_id = self.odom_frame
-        transform.transform.translation.x = map_odom_t[0]
-        transform.transform.translation.y = map_odom_t[1]
-        transform.transform.translation.z = map_odom_t[2]
-        transform.transform.rotation.x = map_odom_q[0]
-        transform.transform.rotation.y = map_odom_q[1]
-        transform.transform.rotation.z = map_odom_q[2]
-        transform.transform.rotation.w = map_odom_q[3]
-        self.broadcaster.sendTransform(transform)
+        # map->odom is a correction between the global LIO pose and the local
+        # odom frame. Recomputing it at timer rate with a stale LIO pose and a
+        # fresh local odom pose cancels odom->base_link motion, so RViz sees
+        # base_link freeze until the next LIO update. Cache the correction only
+        # when a new LIO pose arrives; the high-rate odom->base_link transform
+        # then provides smooth motion between global corrections.
+        self.cached_lio_stamp = lio_stamp_key
+        self.cached_transform_stamp = self.latest_lio.header.stamp
+        self.cached_map_odom_t = map_odom_t
+        self.cached_map_odom_q = map_odom_q
 
 
 def main():

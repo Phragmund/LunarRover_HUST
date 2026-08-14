@@ -136,7 +136,7 @@ Visualization Manager:
       Class: lunar_rover_mapping/RainbowOccupancyGrid
       Draw Free Cells: true
       Draw Unknown Cells: false
-      Enabled: true
+      Enabled: false
       Max Value: 100
       Min Value: 0
       Name: Terrain elevation map
@@ -146,7 +146,7 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /terrain/elevation_map
-      Value: true
+      Value: false
       Wall Color: 255; 25; 20
       Wall Threshold: 101
       Z Offset: 0.025
@@ -154,7 +154,7 @@ Visualization Manager:
       Class: lunar_rover_mapping/RainbowOccupancyGrid
       Draw Free Cells: false
       Draw Unknown Cells: false
-      Enabled: true
+      Enabled: false
       Max Value: 100
       Min Value: 0
       Name: Terrain wall map
@@ -164,7 +164,7 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /terrain/wall_map
-      Value: true
+      Value: false
       Wall Color: 255; 30; 20
       Wall Threshold: 100
       Z Offset: 0.04

@@ -14,6 +14,7 @@ install(
     scripts/fast_lio2_input_normalizer.py
     scripts/map_odom_tf_bridge.py
     scripts/sim_fast_lio_imu_adapter.py
+    scripts/truth_localization_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

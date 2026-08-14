@@ -225,16 +225,20 @@ setsid -f bash -lc 'cd /home/phragmund/LunarRover && source /opt/ros/humble/setu
 | --- | --- | --- |
 | `WORLD` | `reachable_maze` | Gazebo 世界名。`image_cave` 会自动使用 `spawn_z=1.45`。 |
 | `SPAWN_X` / `SPAWN_Y` / `SPAWN_Z` / `SPAWN_YAW` | `-3.92` / `0.0` / 自动 / `0.0` | 车辆出生位姿。未设置 `SPAWN_Z` 时，`image_cave` 用 `1.45`，其他世界用 `0.45`。 |
-| `MAP_ORIGIN_Z` | 同 `SPAWN_Z` | RViz world marker 的 map 原点高度。 |
+| `MAP_ORIGIN_Z` | 同 `SPAWN_Z` | RViz world marker 的 map 原点高度。`TRUTH_LOCALIZATION_MODE=replace_fastlio` 且未手动设置时，脚本会在车辆落稳后用 `/simulation/ground_truth/odometry.pose.pose.position.z - TRUTH_BASE_HEIGHT_ABOVE_GROUND` 估计地面高度，避免把 spawn 初始高度或 base_link 高度当成地图零点。 |
+| `TRUTH_BASE_HEIGHT_ABOVE_GROUND` | `0.1825` | 真值替换模式下 base_link 到地面的标称高度，来自 URDF `wheel_center_z=-0.12` 和 `wheel_radius=0.0625`。 |
 | `SIM_SETTLE_SEC` | `12` | `/simulation/ground_truth/odometry` 可用后，启动传感器 bridge 和 Livox 驱动前的额外等待时间。 |
 | `CLOCK_TIMEOUT_SEC` | `image_cave` 为 `180`，其他世界为 `90` | 等待 `/clock` 第一帧的最长时间。复杂 Gazebo 世界加载和 controller_manager 激活可能超过 60 秒。 |
 | `GROUND_TRUTH_TIMEOUT_SEC` | `image_cave` 为 `180`，其他世界为 `90` | 等待 `/simulation/ground_truth/odometry` 第一帧的最长时间。 |
 | `CONTROLLER_TIMEOUT_SEC` | `image_cave` 为 `180`，其他世界为 `90` | 等待 `joint_state_broadcaster`、`rocker_differential_controller` 和 `rover_controller` 全部 active 的最长时间。 |
 | `DELAY_LIVOX_DRIVERS` | `true` | 是否延迟启动 Gazebo 传感器 bridge 和 Mid-360 ROS 驱动。建议保持默认。 |
 | `ENABLE_CLOUD_FUSION` | `false` | 是否启用 Gemini 深度点云与 Mid-360 点云互补融合。默认关闭，terrain mapper 和 elevation grid 直接使用 `/localization/cloud_registered`；设为 `1` 时启动融合节点并改用 `/localization/cloud_fused`。 |
-| `ENABLE_NAV2` | `false` | 是否启动 Nav2、命令 mux 和 frontier exploration。当前调试默认关闭。 |
+| `ENABLE_COSTMAP` | 非真值模式 `true`，真值模式 `false` | 是否启动 Nav2 costmap stack 和命令 mux，让 RViz `/global_costmap/costmap` 有发布者。非真值默认开启，但不会自动发送导航目标。 |
+| `ENABLE_NAV2` | `false` | 是否启动 frontier exploration 或 cruise 自动目标。`ENABLE_NAV2=1` 会隐含启动 costmap stack。 |
+| `TRUTH_LOCALIZATION_MODE` | `off` | 真值调试模式。`replace_fastlio` 用 Gazebo 真值完全替换 FAST-LIO。 |
+| `USE_TRUTH_LOCALIZATION` | `false` | 兼容旧开关。设为 `1` 等价于 `TRUTH_LOCALIZATION_MODE=replace_fastlio`。 |
 
-如需临时恢复 Nav2 + frontier exploration：
+如需临时恢复 frontier exploration 自动目标：
 
 ```bash
 ENABLE_NAV2=1 scripts/restart_gated_mapping_exploration_navigation.sh
@@ -257,10 +261,11 @@ ENABLE_NAV2=1 scripts/restart_gated_mapping_exploration_navigation.sh
 13. `fast_lio2_map_frame_node.py` 使用固定 FAST-LIO map 水平补正 `roll=-0.58 deg, pitch=-0.67 deg, yaw=+0.007 deg`，不再采样启动姿态。
 14. 脚本等待 `/localization/lio_odometry` 发布；只有这一步完成后，后续模块才启动。
 15. 启动 terrain mapper。
-16. 默认跳过 Nav2 和 frontier exploration。
-17. 启动 direct keyboard teleop，直接发布到底盘 `/chassis/cmd_vel`。
+16. 非真值模式默认启动 Nav2 costmap stack 和 command mux，使 RViz `/global_costmap/costmap` 可见。
+17. 默认不启动 frontier exploration 或 cruise 自动目标。
+18. 启动 direct keyboard teleop；costmap stack 运行时发布到 `/keyboard/chassis_cmd_vel` 并经 mux 输出到底盘。
 
-仅当 `ENABLE_NAV2=1` 时，脚本才会启动 Nav2、等待 `/bt_navigator` active、启动经 mux 的键盘接管和 frontier exploration。
+`ENABLE_COSTMAP=0` 时脚本会完全跳过 Nav2 costmap stack，键盘控制直接发布到底盘 `/chassis/cmd_vel`。仅当 `ENABLE_NAV2=1` 时，脚本才会在 costmap stack active 后启动 frontier exploration；同时设置 `ENABLE_CRUISE=1` 时改为启动 image cave waypoint cruise。
 
 关键话题和控制关系：
 
@@ -272,18 +277,19 @@ ENABLE_NAV2=1 scripts/restart_gated_mapping_exploration_navigation.sh
 | `/livox/imu` | `sensor_msgs/msg/Imu` | Mid-360 仿真 IMU |
 | `/localization/lio_odometry_raw` | `nav_msgs/msg/Odometry` | FAST-LIO2 原始输出，保留算法内部估计姿态 |
 | `/localization/lio_odometry` | `nav_msgs/msg/Odometry` | 经过固定水平补正后的导航定位输出 |
+| `/localization/composite_odometry` | `nav_msgs/msg/Odometry` | 轮速+IMU组合里程计输出，供 `map_odom_tf_bridge` 使用 |
 | `/localization/cloud_registered` | `sensor_msgs/msg/PointCloud2` | 同步应用固定 map 水平补正后的注册点云 |
 | `/localization/cloud_fused` | `sensor_msgs/msg/PointCloud2` | 仅 `ENABLE_CLOUD_FUSION=1` 时发布。Mid-360约束Gemini深度偏差、剔除冲突并补足雷达空隙后的点云 |
 | `/localization/lio_map_cloud` | `sensor_msgs/msg/PointCloud2` | 同步应用固定 map 水平补正后的 FAST-LIO2 地图点云 |
-| `/chassis/cmd_vel` | `geometry_msgs/msg/TwistStamped` | 默认键盘直控输出，真正发送给底盘控制器的指令 |
-| `/navigation/chassis_cmd_vel` | `geometry_msgs/msg/TwistStamped` | 仅 `ENABLE_NAV2=1` 时存在，Nav2 经 `twist_stamper` 后的底盘指令 |
-| `/keyboard/chassis_cmd_vel` | `geometry_msgs/msg/TwistStamped` | 仅 `ENABLE_NAV2=1` 时用于 mux 的键盘控制指令 |
+| `/chassis/cmd_vel` | `geometry_msgs/msg/TwistStamped` | 真正发送给底盘控制器的指令。costmap stack 启动时由 mux 输出；`ENABLE_COSTMAP=0` 时由键盘节点直接输出。 |
+| `/navigation/chassis_cmd_vel` | `geometry_msgs/msg/TwistStamped` | Nav2 经 `twist_stamper` 后的底盘指令，costmap stack 启动时存在。 |
+| `/keyboard/chassis_cmd_vel` | `geometry_msgs/msg/TwistStamped` | costmap stack 启动时用于 mux 的键盘控制指令。 |
 
 默认键盘控制逻辑：
 
-- Nav2 不启动，`chassis_cmd_mux_node.py` 不启动。
-- direct keyboard teleop 直接发布 `/chassis/cmd_vel`。
-- `ENABLE_NAV2=1` 时才恢复 mux 接管逻辑：键盘 5 秒内有输入则覆盖导航，5 秒无输入后恢复导航指令。
+- 非真值默认启动 Nav2 costmap stack 和 `chassis_cmd_mux_node.py`，direct keyboard teleop 发布 `/keyboard/chassis_cmd_vel`。
+- `ENABLE_COSTMAP=0` 时不启动 mux，direct keyboard teleop 直接发布 `/chassis/cmd_vel`。
+- 键盘 5 秒内有输入则覆盖导航输出，5 秒无输入后恢复导航指令；默认没有 frontier/cruise 目标，因此不会自动行驶。
 
 启动完成后，日志中应出现类似顺序：
 
@@ -325,6 +331,7 @@ pgrep -af "restart_gated|fastlio_mapping|rviz2|ign gazebo|terrain_mapper|keyboar
 - `src/lunar_rover_bringup/launch/fast_lio2_exploration_navigation.launch.py` 仍可用于调试，但当前推荐入口是 `scripts/restart_gated_mapping_exploration_navigation.sh`。
 - direct keyboard teleop 默认自动发现 `/dev/input/by-id/*event-kbd`、`/dev/input/by-path/*event-kbd` 和系统 keyboard event 设备。只有需要限定某一把键盘时，才手动给 `scripts/run_direct_keyboard_teleop.sh --device ...`。
 - 如果启动后拔插过键盘，旧的 `keyboard_rover_teleop` 可能还在读取已经失效的 `/dev/input/event* (deleted)` 句柄，表现为节点存在但按键没有任何 `/chassis/cmd_vel` 输出。此时不要重启 Gazebo/FAST-LIO/建图，只需重启键盘节点：`pkill -f keyboard_rover_teleop.py || true`，然后在当前推荐链路中运行 `scripts/run_direct_keyboard_teleop.sh --topic /chassis/cmd_vel`。详细排查见 [`docs/keyboard_teleop_direct.md`](docs/keyboard_teleop_direct.md)。
+- 真值替换模式下如果快速转弯出现扇形发散，优先检查 LiDAR stamp 与 Gazebo truth pose 是否按时间对齐，以及 terrain mapper 是否持续 TF extrapolation。排查和修复记录见 [`docs/truth_localization_sync_debugging.md`](docs/truth_localization_sync_debugging.md)。
 
 ## 启动基础仿真
 

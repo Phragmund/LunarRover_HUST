@@ -11,3 +11,6 @@ map_odom_tf_bridge:
     max_local_age: 2.0
     max_abs_lio_position: 1000.0
     publish_period: 0.02
+    # Publish the latest cached map->odom correction at current sim time so RViz
+    # and Nav2 can combine it with high-rate odom->base_link smoothly.
+    stamp_mode: now

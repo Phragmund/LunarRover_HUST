@@ -25,6 +25,7 @@ def generate_launch_description():
                 "fusion_params_file", default_value=str(default_fusion_params)
             ),
             DeclareLaunchArgument("enable_cloud_fusion", default_value="false"),
+            DeclareLaunchArgument("enable_elevation_grid", default_value="false"),
             Node(
                 package="lunar_rover_mapping",
                 executable="multisensor_cloud_fusion_node.py",
@@ -70,6 +71,7 @@ def generate_launch_description():
                     },
                 ],
                 output="screen",
+                condition=IfCondition(LaunchConfiguration("enable_elevation_grid")),
             ),
         ]
     )
