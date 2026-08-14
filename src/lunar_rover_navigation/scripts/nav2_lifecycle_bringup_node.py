@@ -88,7 +88,20 @@ class LifecycleBringup(Node):
         if not self.wait_for_services(node_name, deadline):
             raise RuntimeError(f"{node_name}: lifecycle services not available")
 
-        state = self.get_state(node_name)
+        # The lifecycle node may still be inside its constructor (large
+        # costmap / plugin load under cold-start I/O), so get_state can time
+        # out and return None even though the node is healthy. Poll for a real
+        # state instead of treating a transient None as fatal.
+        state = None
+        while rclpy.ok() and time.monotonic() < deadline and state is None:
+            state = self.get_state(node_name)
+            if state is None:
+                time.sleep(self.poll_period)
+        if state is None:
+            raise RuntimeError(
+                f"{node_name}: could not read lifecycle state within {self.wait_timeout}s"
+            )
+
         if state == State.PRIMARY_STATE_ACTIVE:
             self.get_logger().info(f"{node_name}: already active")
             return
