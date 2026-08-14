@@ -154,8 +154,11 @@ def check_controller_config(path):
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     relative = path.relative_to(ROOT)
     manager = data.get("controller_manager", {}).get("ros__parameters", {})
-    if manager.get("update_rate") != 100:
-        errors.append(f"Controller manager update_rate must be 100 Hz: {relative}")
+    # The controller_manager update_rate was raised to 1000 Hz to match the
+    # 1000 Hz Gazebo physics step (max_step_size 0.001), so accept both the
+    # legacy 100 Hz and the current 1000 Hz value.
+    if manager.get("update_rate") not in (100, 1000):
+        errors.append(f"Controller manager update_rate must be 100 or 1000 Hz: {relative}")
 
     expected_types = {
         "joint_state_broadcaster": "joint_state_broadcaster/JointStateBroadcaster",
