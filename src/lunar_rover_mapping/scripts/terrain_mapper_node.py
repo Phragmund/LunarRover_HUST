@@ -9,6 +9,7 @@ from geometry_msgs.msg import Quaternion
 from nav_msgs.msg import OccupancyGrid
 from rclpy.duration import Duration
 from rclpy.node import Node
+from rclpy.time import Time
 from rclpy.qos import (
     QoSDurabilityPolicy,
     QoSHistoryPolicy,
@@ -240,7 +241,7 @@ class TerrainMapper(Node):
         transform = self.tf_buffer.lookup_transform(
             self.map_frame,
             self.base_frame,
-            self.get_clock().now().to_msg(),
+            Time(),
             timeout=Duration(seconds=0.05),
         )
         x = transform.transform.translation.x
@@ -325,7 +326,7 @@ class TerrainMapper(Node):
         if not self.clear_robot_footprint:
             return
         try:
-            now = self.get_clock().now().to_msg()
+            now = Time()
             map_from_base = self.tf_buffer.lookup_transform(
                 self.map_frame,
                 self.base_frame,
@@ -411,7 +412,7 @@ class TerrainMapper(Node):
                 transform = self.tf_buffer.lookup_transform(
                     self.map_frame,
                     msg.header.frame_id,
-                    self.get_clock().now().to_msg(),
+                    Time(),
                     timeout=Duration(seconds=0.05),
                 )
             except TransformException:
@@ -427,22 +428,14 @@ class TerrainMapper(Node):
                 base_from_cloud = self.tf_buffer.lookup_transform(
                     self.base_frame,
                     msg.header.frame_id,
-                    msg.header.stamp,
+                    Time(),
                     timeout=Duration(seconds=0.05),
                 )
-            except TransformException:
-                try:
-                    base_from_cloud = self.tf_buffer.lookup_transform(
-                        self.base_frame,
-                        msg.header.frame_id,
-                        self.get_clock().now().to_msg(),
-                        timeout=Duration(seconds=0.05),
-                    )
-                except TransformException as exc:
-                    self.get_logger().warn(
-                        f"Cannot self-filter cloud from {msg.header.frame_id}: {exc}",
-                        throttle_duration_sec=2.0,
-                    )
+            except TransformException as exc:
+                self.get_logger().warn(
+                    f"Cannot self-filter cloud from {msg.header.frame_id}: {exc}",
+                    throttle_duration_sec=2.0,
+                )
 
         used = 0
         stamp = self.stamp_seconds(msg.header.stamp)
@@ -452,7 +445,7 @@ class TerrainMapper(Node):
                 origin_transform = self.tf_buffer.lookup_transform(
                     self.map_frame,
                     self.sensor_origin_frame,
-                    msg.header.stamp,
+                    Time(),
                     timeout=Duration(seconds=0.05),
                 )
                 sensor_origin = (

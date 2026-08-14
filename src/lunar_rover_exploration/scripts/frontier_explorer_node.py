@@ -326,7 +326,12 @@ class FrontierExplorer(Node):
             return (0.0, 0.0)
         cx = sum(c[0] for c in cluster) / len(cluster)
         cy = sum(c[1] for c in cluster) / len(cluster)
-        return (round(cx, 3), round(cy, 3))
+        # Return world coordinates so the meter-based blacklist radius in
+        # is_cluster_blacklisted() compares like-for-like.  The previous
+        # cell-coordinate return made blacklist_radius*2 (0.9 m) act as
+        # 0.9 *cells*, so the cluster-aware blacklisting never actually
+        # covered neighbouring frontier clusters.
+        return self.cell_to_world(cx, cy)
 
     # ── blacklisting ────────────────────────────────────────────────────
 
