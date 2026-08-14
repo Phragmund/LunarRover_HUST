@@ -4,22 +4,54 @@ set -eo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 source /opt/ros/humble/setup.bash
 source install/setup.bash
+mkdir -p log/manual_start
+echo "$$" > log/manual_start/latest_gated.pid
+ros2 daemon stop >/dev/null 2>&1 || true
+ros2 daemon start >/dev/null 2>&1 || true
 
 wait_for_topic_once() {
   local topic="$1"
   local timeout_sec="$2"
   local deadline=$((SECONDS + timeout_sec))
-  local remaining
+  local remaining probe_timeout topic_type
   echo "[$(date +%T)] waiting for $topic, timeout ${timeout_sec}s"
   while (( SECONDS < deadline )); do
-    if [[ -n "$(ros2 topic type "$topic" 2>/dev/null || true)" ]]; then
+    topic_type="$(ros2 topic type "$topic" 2>/dev/null || true)"
+    if [[ -n "$topic_type" ]]; then
       remaining=$((deadline - SECONDS))
-      timeout "${remaining}" ros2 topic echo --once "$topic" >/dev/null
-      return 0
+      probe_timeout=3
+      if (( remaining < probe_timeout )); then
+        probe_timeout="$remaining"
+      fi
+      if timeout "$probe_timeout" ros2 topic echo --once "$topic" >/dev/null 2>/dev/null; then
+        echo "[$(date +%T)] received first $topic message"
+        return 0
+      fi
     fi
     sleep 1
   done
-  echo "Timed out waiting for topic type: $topic" >&2
+  echo "Timed out waiting for topic message: $topic" >&2
+  return 1
+}
+
+wait_for_controllers_active() {
+  local timeout_sec="$1"
+  local deadline=$((SECONDS + timeout_sec))
+  local output
+  echo "[$(date +%T)] waiting for rover controllers, timeout ${timeout_sec}s"
+  while (( SECONDS < deadline )); do
+    output="$(timeout 5 ros2 control list_controllers 2>/dev/null || true)"
+    if grep -q "joint_state_broadcaster.*active" <<< "$output" &&
+      grep -q "rocker_differential_controller.*active" <<< "$output" &&
+      grep -q "rover_controller.*active" <<< "$output"
+    then
+      echo "[$(date +%T)] rover controllers are active"
+      return 0
+    fi
+    sleep 2
+  done
+  echo "Timed out waiting for rover controllers to become active" >&2
+  echo "$output" >&2
   return 1
 }
 
@@ -47,8 +79,22 @@ case "${nav2_enabled,,}" in
     nav2_enabled=false
     ;;
 esac
+cloud_fusion_enabled="${ENABLE_CLOUD_FUSION:-false}"
+case "${cloud_fusion_enabled,,}" in
+  1|true|yes|on)
+    cloud_fusion_enabled=true
+    ;;
+  *)
+    cloud_fusion_enabled=false
+    ;;
+esac
 
 world="${WORLD:-reachable_maze}"
+if [[ -n "${COLLISION_MARKER_Z_OFFSET:-}" ]]; then
+  collision_marker_z_offset="$COLLISION_MARKER_Z_OFFSET"
+else
+  collision_marker_z_offset="0.20"
+fi
 spawn_x="${SPAWN_X:--3.92}"
 spawn_y="${SPAWN_Y:-0.0}"
 spawn_yaw="${SPAWN_YAW:-0.0}"
@@ -59,8 +105,23 @@ elif [[ "$world" == "image_cave" ]]; then
 else
   spawn_z="0.45"
 fi
-map_origin_z="${MAP_ORIGIN_Z:-$spawn_z}"
+if [[ -n "${MAP_ORIGIN_Z:-}" ]]; then
+  map_origin_z="$MAP_ORIGIN_Z"
+  map_origin_z_source="manual"
+else
+  map_origin_z="$spawn_z"
+  map_origin_z_source="spawn_z"
+fi
 sim_settle_sec="${SIM_SETTLE_SEC:-12}"
+if [[ "$world" == "image_cave" ]]; then
+  clock_timeout_sec="${CLOCK_TIMEOUT_SEC:-180}"
+  ground_truth_timeout_sec="${GROUND_TRUTH_TIMEOUT_SEC:-180}"
+  controller_timeout_sec="${CONTROLLER_TIMEOUT_SEC:-180}"
+else
+  clock_timeout_sec="${CLOCK_TIMEOUT_SEC:-90}"
+  ground_truth_timeout_sec="${GROUND_TRUTH_TIMEOUT_SEC:-90}"
+  controller_timeout_sec="${CONTROLLER_TIMEOUT_SEC:-90}"
+fi
 delay_livox_drivers="${DELAY_LIVOX_DRIVERS:-true}"
 case "${delay_livox_drivers,,}" in
   1|true|yes|on)
@@ -75,7 +136,7 @@ case "${delay_livox_drivers,,}" in
     ;;
 esac
 
-echo "[$(date +%T)] starting sim: world=$world delayed_livox_drivers=$delay_livox_drivers"
+echo "[$(date +%T)] starting sim: world=$world spawn_z=$spawn_z map_origin_z=$map_origin_z source=$map_origin_z_source delayed_livox_drivers=$delay_livox_drivers cloud_fusion=$cloud_fusion_enabled"
 ros2 launch lunar_rover_bringup bringup.launch.py \
   mode:=sim \
   world:="$world" \
@@ -90,8 +151,9 @@ ros2 launch lunar_rover_bringup bringup.launch.py \
   spawn_z:="$spawn_z" \
   spawn_yaw:="$spawn_yaw" &
 
-wait_for_topic_once /clock 60
-wait_for_topic_once /simulation/ground_truth/odometry 60
+wait_for_topic_once /clock "$clock_timeout_sec"
+wait_for_topic_once /simulation/ground_truth/odometry "$ground_truth_timeout_sec"
+wait_for_controllers_active "$controller_timeout_sec"
 echo "[$(date +%T)] Gazebo ground truth is live; waiting ${sim_settle_sec}s before Livox ROS drivers"
 sleep "$sim_settle_sec"
 
@@ -146,6 +208,7 @@ ros2 run lunar_rover_mapping composite_wheel_imu_odometry_node.py \
 echo "[$(date +%T)] starting world model marker and RViz"
 ros2 run lunar_rover_simulation world_model_marker_node.py \
   --ros-args \
+  -r __node:=world_model_marker \
   -p use_sim_time:=true \
   -p world_name:="$world" \
   -p frame_id:=map \
@@ -158,9 +221,10 @@ ros2 run lunar_rover_simulation world_model_marker_node.py \
   -p map_origin_world_z:="$map_origin_z" \
   -p map_origin_world_yaw:="$spawn_yaw" &
 
-echo "[$(date +%T)] starting world collision marker"
+echo "[$(date +%T)] starting world collision marker z_offset=$collision_marker_z_offset"
 ros2 run lunar_rover_simulation world_model_marker_node.py \
   --ros-args \
+  -r __node:=world_collision_marker \
   -p use_sim_time:=true \
   -p world_name:="$world" \
   -p frame_id:=map \
@@ -178,6 +242,7 @@ ros2 run lunar_rover_simulation world_model_marker_node.py \
   -p outline_color_r:=0.05 \
   -p outline_color_g:=0.95 \
   -p outline_color_b:=1.0 \
+  -p marker_z_offset:="$collision_marker_z_offset" \
   -p map_origin_world_x:="$spawn_x" \
   -p map_origin_world_y:="$spawn_y" \
   -p map_origin_world_z:="$map_origin_z" \
@@ -208,7 +273,8 @@ wait_for_topic_once /localization/lio_odometry 45
 echo "[$(date +%T)] FAST-LIO corrected odometry is live; starting terrain mapping"
 
 ros2 launch lunar_rover_mapping terrain_mapping.launch.py \
-  params_file:=install/lunar_rover_mapping/share/lunar_rover_mapping/config/terrain_mapper.yaml &
+  params_file:=install/lunar_rover_mapping/share/lunar_rover_mapping/config/terrain_mapper.yaml \
+  enable_cloud_fusion:="$cloud_fusion_enabled" &
 
 sleep 2
 

@@ -2,7 +2,7 @@
 """Build a 2.5D traversability grid from registered LiDAR points."""
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import rclpy
 from geometry_msgs.msg import Quaternion
@@ -22,6 +22,27 @@ from tf2_ros import Buffer, TransformException, TransformListener
 
 
 @dataclass
+class TerrainStats:
+    count: int = 0
+    min_z: float = math.inf
+    max_z: float = -math.inf
+    sum_z: float = 0.0
+    sum_z2: float = 0.0
+    ceiling_filtered: bool = False
+
+    @property
+    def mean_z(self):
+        return self.sum_z / self.count if self.count else math.nan
+
+    @property
+    def variance(self):
+        if self.count <= 1:
+            return 0.0
+        mean = self.mean_z
+        return max(0.0, self.sum_z2 / self.count - mean * mean)
+
+
+@dataclass
 class TerrainCell:
     count: int = 0
     free_count: int = 0
@@ -30,14 +51,25 @@ class TerrainCell:
     sum_z: float = 0.0
     sum_z2: float = 0.0
     last_seen: float = 0.0
+    z_bins: dict = field(default_factory=dict)
 
-    def add(self, z, stamp):
+    def add(self, z, stamp, z_bin=None):
         self.count += 1
         self.min_z = min(self.min_z, z)
         self.max_z = max(self.max_z, z)
         self.sum_z += z
         self.sum_z2 += z * z
         self.last_seen = stamp
+        if z_bin is not None:
+            stats = self.z_bins.get(z_bin)
+            if stats is None:
+                self.z_bins[z_bin] = [1, z, z * z, z, z]
+            else:
+                stats[0] += 1
+                stats[1] += z
+                stats[2] += z * z
+                stats[3] = min(stats[3], z)
+                stats[4] = max(stats[4], z)
 
     def mark_free(self, stamp):
         self.free_count += 1
@@ -51,6 +83,7 @@ class TerrainCell:
         self.sum_z = 0.0
         self.sum_z2 = 0.0
         self.last_seen = 0.0
+        self.z_bins.clear()
 
     @property
     def mean_z(self):
@@ -114,6 +147,9 @@ class TerrainMapper(Node):
         ).value
         self.map_frame = self.declare_parameter("map_frame", "map").value
         self.base_frame = self.declare_parameter("base_frame", "base_link").value
+        self.sensor_origin_frame = self.declare_parameter(
+            "sensor_origin_frame", self.base_frame
+        ).value
         self.resolution = float(self.declare_parameter("resolution", 0.10).value)
         self.width = int(self.declare_parameter("width_cells", 400).value)
         self.height = int(self.declare_parameter("height_cells", 400).value)
@@ -131,6 +167,21 @@ class TerrainMapper(Node):
             ).value
         )
         self.roughness_warn = float(self.declare_parameter("roughness_warn", 0.025).value)
+        self.ceiling_filter_enabled = bool(
+            self.declare_parameter("ceiling_filter_enabled", True).value
+        )
+        self.ceiling_filter_bin_size = max(
+            0.01, float(self.declare_parameter("ceiling_filter_bin_size", 0.05).value)
+        )
+        self.ceiling_filter_min_gap = float(
+            self.declare_parameter("ceiling_filter_min_gap", 0.40).value
+        )
+        self.ceiling_filter_min_cluster_points = int(
+            self.declare_parameter("ceiling_filter_min_cluster_points", 2).value
+        )
+        self.ceiling_filter_ground_cluster_max_height = float(
+            self.declare_parameter("ceiling_filter_ground_cluster_max_height", 0.45).value
+        )
         self.unknown_is_risky = bool(self.declare_parameter("unknown_is_risky", False).value)
         self.max_points_per_cloud = int(self.declare_parameter("max_points_per_cloud", 60000).value)
         self.publish_period = float(self.declare_parameter("publish_period", 0.5).value)
@@ -395,11 +446,26 @@ class TerrainMapper(Node):
 
         used = 0
         stamp = self.stamp_seconds(msg.header.stamp)
-        sensor_origin = (
-            transform.transform.translation.x,
-            transform.transform.translation.y,
-            transform.transform.translation.z,
-        )
+        sensor_origin = None
+        if self.raytrace_free_space:
+            try:
+                origin_transform = self.tf_buffer.lookup_transform(
+                    self.map_frame,
+                    self.sensor_origin_frame,
+                    msg.header.stamp,
+                    timeout=Duration(seconds=0.05),
+                )
+                sensor_origin = (
+                    origin_transform.transform.translation.x,
+                    origin_transform.transform.translation.y,
+                    origin_transform.transform.translation.z,
+                )
+            except TransformException as exc:
+                self.get_logger().warn(
+                    f"Cannot locate ray origin {self.sensor_origin_frame} in "
+                    f"{self.map_frame}; raytracing disabled for this cloud: {exc}",
+                    throttle_duration_sec=2.0,
+                )
         for point in point_cloud2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True):
             if used >= self.max_points_per_cloud:
                 break
@@ -410,14 +476,15 @@ class TerrainMapper(Node):
                 self.transform_point(base_from_cloud, point)
             ):
                 continue
-            if self.raytrace_free_space and used % self.raytrace_stride == 0:
+            if sensor_origin is not None and used % self.raytrace_stride == 0:
                 self.mark_ray_free(sensor_origin, (x, y, z), stamp)
             if z < self.min_z or z > self.max_z:
                 continue
             index = self.cell_index(x, y)
             if index is None:
                 continue
-            self.cells[index].add(z, stamp)
+            z_bin = int(math.floor(z / self.ceiling_filter_bin_size))
+            self.cells[index].add(z, stamp, z_bin)
             used += 1
         self.last_cloud_stamp = msg.header.stamp
 
@@ -428,11 +495,84 @@ class TerrainMapper(Node):
             if cell.count and now_seconds - cell.last_seen > self.cell_decay_time:
                 cell.reset()
 
-    def neighbor_slope_cost(self, index):
+    def raw_cell_stats(self, cell):
+        return TerrainStats(
+            count=cell.count,
+            min_z=cell.min_z,
+            max_z=cell.max_z,
+            sum_z=cell.sum_z,
+            sum_z2=cell.sum_z2,
+        )
+
+    @staticmethod
+    def add_bin_stats(total, stats):
+        total.count += stats[0]
+        total.sum_z += stats[1]
+        total.sum_z2 += stats[2]
+        total.min_z = min(total.min_z, stats[3])
+        total.max_z = max(total.max_z, stats[4])
+
+    @staticmethod
+    def clone_stats(stats):
+        return TerrainStats(
+            count=stats.count,
+            min_z=stats.min_z,
+            max_z=stats.max_z,
+            sum_z=stats.sum_z,
+            sum_z2=stats.sum_z2,
+            ceiling_filtered=stats.ceiling_filtered,
+        )
+
+    def filtered_cell_stats(self, cell):
+        raw = self.raw_cell_stats(cell)
+        if (
+            not self.ceiling_filter_enabled
+            or cell.count < self.min_points
+            or len(cell.z_bins) < 2
+        ):
+            return raw
+
+        occupied_bins = sorted(cell.z_bins)
+        best_lower = None
+        best_gap = 0.0
+        min_cluster_points = max(1, self.ceiling_filter_min_cluster_points)
+
+        prefix = []
+        running = TerrainStats()
+        for bin_index in occupied_bins:
+            self.add_bin_stats(running, cell.z_bins[bin_index])
+            prefix.append(self.clone_stats(running))
+
+        suffix = [None] * len(occupied_bins)
+        running = TerrainStats()
+        for pos in range(len(occupied_bins) - 1, -1, -1):
+            self.add_bin_stats(running, cell.z_bins[occupied_bins[pos]])
+            suffix[pos] = self.clone_stats(running)
+
+        for pos in range(len(occupied_bins) - 1):
+            lower = prefix[pos]
+            upper = suffix[pos + 1]
+            if lower.count < min_cluster_points or upper.count < min_cluster_points:
+                continue
+            vertical_gap = upper.min_z - lower.max_z
+            if vertical_gap < self.ceiling_filter_min_gap:
+                continue
+            if lower.max_z - lower.min_z > self.ceiling_filter_ground_cluster_max_height:
+                continue
+            if vertical_gap > best_gap:
+                best_gap = vertical_gap
+                best_lower = lower
+
+        if best_lower is None:
+            return raw
+        best_lower.ceiling_filtered = True
+        return best_lower
+
+    def neighbor_slope_cost(self, index, stats_cache):
         row = index // self.width
         column = index - row * self.width
-        cell = self.cells[index]
-        if cell.count < self.min_points:
+        cell_stats = stats_cache[index]
+        if cell_stats.count < self.min_points:
             return 0
         max_slope = 0.0
         unknown_neighbors = 0
@@ -445,12 +585,12 @@ class TerrainMapper(Node):
                 nc = column + dx
                 if nr < 0 or nr >= self.height or nc < 0 or nc >= self.width:
                     continue
-                neighbor = self.cells[nr * self.width + nc]
+                neighbor = stats_cache[nr * self.width + nc]
                 if neighbor.count < self.min_points:
                     unknown_neighbors += 1
                     continue
                 dist = self.resolution * math.hypot(dx, dy)  # diagonal cells are farther
-                slope = math.degrees(math.atan2(abs(cell.mean_z - neighbor.mean_z), dist))
+                slope = math.degrees(math.atan2(abs(cell_stats.mean_z - neighbor.mean_z), dist))
                 max_slope = max(max_slope, slope)
         # Conservative penalty: each unseen neighbour adds an assumed slope risk.
         # At map edges / frontiers we lack data — assume worst-case safe slope.
@@ -464,20 +604,21 @@ class TerrainMapper(Node):
         slope_band = max(0.1, self.lethal_slope_deg - self.max_slope_deg)
         return min(100, 30 + int(round(45.0 * (max_slope - self.max_slope_deg) / slope_band)) + unknown_penalty)
 
-    def cell_cost(self, index):
+    def cell_cost(self, index, stats_cache):
         cell = self.cells[index]
-        if cell.count < self.min_points:
+        cell_stats = stats_cache[index]
+        if cell_stats.count < self.min_points:
             if cell.free_count > 0:
                 return 0
             return 70 if self.unknown_is_risky else -1
-        height_range = cell.max_z - cell.min_z
+        height_range = cell_stats.max_z - cell_stats.min_z
         if height_range >= self.lethal_step:
             return 100
         step_cost = 0
         if height_range >= self.cautious_step:
             step_cost = 35 + int(round(40.0 * (height_range - self.cautious_step) / max(0.01, self.lethal_step - self.cautious_step)))
-        roughness_cost = int(round(35.0 * min(1.0, math.sqrt(cell.variance) / max(0.001, self.roughness_warn))))
-        slope_cost = self.neighbor_slope_cost(index)
+        roughness_cost = int(round(35.0 * min(1.0, math.sqrt(cell_stats.variance) / max(0.001, self.roughness_warn))))
+        slope_cost = self.neighbor_slope_cost(index, stats_cache)
         # Sum accumulated risks instead of taking only the worst factor.
         # A cell with moderate step, roughness, AND slope is riskier than any
         # single factor — the combined cost better reflects real traversability.
@@ -495,17 +636,22 @@ class TerrainMapper(Node):
         grid.info.origin.position.x = self.origin_x
         grid.info.origin.position.y = self.origin_y
         grid.info.origin.orientation.w = 1.0
-        grid.data = [self.cell_cost(index) for index in range(len(self.cells))]
+        stats_cache = [self.filtered_cell_stats(cell) for cell in self.cells]
+        grid.data = [
+            self.cell_cost(index, stats_cache) for index in range(len(self.cells))
+        ]
         self.clear_robot_cells(grid.data)
         self.grid_pub.publish(grid)
 
         known = sum(1 for value in grid.data if value >= 0)
         lethal = sum(1 for value in grid.data if value >= 100)
+        ceiling_filtered = sum(1 for stats in stats_cache if stats.ceiling_filtered)
         self.diag_pub.publish(
             String(
                 data=(
                     f"known_ratio={known / len(grid.data):.3f} "
                     f"lethal_ratio={lethal / len(grid.data):.3f} "
+                    f"ceiling_filtered={ceiling_filtered} "
                     f"last_cloud={'yes' if self.last_cloud_stamp else 'no'}"
                 )
             )

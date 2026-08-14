@@ -173,6 +173,56 @@ so run the helper again after a restart.
 
 ## Common Failures
 
+Keys stop working after unplugging or replugging a keyboard
+
+The direct backend opens concrete Linux event devices. If a USB keyboard is
+unplugged and replugged, the kernel can destroy the old `/dev/input/event*`
+node and create a new one. The ROS node may still be alive, but it is reading
+stale file descriptors such as:
+
+```text
+/dev/input/event12 (deleted)
+/dev/input/event15 (deleted)
+```
+
+In that state, do not debug Gazebo, FAST-LIO, RViz, Nav2, or the chassis
+controller first. Restart only the keyboard teleop process so it reopens the
+current `/dev/input/by-id/*event-kbd` and `/dev/input/by-path/*event-kbd`
+symlinks.
+
+Check for stale keyboard descriptors:
+
+```bash
+pid="$(pgrep -f 'keyboard_rover_teleop.py' | head -n 1)"
+[ -n "$pid" ] && ls -l "/proc/$pid/fd" | grep -E '/dev/input|deleted'
+```
+
+Restart the teleop process for the default Nav2/mux keyboard topic:
+
+```bash
+pkill -f keyboard_rover_teleop.py || true
+scripts/run_direct_keyboard_teleop.sh
+```
+
+Restart the teleop process for the current gated mapping chain, where keyboard
+commands go directly to the chassis:
+
+```bash
+pkill -f keyboard_rover_teleop.py || true
+scripts/run_direct_keyboard_teleop.sh --topic /chassis/cmd_vel
+```
+
+Validate that key presses produce commands before looking elsewhere:
+
+```bash
+source /opt/ros/humble/setup.bash
+source /home/phragmund/LunarRover/install/setup.bash
+timeout 5 ros2 topic echo /chassis/cmd_vel
+```
+
+Expected examples are `W -> linear.x = 0.16`, `A -> angular.z = 0.36`, and
+`D -> angular.z = -0.36`.
+
 `Package 'lunar_rover_navigation' not found`
 
 Source the workspace first:

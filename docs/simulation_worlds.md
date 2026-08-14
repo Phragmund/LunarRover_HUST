@@ -32,17 +32,32 @@ current triangular pseudo-surface terrain:
 - Surface block height constraint: each accepted block is placed so its rotated
   bottom vertex sits about 0.002 m above the sampled terrain. Blocks skip pit
   bottoms so that pits remain visible and traversable as depressions.
-- Ceiling: a 30.0 m x 30.0 m x 0.04 m box with its bottom at z=2.19 m and
-  top at z=2.23 m. Cave wall boxes extend up to z=2.25 m, so the ceiling stays
-  below the wall tops. Its visual is fully transparent and does not cast
-  shadows, while collision and laser retro data remain enabled so lidar can
-  receive ceiling returns without the ceiling blocking lighting or map viewing.
+- Ceiling: a fully transparent, non-shadowing triangular mesh derived by
+  flipping the same generated cave floor height field upward. The nominal lower
+  surface is z=2.19 m at the base terrain height; with the current terrain and
+  pits, the lower surface spans about z=2.14 m to z=2.28 m. Collision and laser
+  retro data remain enabled so lidar receives non-planar ceiling returns without
+  the ceiling blocking lighting or map viewing.
 - RViz collision layer: `/simulation/world_collision_markers` visualizes the
-  collision geometry for the currently launched world. For `image_cave`, this
-  includes 186 wall boxes, 200 surface block boxes, and the transparent lidar
-  ceiling collision box, plus RViz-only pit markers from
-  `image_cave_heightmap_terrain/metadata/pits.csv`. The terrain mesh collision
-  is intentionally omitted from the marker layer to avoid overloading RViz.
+  lightweight collision geometry for the currently launched world. For
+  `image_cave`, this includes 186 wall boxes, 200 surface block boxes, plus
+  RViz-only pit markers from `image_cave_heightmap_terrain/metadata/pits.csv`.
+  The floor and inverted-ceiling mesh collisions are intentionally omitted from
+  the marker layer to avoid overloading RViz.
+- RViz world/collision marker alignment: static Gazebo world geometry is
+  transformed into the `map` frame using the rover's initial world pose. The
+  marker publisher receives `map_origin_world_x/y/z/yaw`. In the standard
+  gated restart script, XY/yaw come from `SPAWN_X`, `SPAWN_Y`, and `SPAWN_YAW`.
+  Z comes from `MAP_ORIGIN_Z` when explicitly set; otherwise it defaults to the
+  Gazebo spawn height. If the marker layer is vertically offset from the mapped
+  point cloud, adjust only `MAP_ORIGIN_Z` or the collision marker offset rather
+  than changing the Gazebo spawn height.
+- The gated restart script and integrated FAST-LIO launch currently apply an
+  RViz-only collision marker offset of `0.20` m by default for every world.
+  Override it with `COLLISION_MARKER_Z_OFFSET` in the restart script or
+  `collision_marker_z_offset:=...` in launch. This is a direct visualization
+  patch for `/simulation/world_collision_markers` and does not move Gazebo's
+  physical collision bodies.
 - Default rover spawn: `x=-3.92`, `y=0.0`, `z=1.45`, `yaw=0.0`.
 
 Use the full default bringup with:
@@ -66,6 +81,31 @@ same terrain and wall models without spawning the rover or ROS controllers:
 export IGN_GAZEBO_RESOURCE_PATH=/home/phragmund/LunarRover/install/lunar_rover_simulation/share/lunar_rover_simulation/models:/home/phragmund/LunarRover/src/lunar_rover_simulation/models
 export GZ_SIM_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH
 ign gazebo -r -v 2 /home/phragmund/LunarRover/src/lunar_rover_simulation/worlds/terrain_preview.sdf
+```
+
+`image_cave` also has an optional generated centerline patrol route for Nav2:
+
+- Route CSV:
+  `src/lunar_rover_navigation/routes/image_cave_centerline_loop.csv`
+- Preview image:
+  `tmp/image_cave_centerline_loop_preview.png`
+- The route is a closed centerline walk over the spawn-connected cave corridor
+  skeleton. Dead-end channels are covered by entering and returning along the
+  same centerline, then the route continues through the rest of the cave.
+- CSV columns `x`, `y`, and `yaw` are in the RViz/Nav2 `map` frame for the
+  default cave spawn pose. `x_world`, `y_world`, and `yaw_world` keep the
+  corresponding Gazebo world coordinates.
+
+Regenerate the route after changing cave wall topology or scale:
+
+```bash
+ros2 run lunar_rover_navigation generate_image_cave_centerline_route.py
+```
+
+Run the route follower after Nav2 is active:
+
+```bash
+ros2 run lunar_rover_navigation image_cave_waypoint_follower.py
 ```
 
 Other available worlds:

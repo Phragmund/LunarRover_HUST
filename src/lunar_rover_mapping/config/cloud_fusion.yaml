@@ -1,0 +1,39 @@
+multisensor_cloud_fusion:
+  ros__parameters:
+    use_sim_time: true
+    lidar_topic: /localization/cloud_registered
+    camera_topic: /camera/depth_registered/points
+    output_topic: /localization/cloud_fused
+    diagnostics_topic: /localization/cloud_fusion/diagnostics
+    target_frame: map
+
+    # Gemini 335 640x400 profile. The 6 m cap avoids treating its long-range,
+    # low-confidence returns as equal to the Mid-360 geometry.
+    camera_min_range: 0.26
+    camera_max_range: 6.0
+    camera_pixel_stride: 2
+    max_camera_points: 90000
+    camera_max_age_sec: 0.25
+    transform_timeout_sec: 0.10
+
+    # First reduce each sensor independently so camera pixel density cannot
+    # overwhelm the sparse LiDAR scan before confidence weighting.
+    lidar_voxel_size: 0.04
+    camera_voxel_size: 0.03
+    output_voxel_size: 0.04
+    max_output_points: 60000
+
+    # LiDAR-neighbour classification after radial camera bias correction.
+    consistency_radius: 0.08
+    association_radius: 0.15
+    conflict_radius: 0.22
+    min_overlap_matches: 30
+    max_depth_bias: 0.10
+    bias_smoothing: 0.25
+    refinement_gain: 0.35
+
+    # LiDAR anchors shared output voxels; camera adds local detail and fills
+    # sampling gaps without receiving equal authority in conflicting regions.
+    lidar_weight: 4.0
+    overlap_camera_weight: 1.5
+    complementary_camera_weight: 1.0

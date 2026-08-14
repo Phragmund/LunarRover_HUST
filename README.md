@@ -48,6 +48,7 @@ Gazebo / 实车传感器
   -> /livox/points, /livox/imu, /livox/scan, /camera/*
   -> FAST-LIO2 + fast_lio2_map_frame_node.py
   -> /localization/lio_odometry, /localization/cloud_registered
+  -> 可选 Mid-360/Gemini互补校正 -> /localization/cloud_fused
   -> terrain_mapper_node.py
   -> /terrain/traversability
   -> Nav2 + lunar_rover_navigation/TerrainLayer
@@ -128,6 +129,7 @@ Gazebo / 实车传感器
 | `/camera/color/image_raw` | `sensor_msgs/msg/Image` | Gemini 335彩色图 |
 | `/camera/depth/image_raw` | `sensor_msgs/msg/Image` | Gemini 335原始深度图 |
 | `/camera/depth_registered/points` | `sensor_msgs/msg/PointCloud2` | 由深度图几何转换得到的观察点云 |
+| `/localization/cloud_fused` | `sensor_msgs/msg/PointCloud2` | 雷达约束、相机补充后的融合点云 |
 | `/simulation/ground_truth/odometry` | `nav_msgs/msg/Odometry` | 仅用于仿真评估的真值，不是定位输出 |
 
 ## 构建
@@ -210,6 +212,13 @@ scripts/restart_gated_mapping_exploration_navigation.sh
 WORLD=image_cave SIM_SETTLE_SEC=20 scripts/restart_gated_mapping_exploration_navigation.sh
 ```
 
+非交互 agent 后台启动时建议使用独立进程组和日志文件：
+
+```bash
+setsid -f bash -lc 'cd /home/phragmund/LunarRover && source /opt/ros/humble/setup.bash && source install/setup.bash && exec env WORLD=image_cave SIM_SETTLE_SEC=20 scripts/restart_gated_mapping_exploration_navigation.sh' \
+  </dev/null >/tmp/lunar_rover_gated_restart.log 2>&1
+```
+
 常用环境变量：
 
 | 变量 | 默认值 | 说明 |
@@ -218,7 +227,11 @@ WORLD=image_cave SIM_SETTLE_SEC=20 scripts/restart_gated_mapping_exploration_nav
 | `SPAWN_X` / `SPAWN_Y` / `SPAWN_Z` / `SPAWN_YAW` | `-3.92` / `0.0` / 自动 / `0.0` | 车辆出生位姿。未设置 `SPAWN_Z` 时，`image_cave` 用 `1.45`，其他世界用 `0.45`。 |
 | `MAP_ORIGIN_Z` | 同 `SPAWN_Z` | RViz world marker 的 map 原点高度。 |
 | `SIM_SETTLE_SEC` | `12` | `/simulation/ground_truth/odometry` 可用后，启动传感器 bridge 和 Livox 驱动前的额外等待时间。 |
+| `CLOCK_TIMEOUT_SEC` | `image_cave` 为 `180`，其他世界为 `90` | 等待 `/clock` 第一帧的最长时间。复杂 Gazebo 世界加载和 controller_manager 激活可能超过 60 秒。 |
+| `GROUND_TRUTH_TIMEOUT_SEC` | `image_cave` 为 `180`，其他世界为 `90` | 等待 `/simulation/ground_truth/odometry` 第一帧的最长时间。 |
+| `CONTROLLER_TIMEOUT_SEC` | `image_cave` 为 `180`，其他世界为 `90` | 等待 `joint_state_broadcaster`、`rocker_differential_controller` 和 `rover_controller` 全部 active 的最长时间。 |
 | `DELAY_LIVOX_DRIVERS` | `true` | 是否延迟启动 Gazebo 传感器 bridge 和 Mid-360 ROS 驱动。建议保持默认。 |
+| `ENABLE_CLOUD_FUSION` | `false` | 是否启用 Gemini 深度点云与 Mid-360 点云互补融合。默认关闭，terrain mapper 和 elevation grid 直接使用 `/localization/cloud_registered`；设为 `1` 时启动融合节点并改用 `/localization/cloud_fused`。 |
 | `ENABLE_NAV2` | `false` | 是否启动 Nav2、命令 mux 和 frontier exploration。当前调试默认关闭。 |
 
 如需临时恢复 Nav2 + frontier exploration：
@@ -232,19 +245,20 @@ ENABLE_NAV2=1 scripts/restart_gated_mapping_exploration_navigation.sh
 1. 启动 Gazebo、车体、控制器、`robot_state_publisher`、基础 bridge；此时 `livox_drivers:=false`、`sensor_bridges:=false`。
 2. 等待 `/clock` 第一帧。
 3. 等待 `/simulation/ground_truth/odometry` 第一帧，确认 Gazebo 车体真值里程计已经发布。
-4. 额外等待 `SIM_SETTLE_SEC` 秒，让复杂地图和车体物理状态稳定。
-5. 启动延迟的 Gazebo sensor bridge：`/mid360/raw_points`、`/mid360/raw_imu`、相机等话题开始进入 ROS。
-6. 启动延迟的 Mid-360 ROS 驱动，发布 `/livox/lidar`、`/livox/points` 和 `/livox/imu`。
-7. 等待 `/livox/lidar` 和 `/livox/imu` 第一帧。
-8. 启动 `composite_wheel_imu_odometry_node.py`。
-9. 启动 world model marker 和 RViz。
-10. 启动 FAST-LIO2 定位链路。
-11. `fast_lio2_map_frame_node.py` 使用固定 IMU pitch `35.273 deg` 替代启动 IMU 姿态采样。
-12. `fast_lio2_map_frame_node.py` 使用固定 FAST-LIO map 水平补正 `roll=-0.58 deg, pitch=-0.67 deg, yaw=+0.007 deg`，不再采样启动姿态。
-13. 脚本等待 `/localization/lio_odometry` 发布；只有这一步完成后，后续模块才启动。
-14. 启动 terrain mapper。
-15. 默认跳过 Nav2 和 frontier exploration。
-16. 启动 direct keyboard teleop，直接发布到底盘 `/chassis/cmd_vel`。
+4. 等待 `joint_state_broadcaster`、`rocker_differential_controller` 和 `rover_controller` 全部 active。
+5. 额外等待 `SIM_SETTLE_SEC` 秒，让复杂地图和车体物理状态稳定。
+6. 启动延迟的 Gazebo sensor bridge：`/mid360/raw_points`、`/mid360/raw_imu`、相机等话题开始进入 ROS。
+7. 启动延迟的 Mid-360 ROS 驱动，发布 `/livox/lidar`、`/livox/points` 和 `/livox/imu`。
+8. 等待 `/livox/lidar` 和 `/livox/imu` 第一帧。
+9. 启动 `composite_wheel_imu_odometry_node.py`。
+10. 启动 world model marker 和 RViz。
+11. 启动 FAST-LIO2 定位链路。
+12. `fast_lio2_map_frame_node.py` 使用固定 IMU pitch `35.273 deg` 替代启动 IMU 姿态采样。
+13. `fast_lio2_map_frame_node.py` 使用固定 FAST-LIO map 水平补正 `roll=-0.58 deg, pitch=-0.67 deg, yaw=+0.007 deg`，不再采样启动姿态。
+14. 脚本等待 `/localization/lio_odometry` 发布；只有这一步完成后，后续模块才启动。
+15. 启动 terrain mapper。
+16. 默认跳过 Nav2 和 frontier exploration。
+17. 启动 direct keyboard teleop，直接发布到底盘 `/chassis/cmd_vel`。
 
 仅当 `ENABLE_NAV2=1` 时，脚本才会启动 Nav2、等待 `/bt_navigator` active、启动经 mux 的键盘接管和 frontier exploration。
 
@@ -259,6 +273,7 @@ ENABLE_NAV2=1 scripts/restart_gated_mapping_exploration_navigation.sh
 | `/localization/lio_odometry_raw` | `nav_msgs/msg/Odometry` | FAST-LIO2 原始输出，保留算法内部估计姿态 |
 | `/localization/lio_odometry` | `nav_msgs/msg/Odometry` | 经过固定水平补正后的导航定位输出 |
 | `/localization/cloud_registered` | `sensor_msgs/msg/PointCloud2` | 同步应用固定 map 水平补正后的注册点云 |
+| `/localization/cloud_fused` | `sensor_msgs/msg/PointCloud2` | 仅 `ENABLE_CLOUD_FUSION=1` 时发布。Mid-360约束Gemini深度偏差、剔除冲突并补足雷达空隙后的点云 |
 | `/localization/lio_map_cloud` | `sensor_msgs/msg/PointCloud2` | 同步应用固定 map 水平补正后的 FAST-LIO2 地图点云 |
 | `/chassis/cmd_vel` | `geometry_msgs/msg/TwistStamped` | 默认键盘直控输出，真正发送给底盘控制器的指令 |
 | `/navigation/chassis_cmd_vel` | `geometry_msgs/msg/TwistStamped` | 仅 `ENABLE_NAV2=1` 时存在，Nav2 经 `twist_stamper` 后的底盘指令 |
@@ -274,6 +289,9 @@ ENABLE_NAV2=1 scripts/restart_gated_mapping_exploration_navigation.sh
 
 ```text
 starting sim: world=image_cave delayed_livox_drivers=true
+received first /clock message
+received first /simulation/ground_truth/odometry message
+rover controllers are active
 Gazebo ground truth is live; waiting 20s before Livox ROS drivers
 starting delayed Gazebo sensor bridge
 starting delayed Mid-360 ROS point cloud driver
@@ -301,10 +319,12 @@ pgrep -af "restart_gated|fastlio_mapping|rviz2|ign gazebo|terrain_mapper|keyboar
 注意：
 
 - 默认链路不再等待启动静止采样；FAST-LIO 后端自身 `IMU Initial Done` 出现前仍不要移动机器人。
+- `image_cave` 下 Gazebo 和 `controller_manager` 有时会在前 60 秒内响应很慢，脚本已经把 `/clock`、ground truth 和控制器等待改成可恢复短轮询，并把 `image_cave` 默认超时提高到 180 秒。看到 spawner 早期的 `switch_controller` 超时不一定表示启动失败，只要后续日志出现 `rover controllers are active` 就可以继续。
 - `DELAY_LIVOX_DRIVERS=true` 只延迟 ROS 侧 sensor bridge 和 Mid-360 ROS 驱动。Gazebo URDF 中 `<always_on>true</always_on>` 的传感器本体仍可能在 Gazebo 内部运行。
 - 当前默认不启动 Nav2，因为 costmap/terrain layer 仍在调试中。确认 costmap 可用后再用 `ENABLE_NAV2=1` 恢复自动导航链路。
 - `src/lunar_rover_bringup/launch/fast_lio2_exploration_navigation.launch.py` 仍可用于调试，但当前推荐入口是 `scripts/restart_gated_mapping_exploration_navigation.sh`。
 - direct keyboard teleop 默认自动发现 `/dev/input/by-id/*event-kbd`、`/dev/input/by-path/*event-kbd` 和系统 keyboard event 设备。只有需要限定某一把键盘时，才手动给 `scripts/run_direct_keyboard_teleop.sh --device ...`。
+- 如果启动后拔插过键盘，旧的 `keyboard_rover_teleop` 可能还在读取已经失效的 `/dev/input/event* (deleted)` 句柄，表现为节点存在但按键没有任何 `/chassis/cmd_vel` 输出。此时不要重启 Gazebo/FAST-LIO/建图，只需重启键盘节点：`pkill -f keyboard_rover_teleop.py || true`，然后在当前推荐链路中运行 `scripts/run_direct_keyboard_teleop.sh --topic /chassis/cmd_vel`。详细排查见 [`docs/keyboard_teleop_direct.md`](docs/keyboard_teleop_direct.md)。
 
 ## 启动基础仿真
 

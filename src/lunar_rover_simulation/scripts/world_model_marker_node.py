@@ -99,6 +99,9 @@ class WorldModelMarkerNode(Node):
         self.outline_alpha = float(self.declare_parameter("outline_alpha", 0.30).value)
         self.outline_width = float(self.declare_parameter("outline_width", 0.025).value)
         self.publish_period = float(self.declare_parameter("publish_period", 1.0).value)
+        self.marker_z_offset = float(
+            self.declare_parameter("marker_z_offset", 0.0).value
+        )
         self.include_visual = bool(self.declare_parameter("include_visual", True).value)
         self.include_collision = bool(self.declare_parameter("include_collision", False).value)
         self.include_pit_markers = bool(
@@ -162,7 +165,8 @@ class WorldModelMarkerNode(Node):
             "World model transform: Gazebo world origin shifted into "
             f"{self.frame_id} using robot start "
             f"({self.map_origin_world_x:.3f}, {self.map_origin_world_y:.3f}, "
-            f"{self.map_origin_world_z:.3f}, yaw={self.map_origin_world_yaw:.3f})"
+            f"{self.map_origin_world_z:.3f}, yaw={self.map_origin_world_yaw:.3f}); "
+            f"marker_z_offset={self.marker_z_offset:.3f}"
         )
 
     def world_path(self):
@@ -298,7 +302,7 @@ class WorldModelMarkerNode(Node):
             marker.type = Marker.CYLINDER
             marker.pose.position.x = pose[0][0]
             marker.pose.position.y = pose[0][1]
-            marker.pose.position.z = pose[0][2]
+            marker.pose.position.z = pose[0][2] + self.marker_z_offset
             marker.pose.orientation.x = pose[1][0]
             marker.pose.orientation.y = pose[1][1]
             marker.pose.orientation.z = pose[1][2]
@@ -325,7 +329,7 @@ class WorldModelMarkerNode(Node):
         marker.action = Marker.ADD
         marker.pose.position.x = pose[0][0]
         marker.pose.position.y = pose[0][1]
-        marker.pose.position.z = pose[0][2]
+        marker.pose.position.z = pose[0][2] + self.marker_z_offset
         marker.pose.orientation.x = pose[1][0]
         marker.pose.orientation.y = pose[1][1]
         marker.pose.orientation.z = pose[1][2]

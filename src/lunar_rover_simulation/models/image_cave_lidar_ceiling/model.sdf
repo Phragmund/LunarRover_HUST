@@ -5,21 +5,19 @@
     <link name="ceiling_link">
       <collision name="ceiling_collision">
         <laser_retro>1.0</laser_retro>
-        <pose>4.000 2.240 2.210 0 0 0</pose>
         <geometry>
-          <box>
-            <size>30.000 30.000 0.040</size>
-          </box>
+          <mesh>
+            <uri>model://image_cave_lidar_ceiling/meshes/ceiling_collision.stl</uri>
+          </mesh>
         </geometry>
       </collision>
       <visual name="ceiling_visual">
         <laser_retro>1.0</laser_retro>
-        <pose>4.000 2.240 2.210 0 0 0</pose>
         <cast_shadows>false</cast_shadows>
         <geometry>
-          <box>
-            <size>30.000 30.000 0.040</size>
-          </box>
+          <mesh>
+            <uri>model://image_cave_lidar_ceiling/meshes/ceiling_faceted.dae</uri>
+          </mesh>
         </geometry>
         <material>
           <ambient>0 0 0 0</ambient>

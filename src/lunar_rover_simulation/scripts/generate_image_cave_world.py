@@ -53,7 +53,6 @@ CORRIDOR_MASK_RESOLUTION = 0.05
 CORRIDOR_MASK_WALL_INFLATION = 0.10
 CEILING_THICKNESS = 0.04
 CEILING_BOTTOM_Z = 2.19
-CEILING_Z = CEILING_BOTTOM_Z + CEILING_THICKNESS * 0.5
 SPAWN_X = -3.92
 SPAWN_Y = 0.0
 SPAWN_REFERENCE_PX = np.array([220.0, 750.0])
@@ -837,9 +836,12 @@ def triangle_normal(
 
 
 def write_ascii_stl(
-    path: Path, vertices: np.ndarray, faces: list[tuple[int, int, int]]
+    path: Path,
+    vertices: np.ndarray,
+    faces: list[tuple[int, int, int]],
+    solid_name: str = "image_cave_triangular_terrain",
 ) -> None:
-    lines = ["solid image_cave_triangular_terrain"]
+    lines = [f"solid {solid_name}"]
     for i0, i1, i2 in faces:
         a = vertices[i0]
         b = vertices[i1]
@@ -852,7 +854,7 @@ def write_ascii_stl(
         lines.append(f"      vertex {c[0]:.6f} {c[1]:.6f} {c[2]:.6f}")
         lines.append("    endloop")
         lines.append("  endfacet")
-    lines.append("endsolid image_cave_triangular_terrain")
+    lines.append(f"endsolid {solid_name}")
     path.write_text("\n".join(lines) + "\n", encoding="ascii")
 
 
@@ -1189,8 +1191,65 @@ def write_block_assets(
     return len(blocks), height_cap, top_max, corridor_area
 
 
-def write_ceiling_assets(model_dir: Path) -> None:
+def ceiling_lower_height(terrain_height: np.ndarray) -> np.ndarray:
+    return CEILING_BOTTOM_Z - (terrain_height - TERRAIN_BASE_Z)
+
+
+def closed_ceiling_mesh(
+    grid_x: np.ndarray, grid_y: np.ndarray, terrain_height: np.ndarray
+) -> tuple[np.ndarray, list[tuple[int, int, int]], np.ndarray, list[tuple[int, int, int]]]:
+    lower_z = ceiling_lower_height(terrain_height)
+    lower = np.column_stack((grid_x.ravel(), grid_y.ravel(), lower_z.ravel()))
+    upper = lower.copy()
+    upper[:, 2] += CEILING_THICKNESS
+    vertices = np.vstack((lower, upper))
+    upper_offset = lower.shape[0]
+    top_faces = terrain_top_faces(*terrain_height.shape)
+    lower_faces = [(c, b, a) for a, b, c in top_faces]
+    upper_faces = [
+        (a + upper_offset, b + upper_offset, c + upper_offset)
+        for a, b, c in top_faces
+    ]
+    faces: list[tuple[int, int, int]] = []
+    faces.extend(lower_faces)
+    faces.extend(upper_faces)
+
+    rows, cols = terrain_height.shape
+
+    def add_side_quad(l0: int, l1: int) -> None:
+        u0 = l0 + upper_offset
+        u1 = l1 + upper_offset
+        faces.append((l0, u1, l1))
+        faces.append((l0, u0, u1))
+
+    for col in range(cols - 1):
+        add_side_quad(col, col + 1)
+        add_side_quad((rows - 1) * cols + col + 1, (rows - 1) * cols + col)
+    for row in range(rows - 1):
+        add_side_quad((row + 1) * cols, row * cols)
+        add_side_quad(row * cols + cols - 1, (row + 1) * cols + cols - 1)
+
+    return vertices, faces, lower, lower_faces
+
+
+def write_ceiling_assets(
+    model_dir: Path, grid_x: np.ndarray, grid_y: np.ndarray, height: np.ndarray
+) -> tuple[float, float, int]:
     model_dir.mkdir(parents=True, exist_ok=True)
+    mesh_dir = model_dir / "meshes"
+    mesh_dir.mkdir(parents=True, exist_ok=True)
+    vertices, faces, lower_vertices, lower_faces = closed_ceiling_mesh(
+        grid_x, grid_y, height
+    )
+    write_ascii_stl(
+        mesh_dir / "ceiling_collision.stl",
+        vertices,
+        faces,
+        "image_cave_inverted_terrain_ceiling",
+    )
+    write_faceted_dae(mesh_dir / "ceiling_faceted.dae", lower_vertices, lower_faces)
+    lower_min = float(lower_vertices[:, 2].min())
+    lower_max = float(lower_vertices[:, 2].max())
     model_sdf = f"""<?xml version="1.0"?>
 <sdf version="1.8">
   <model name="{CEILING_MODEL_NAME}">
@@ -1198,21 +1257,19 @@ def write_ceiling_assets(model_dir: Path) -> None:
     <link name="ceiling_link">
       <collision name="ceiling_collision">
         <laser_retro>1.0</laser_retro>
-        <pose>{TERRAIN_CENTER_X:.3f} {TERRAIN_CENTER_Y:.3f} {CEILING_Z:.3f} 0 0 0</pose>
         <geometry>
-          <box>
-            <size>{TERRAIN_SIZE_X:.3f} {TERRAIN_SIZE_Y:.3f} {CEILING_THICKNESS:.3f}</size>
-          </box>
+          <mesh>
+            <uri>model://{CEILING_MODEL_NAME}/meshes/ceiling_collision.stl</uri>
+          </mesh>
         </geometry>
       </collision>
       <visual name="ceiling_visual">
         <laser_retro>1.0</laser_retro>
-        <pose>{TERRAIN_CENTER_X:.3f} {TERRAIN_CENTER_Y:.3f} {CEILING_Z:.3f} 0 0 0</pose>
         <cast_shadows>false</cast_shadows>
         <geometry>
-          <box>
-            <size>{TERRAIN_SIZE_X:.3f} {TERRAIN_SIZE_Y:.3f} {CEILING_THICKNESS:.3f}</size>
-          </box>
+          <mesh>
+            <uri>model://{CEILING_MODEL_NAME}/meshes/ceiling_faceted.dae</uri>
+          </mesh>
         </geometry>
         <material>
           <ambient>0 0 0 0</ambient>
@@ -1236,10 +1293,11 @@ def write_ceiling_assets(model_dir: Path) -> None:
     <name>Lunar Rover Team</name>
     <email>maintainer@example.com</email>
   </author>
-  <description>Fully transparent, non-shadowing ceiling collision target for lidar returns in the generated image cave world. Size {TERRAIN_SIZE_X:.1f} x {TERRAIN_SIZE_Y:.1f} x {CEILING_THICKNESS:.2f} m, bottom z {CEILING_BOTTOM_Z:.2f} m.</description>
+  <description>Fully transparent, non-shadowing inverted terrain ceiling collision target for lidar returns in the generated image cave world. Uses the same deterministic triangular surface as the floor mirrored about nominal bottom z {CEILING_BOTTOM_Z:.2f} m, thickness {CEILING_THICKNESS:.2f} m, lower surface z range {lower_min:.3f}-{lower_max:.3f} m.</description>
 </model>
 """
     (model_dir / "model.config").write_text(model_config, encoding="utf-8")
+    return lower_min, lower_max, len(lower_faces)
 
 
 def parse_args() -> argparse.Namespace:
@@ -1280,7 +1338,9 @@ def main() -> None:
     block_count, block_cap, block_top_max, corridor_area = write_block_assets(
         args.block_model_dir, grid_x, grid_y, height, walls
     )
-    write_ceiling_assets(args.ceiling_model_dir)
+    ceiling_min, ceiling_max, ceiling_faces = write_ceiling_assets(
+        args.ceiling_model_dir, grid_x, grid_y, height
+    )
     args.output.write_text(world_xml(walls), encoding="utf-8")
     args.preview_output.write_text(terrain_preview_world_xml(), encoding="utf-8")
     if args.overlay is not None:
@@ -1293,7 +1353,7 @@ def main() -> None:
         f"pits={pit_count} min_spacing={pit_min_spacing:.3f}m; "
         f"surface_blocks={block_count} top_max={block_top_max:.3f}m cap={block_cap:.3f}m; "
         f"corridor_area={corridor_area:.1f}m^2; "
-        f"ceiling_bottom={CEILING_BOTTOM_Z:.3f}m"
+        f"ceiling_lower=[{ceiling_min:.3f},{ceiling_max:.3f}]m faces={ceiling_faces}"
     )
 
 

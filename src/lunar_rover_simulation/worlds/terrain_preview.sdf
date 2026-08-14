@@ -23,19 +23,19 @@
       <specular>0.18 0.16 0.12 1</specular>
       <direction>-0.35 0.25 -0.90</direction>
     </light>
-
+    
     <include>
       <uri>model://image_cave_heightmap_terrain</uri>
     </include>
-
+    
     <include>
       <uri>model://image_cave_walls</uri>
     </include>
-
+    
     <include>
       <uri>model://image_cave_surface_blocks</uri>
     </include>
-
+    
     <include>
       <uri>model://image_cave_lidar_ceiling</uri>
     </include>

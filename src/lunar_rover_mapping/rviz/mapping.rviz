@@ -105,7 +105,7 @@ Visualization Manager:
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
-      Name: FAST-LIO2 registered cloud
+      Name: LiDAR + Gemini fused cloud
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 2
@@ -116,7 +116,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /localization/cloud_registered
+        Value: /localization/cloud_fused
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
@@ -150,6 +150,24 @@ Visualization Manager:
       Wall Color: 255; 25; 20
       Wall Threshold: 101
       Z Offset: 0.025
+    - Alpha: 0.70
+      Class: lunar_rover_mapping/RainbowOccupancyGrid
+      Draw Free Cells: false
+      Draw Unknown Cells: false
+      Enabled: true
+      Max Value: 100
+      Min Value: 0
+      Name: Terrain wall map
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /terrain/wall_map
+      Value: true
+      Wall Color: 255; 30; 20
+      Wall Threshold: 100
+      Z Offset: 0.04
     - Alpha: 0.65
       Class: rviz_default_plugins/Map
       Color Scheme: costmap

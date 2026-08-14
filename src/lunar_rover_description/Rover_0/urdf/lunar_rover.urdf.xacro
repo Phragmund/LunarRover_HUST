@@ -324,16 +324,17 @@
   <link name="gemini335_link">
     <visual>
       <geometry>
-        <box size="0.035 0.12 0.032"/>
+        <!-- Gemini 335: D x W x H = 30 x 90 x 25 mm. -->
+        <box size="0.030 0.090 0.025"/>
       </geometry>
       <material name="camera_black"/>
     </visual>
     <collision>
       <geometry>
-        <box size="0.035 0.12 0.032"/>
+        <box size="0.030 0.090 0.025"/>
       </geometry>
     </collision>
-    <xacro:box_inertial mass="0.30" x="0.035" y="0.12" z="0.032"/>
+    <xacro:box_inertial mass="0.097" x="0.030" y="0.090" z="0.025"/>
   </link>
   <joint name="gemini335_joint" type="fixed">
     <parent link="base_link"/>
@@ -345,7 +346,7 @@
   <joint name="gemini335_color_optical_joint" type="fixed">
     <parent link="gemini335_link"/>
     <child link="gemini335_color_optical_frame"/>
-    <origin xyz="0.0175 0 0" rpy="${-pi / 2.0} 0 ${-pi / 2.0}"/>
+    <origin xyz="0.015 0 0" rpy="${-pi / 2.0} 0 ${-pi / 2.0}"/>
   </joint>
   <link name="gemini335_depth_optical_frame"/>
   <joint name="gemini335_depth_optical_joint" type="fixed">
@@ -652,6 +653,7 @@
         <gz_frame_id>gemini335_color_optical_frame</gz_frame_id>
         <camera>
           <optical_frame_id>gemini335_color_optical_frame</optical_frame_id>
+          <!-- Depth-priority profile: Gemini 335 640x400 is a 90 x 65 deg mode. -->
           <horizontal_fov>${90.0 * pi / 180.0}</horizontal_fov>
           <image>
             <width>640</width>
@@ -659,14 +661,16 @@
             <format>R8G8B8</format>
           </image>
           <clip>
-            <near>0.10</near>
-            <far>10.0</far>
+            <!-- Official Minimum-Z for 640x400 is 0.26 m; nominal range reaches 20 m+. -->
+            <near>0.26</near>
+            <far>20.0</far>
           </clip>
           <noise>
             <type>gaussian</type>
             <mean>0.0</mean>
             <xacro:if value="$(arg sensor_noise)">
-              <stddev>0.003</stddev>
+              <!-- Conservative 1.5% spatial precision bound at 2 m. -->
+              <stddev>0.030</stddev>
             </xacro:if>
             <xacro:unless value="$(arg sensor_noise)">
               <stddev>0.0</stddev>

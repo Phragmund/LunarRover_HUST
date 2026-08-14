@@ -60,6 +60,7 @@ install(
     scripts/composite_wheel_imu_odometry_node.py
     scripts/imu_ekf_preprocessor.py
     scripts/imu_dead_reckoning_node.py
+    scripts/multisensor_cloud_fusion_node.py
     scripts/odometry_path_compare.py
     scripts/terrain_mapper_node.py
   DESTINATION lib/${PROJECT_NAME}
@@ -78,5 +79,14 @@ install(
   FILES rviz_plugins.xml
   DESTINATION share/${PROJECT_NAME}
 )
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_pytest REQUIRED)
+  ament_add_pytest_test(
+    test_cloud_fusion
+    test/test_cloud_fusion.py
+    TIMEOUT 60
+  )
+endif()
 
 ament_package()

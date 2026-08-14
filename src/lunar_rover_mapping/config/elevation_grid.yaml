@@ -3,16 +3,17 @@ elevation_grid:
     use_sim_time: true
     # Use the corrected FAST-LIO map frame so this layer shares map coordinates
     # with the traversability costmap.
-    input_topic: /localization/cloud_registered
+    input_topic: /localization/cloud_fused
     elevation_topic: /terrain/elevation_cloud
     heightmap_topic: /terrain/elevation_map
+    wall_topic: /terrain/wall_map
     traversability_topic: /terrain/elevation_roughness
     current_voxel_topic: /terrain/elevation_voxels
     map_frame: map
     base_frame: base_link
-    cell_size: 0.05
-    width_cells: 600
-    height_cells: 440
+    cell_size: 0.06
+    width_cells: 500
+    height_cells: 367
     rolling_window: false
     accumulate: true
     origin_x: -6.0
@@ -20,8 +21,24 @@ elevation_grid:
     min_points_per_cell: 2
     min_z: -0.60
     max_z: 1.80
+    # Fallback range only. With adaptive_heightmap enabled, the published 0..100
+    # values are stretched from ground-only elevation percentiles.
     heightmap_min_z: -0.60
     heightmap_max_z: 1.80
+    adaptive_heightmap: true
+    heightmap_low_percentile: 0.02
+    heightmap_high_percentile: 0.98
+    heightmap_padding: 0.05
+    heightmap_min_span: 0.25
+    ground_quantile: 0.20
+    z_histogram_bins: 96
+    ceiling_filter_enabled: true
+    ceiling_filter_min_gap: 0.40
+    ceiling_filter_min_cluster_points: 2
+    ceiling_filter_ground_cluster_max_height: 0.45
+    ceiling_filter_valley_ratio: 0.25
+    wall_height_threshold: 0.28
+    wall_min_points: 2
     obstacle_height: 0.28
     roughness_height: 0.08
     publish_current_voxels: false

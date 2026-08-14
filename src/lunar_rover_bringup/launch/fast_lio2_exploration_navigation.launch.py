@@ -42,6 +42,22 @@ def generate_launch_description():
             DeclareLaunchArgument("spawn_y", default_value="0.0"),
             DeclareLaunchArgument("spawn_z", default_value="0.45"),
             DeclareLaunchArgument("spawn_yaw", default_value="0.0"),
+            DeclareLaunchArgument(
+                "map_origin_z",
+                default_value=LaunchConfiguration("spawn_z"),
+                description=(
+                    "Gazebo world Z coordinate that maps to RViz map z=0 for "
+                    "static world/collision markers. Defaults to spawn_z so "
+                    "marker alignment follows the initial robot pose."
+                ),
+            ),
+            DeclareLaunchArgument(
+                "collision_marker_z_offset",
+                default_value="0.20",
+                description=(
+                    "Extra RViz-only Z offset for /simulation/world_collision_markers."
+                ),
+            ),
             DeclareLaunchArgument("start_exploration", default_value="true"),
             DeclareLaunchArgument("run_fast_lio2", default_value="true"),
             DeclareLaunchArgument("fast_lio_package", default_value="auto"),
@@ -183,7 +199,7 @@ def generate_launch_description():
                         "outline_width": 0.025,
                         "map_origin_world_x": LaunchConfiguration("spawn_x"),
                         "map_origin_world_y": LaunchConfiguration("spawn_y"),
-                        "map_origin_world_z": LaunchConfiguration("spawn_z"),
+                        "map_origin_world_z": LaunchConfiguration("map_origin_z"),
                         "map_origin_world_yaw": LaunchConfiguration("spawn_yaw"),
                     }
                 ],
@@ -212,9 +228,12 @@ def generate_launch_description():
                         "outline_color_r": 0.05,
                         "outline_color_g": 0.95,
                         "outline_color_b": 1.0,
+                        "marker_z_offset": LaunchConfiguration(
+                            "collision_marker_z_offset"
+                        ),
                         "map_origin_world_x": LaunchConfiguration("spawn_x"),
                         "map_origin_world_y": LaunchConfiguration("spawn_y"),
-                        "map_origin_world_z": LaunchConfiguration("spawn_z"),
+                        "map_origin_world_z": LaunchConfiguration("map_origin_z"),
                         "map_origin_world_yaw": LaunchConfiguration("spawn_yaw"),
                     }
                 ],

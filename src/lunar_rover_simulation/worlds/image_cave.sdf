@@ -25,15 +25,15 @@
       <specular>0.16 0.14 0.10 1</specular>
       <direction>-0.35 0.30 -0.89</direction>
     </light>
-
+    
     <include>
       <uri>model://image_cave_heightmap_terrain</uri>
     </include>
-
+    
     <include>
       <uri>model://image_cave_walls</uri>
     </include>
-
+    
     <include>
       <uri>model://image_cave_surface_blocks</uri>
     </include>
@@ -41,7 +41,7 @@
     <include>
       <uri>model://image_cave_lidar_ceiling</uri>
     </include>
-
+    
     <model name="image_cave_spawn_marker">
       <static>true</static>
       <link name="spawn_marker_link">
