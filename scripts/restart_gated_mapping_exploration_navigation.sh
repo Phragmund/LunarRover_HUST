@@ -88,6 +88,15 @@ case "${cloud_fusion_enabled,,}" in
     cloud_fusion_enabled=false
     ;;
 esac
+cruise_enabled="${ENABLE_CRUISE:-false}"
+case "${cruise_enabled,,}" in
+  1|true|yes|on)
+    cruise_enabled=true
+    ;;
+  *)
+    cruise_enabled=false
+    ;;
+esac
 
 world="${WORLD:-reachable_maze}"
 if [[ -n "${COLLISION_MARKER_Z_OFFSET:-}" ]]; then
@@ -135,12 +144,21 @@ case "${delay_livox_drivers,,}" in
     sensor_bridges_at_bringup=true
     ;;
 esac
+gui_enabled="${GUI:-true}"
+case "${gui_enabled,,}" in
+  0|false|no|off)
+    gui_enabled=false
+    ;;
+  *)
+    gui_enabled=true
+    ;;
+esac
 
-echo "[$(date +%T)] starting sim: world=$world spawn_z=$spawn_z map_origin_z=$map_origin_z source=$map_origin_z_source delayed_livox_drivers=$delay_livox_drivers cloud_fusion=$cloud_fusion_enabled"
+echo "[$(date +%T)] starting sim: world=$world spawn_z=$spawn_z map_origin_z=$map_origin_z source=$map_origin_z_source delayed_livox_drivers=$delay_livox_drivers cloud_fusion=$cloud_fusion_enabled gui=$gui_enabled"
 ros2 launch lunar_rover_bringup bringup.launch.py \
   mode:=sim \
   world:="$world" \
-  gui:=true \
+  gui:="$gui_enabled" \
   headless:=false \
   rviz:=false \
   sensor_noise:=false \
@@ -289,9 +307,16 @@ if [[ "$nav2_enabled" == "true" ]]; then
   scripts/run_direct_keyboard_teleop.sh \
     --no-acl &
 
-  echo "[$(date +%T)] starting frontier exploration"
-  ros2 launch lunar_rover_exploration frontier_exploration.launch.py \
-    params_file:=install/lunar_rover_exploration/share/lunar_rover_exploration/config/frontier_explorer.yaml &
+  if [[ "$cruise_enabled" == "true" ]]; then
+    echo "[$(date +%T)] starting image_cave centerline waypoint cruise"
+    ros2 run lunar_rover_navigation image_cave_waypoint_follower.py \
+      --ros-args \
+      -p use_sim_time:=true &
+  else
+    echo "[$(date +%T)] starting frontier exploration"
+    ros2 launch lunar_rover_exploration frontier_exploration.launch.py \
+      params_file:=install/lunar_rover_exploration/share/lunar_rover_exploration/config/frontier_explorer.yaml &
+  fi
 else
   echo "[$(date +%T)] skipping Nav2/frontier exploration; starting direct keyboard teleop on /chassis/cmd_vel"
   scripts/run_direct_keyboard_teleop.sh \
