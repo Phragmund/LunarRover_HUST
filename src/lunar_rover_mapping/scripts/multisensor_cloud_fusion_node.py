@@ -379,12 +379,27 @@ class MultisensorCloudFusionNode(Node):
     def transform_to_target(self, message, points):
         if message.header.frame_id == self.target_frame:
             return points, np.zeros(3, dtype=np.float64)
-        transform = self.tf_buffer.lookup_transform(
-            self.target_frame,
-            message.header.frame_id,
-            Time.from_msg(message.header.stamp),
-            timeout=Duration(seconds=self.transform_timeout),
-        )
+        try:
+            transform = self.tf_buffer.lookup_transform(
+                self.target_frame,
+                message.header.frame_id,
+                Time.from_msg(message.header.stamp),
+                timeout=Duration(seconds=self.transform_timeout),
+            )
+        except TransformException:
+            # The depth-image point cloud can be stamped a few ms ahead of the
+            # latest available map->camera TF.  In a single-threaded executor
+            # the blocking wait inside tf2 cannot receive newer /tf messages,
+            # so waiting for an exact future stamp would always time out and
+            # drop the camera cloud.  Fall back to the latest available
+            # transform instead of discarding the complementary front gap
+            # points; camera_max_age_sec still bounds the camera/lidar time
+            # difference.
+            transform = self.tf_buffer.lookup_transform(
+                self.target_frame,
+                message.header.frame_id,
+                Time(),
+            )
         translation = np.array(
             [
                 transform.transform.translation.x,
