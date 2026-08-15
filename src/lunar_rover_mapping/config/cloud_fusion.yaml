@@ -13,7 +13,7 @@ multisensor_cloud_fusion:
     camera_max_range: 6.0
     camera_pixel_stride: 2
     max_camera_points: 90000
-    camera_max_age_sec: 0.25
+    camera_max_age_sec: 0.05
     transform_timeout_sec: 0.10
 
     # First reduce each sensor independently so camera pixel density cannot

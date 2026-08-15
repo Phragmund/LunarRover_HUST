@@ -36,6 +36,7 @@ terrain_mapper:
     # so FAST-LIO2 z noise between adjacent 5 cm cells is not interpreted as a
     # lethal 34+ degree slope across flat cave floor.
     slope_baseline_cells: 2
+    slope_weight: 0.6
     ceiling_filter_enabled: true
     ceiling_filter_bin_size: 0.05
     ceiling_filter_min_gap: 0.40

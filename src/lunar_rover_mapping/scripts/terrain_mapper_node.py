@@ -171,6 +171,7 @@ class TerrainMapper(Node):
         self.slope_baseline_cells = max(
             1, int(self.declare_parameter("slope_baseline_cells", 1).value)
         )
+        self.slope_weight = float(self.declare_parameter("slope_weight", 1.0).value)
         self.ceiling_filter_enabled = bool(
             self.declare_parameter("ceiling_filter_enabled", True).value
         )
@@ -620,7 +621,7 @@ class TerrainMapper(Node):
         if height_range >= self.cautious_step:
             step_cost = 35 + int(round(40.0 * (height_range - self.cautious_step) / max(0.01, self.lethal_step - self.cautious_step)))
         roughness_cost = int(round(35.0 * min(1.0, math.sqrt(cell_stats.variance) / max(0.001, self.roughness_warn))))
-        slope_cost = self.neighbor_slope_cost(index, stats_cache)
+        slope_cost = int(round(self.neighbor_slope_cost(index, stats_cache) * self.slope_weight))
         # Sum accumulated risks instead of taking only the worst factor.
         # A cell with moderate step, roughness, AND slope is riskier than any
         # single factor — the combined cost better reflects real traversability.
