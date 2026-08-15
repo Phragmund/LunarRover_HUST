@@ -16,3 +16,6 @@ third_party/
 .deps/
 .vscode/
 local_backups/
+
+# Official vendor binaries/manuals (download on demand, see docs/livox_mid360_vendor_index.md)
+docs/vendor/
