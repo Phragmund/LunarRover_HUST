@@ -6,7 +6,9 @@ from dataclasses import dataclass
 
 import numpy as np
 import rclpy
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.duration import Duration
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import (
     QoSHistoryPolicy,
@@ -309,8 +311,21 @@ class MultisensorCloudFusionNode(Node):
         self.diagnostics_publisher = self.create_publisher(
             String, self.diagnostics_topic, 2
         )
-        self.create_subscription(PointCloud2, self.camera_topic, self.on_camera, sensor_qos)
-        self.create_subscription(PointCloud2, self.lidar_topic, self.on_lidar, sensor_qos)
+        self.fusion_callback_group = MutuallyExclusiveCallbackGroup()
+        self.create_subscription(
+            PointCloud2,
+            self.camera_topic,
+            self.on_camera,
+            sensor_qos,
+            callback_group=self.fusion_callback_group,
+        )
+        self.create_subscription(
+            PointCloud2,
+            self.lidar_topic,
+            self.on_lidar,
+            sensor_qos,
+            callback_group=self.fusion_callback_group,
+        )
         self.get_logger().info(
             f"Cloud fusion: {self.lidar_topic} + {self.camera_topic} -> "
             f"{self.output_topic} ({self.target_frame})"
@@ -379,27 +394,18 @@ class MultisensorCloudFusionNode(Node):
     def transform_to_target(self, message, points):
         if message.header.frame_id == self.target_frame:
             return points, np.zeros(3, dtype=np.float64)
-        try:
-            transform = self.tf_buffer.lookup_transform(
-                self.target_frame,
-                message.header.frame_id,
-                Time.from_msg(message.header.stamp),
-                timeout=Duration(seconds=self.transform_timeout),
-            )
-        except TransformException:
-            # The depth-image point cloud can be stamped a few ms ahead of the
-            # latest available map->camera TF.  In a single-threaded executor
-            # the blocking wait inside tf2 cannot receive newer /tf messages,
-            # so waiting for an exact future stamp would always time out and
-            # drop the camera cloud.  Fall back to the latest available
-            # transform instead of discarding the complementary front gap
-            # points; camera_max_age_sec still bounds the camera/lidar time
-            # difference.
-            transform = self.tf_buffer.lookup_transform(
-                self.target_frame,
-                message.header.frame_id,
-                Time(),
-            )
+        # Use the exact camera-cloud timestamp.  A latest-available fallback
+        # would transform the whole depth cloud with a mismatched body
+        # attitude while the rover is rocking, fanning the points outward and
+        # poisoning the traversability costmap.  The executor is
+        # multi-threaded so tf2's blocking wait can still receive fresh /tf
+        # messages on another thread.
+        transform = self.tf_buffer.lookup_transform(
+            self.target_frame,
+            message.header.frame_id,
+            Time.from_msg(message.header.stamp),
+            timeout=Duration(seconds=self.transform_timeout),
+        )
         translation = np.array(
             [
                 transform.transform.translation.x,
@@ -522,11 +528,14 @@ class MultisensorCloudFusionNode(Node):
 def main():
     rclpy.init()
     node = MultisensorCloudFusionNode()
+    executor = MultiThreadedExecutor(num_threads=2)
+    executor.add_node(node)
     try:
-        rclpy.spin(node)
+        executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
+        executor.shutdown()
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
