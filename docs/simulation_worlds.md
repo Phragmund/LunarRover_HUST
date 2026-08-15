@@ -58,6 +58,10 @@ current triangular pseudo-surface terrain:
   `collision_marker_z_offset:=...` in launch. This is a direct visualization
   patch for `/simulation/world_collision_markers` and does not move Gazebo's
   physical collision bodies.
+- Cave pit markers in `/simulation/world_collision_markers` use the same cyan
+  color as the collision layer but with `pit_marker_alpha=0.10`, so the pit
+  discs remain visible without hiding the point cloud and map layers below.
+  Collision outlines use a `0.010` m line width in the standard launch scripts.
 - Default rover spawn: `x=-3.92`, `y=0.0`, `z=1.45`, `yaw=0.0`.
 
 Use the full default bringup with:

@@ -337,7 +337,8 @@ ros2 run lunar_rover_simulation world_model_marker_node.py \
   -p outline_namespace:=world_collision_outline \
   -p alpha:=0.16 \
   -p outline_alpha:=0.85 \
-  -p outline_width:=0.018 \
+  -p outline_width:=0.010 \
+  -p pit_marker_alpha:=0.10 \
   -p color_r:=0.05 \
   -p color_g:=0.85 \
   -p color_b:=1.0 \

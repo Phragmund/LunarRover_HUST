@@ -107,6 +107,9 @@ class WorldModelMarkerNode(Node):
         self.include_pit_markers = bool(
             self.declare_parameter("include_pit_markers", True).value
         )
+        self.pit_marker_alpha = float(
+            self.declare_parameter("pit_marker_alpha", 0.10).value
+        )
         self.marker_namespace = self.declare_parameter(
             "marker_namespace", "world_model"
         ).value
@@ -330,7 +333,7 @@ class WorldModelMarkerNode(Node):
             marker.color.r = self.color_r
             marker.color.g = self.color_g
             marker.color.b = self.color_b
-            marker.color.a = max(0.35, self.outline_alpha)
+            marker.color.a = self.pit_marker_alpha
             marker.text = f"{model_name}/pit_{index:03d}"
             markers.append(marker)
         return markers
