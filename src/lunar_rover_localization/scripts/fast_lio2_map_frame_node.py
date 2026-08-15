@@ -311,6 +311,10 @@ class FastLio2MapFrameNode(Node):
             self.level_correction = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
         self.ground_slope_correction = ((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
         self.ground_slope_cells = {}
+        self.ground_slope_reference_z = None
+        self.ground_slope_offset_sum = 0.0
+        self.ground_slope_offset_count = 0
+        self.ground_slope_seen_cells = set()
         self.level_sample_count = 0
         self.level_roll_sin_sum = 0.0
         self.level_roll_cos_sum = 0.0
@@ -689,6 +693,7 @@ class FastLio2MapFrameNode(Node):
             cell.add(x, y, z)
             used += 1
         self.ground_slope_cells = cells
+        self.update_ground_slope_correction()
 
     def ground_slope_points(self):
         points = []
@@ -785,80 +790,48 @@ class FastLio2MapFrameNode(Node):
             return
         if not self.initialized() or not self.level_initialized():
             return
-        points = self.ground_slope_points()
-        if len(points) < self.ground_slope_min_cells:
-            self.get_logger().warn(
-                "Waiting for ground slope correction samples: "
-                f"{len(points)}/{self.ground_slope_min_cells} cells",
-                throttle_duration_sec=5.0,
-            )
-            return
-        # Each point is one grid's statistical ground height. Their mean defines
-        # the reference height; fitting residuals estimates only the map-wide drift.
-        reference_height = sum(point[2] for point in points) / float(len(points))
-        residual_points = [(x, y, z - reference_height) for x, y, z in points]
-        fit = self.fit_ground_plane(residual_points)
-        if fit is None:
-            self.get_logger().warn(
-                "Cannot fit ground slope plane; ground cells are degenerate",
-                throttle_duration_sec=5.0,
-            )
-            return
-        _normal, _centroid, slope_x, slope_y, intercept = fit
-        residuals = self.plane_residuals(residual_points, slope_x, slope_y, intercept)
-        inlier_points = [
-            point
-            for point, residual in zip(residual_points, residuals)
-            if abs(residual) <= self.ground_slope_residual_limit
-        ]
-        if len(inlier_points) < self.ground_slope_min_cells:
-            self.get_logger().warn(
-                "Waiting for consistent ground-height residuals: "
-                f"{len(inlier_points)}/{self.ground_slope_min_cells} cells",
-                throttle_duration_sec=5.0,
-            )
-            return
-        fit = self.fit_ground_plane(inlier_points)
-        if fit is None:
-            return
-        normal, centroid, slope_x, slope_y, _intercept = fit
-        correction_q = self.q_from_two_vectors(normal, (0.0, 0.0, 1.0))
-        angle = 2.0 * math.atan2(
-            math.sqrt(
-                correction_q[0] * correction_q[0]
-                + correction_q[1] * correction_q[1]
-                + correction_q[2] * correction_q[2]
-            ),
-            abs(correction_q[3]),
-        )
-        max_angle = math.radians(self.ground_slope_max_correction_deg)
-        if max_angle > 0.0 and angle > max_angle:
-            self.get_logger().warn(
-                "Rejecting ground slope correction because it is too large: "
-                f"{math.degrees(angle):.3f} deg > {self.ground_slope_max_correction_deg:.3f} deg",
-                throttle_duration_sec=5.0,
-            )
+        cells = self.ground_slope_cells
+        if not cells:
             return
 
-        # Fit coordinates were centered on the mean grid height. Restore that
-        # height for the rigid-transform anchor in the base map frame.
-        anchor = (centroid[0], centroid[1], centroid[2] + reference_height)
-        rotated_anchor = rotate(correction_q, anchor)
-        correction_t = (
-            anchor[0] - rotated_anchor[0],
-            anchor[1] - rotated_anchor[1],
-            anchor[2] - rotated_anchor[2],
-        )
-        self.ground_slope_correction = (correction_t, correction_q)
-        self.get_logger().info(
-            "Updated full-map ground-height correction: "
-            f"cells={len(points)} inliers={len(inlier_points)} "
-            f"reference_z={reference_height:+.3f} m "
-            f"angle={math.degrees(angle):.3f} deg "
-            f"slope_x={math.degrees(math.atan(slope_x)):+.3f} deg "
-            f"slope_y={math.degrees(math.atan(slope_y)):+.3f} deg",
-            throttle_duration_sec=5.0,
-        )
+        # Direct levelling: the first 0.8 m ground cell defines the reference
+        # height.  Every newly observed cell computes its own mean height; the
+        # running-average difference to the reference cell becomes a single
+        # global z correction applied to all map-frame outputs.  This replaces
+        # the old 80-cell global plane fit and starts correcting as soon as the
+        # second cell appears.
+        for key, cell in cells.items():
+            if key in self.ground_slope_seen_cells:
+                continue
+            if len(cell.points) < self.ground_slope_min_points_per_cell:
+                continue
+            mean_z = sum(point[2] for point in cell.points) / float(len(cell.points))
+            if not math.isfinite(mean_z):
+                continue
+
+            if self.ground_slope_reference_z is None:
+                self.ground_slope_reference_z = mean_z
+                self.ground_slope_seen_cells.add(key)
+                self.get_logger().info(
+                    "Direct ground levelling: first ground cell "
+                    f"key={key} reference_z={mean_z:+.3f} m",
+                    throttle_duration_sec=5.0,
+                )
+                continue
+
+            offset = self.ground_slope_reference_z - mean_z
+            self.ground_slope_offset_sum += offset
+            self.ground_slope_offset_count += 1
+            mean_offset = self.ground_slope_offset_sum / float(self.ground_slope_offset_count)
+            self.ground_slope_correction = ((0.0, 0.0, mean_offset), (0.0, 0.0, 0.0, 1.0))
+            self.ground_slope_seen_cells.add(key)
+            self.get_logger().info(
+                "Direct ground levelling: "
+                f"cell={key} cell_z={mean_z:+.3f} m offset={offset:+.3f} m "
+                f"mean_offset={mean_offset:+.3f} m "
+                f"cells={self.ground_slope_offset_count}",
+                throttle_duration_sec=5.0,
+            )
 
     def pose_is_valid(self, t, q):
         values = (*t, *q)
