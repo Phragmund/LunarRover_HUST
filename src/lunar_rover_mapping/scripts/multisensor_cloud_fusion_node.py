@@ -271,6 +271,9 @@ class MultisensorCloudFusionNode(Node):
         self.transform_timeout = max(
             0.01, float(self.declare_parameter("transform_timeout_sec", 0.10).value)
         )
+        self.output_z_offset = float(
+            self.declare_parameter("output_z_offset", 0.0).value
+        )
         self.params = FusionParameters(
             lidar_voxel_size=float(self.declare_parameter("lidar_voxel_size", 0.04).value),
             camera_voxel_size=float(self.declare_parameter("camera_voxel_size", 0.03).value),
@@ -328,7 +331,8 @@ class MultisensorCloudFusionNode(Node):
         )
         self.get_logger().info(
             f"Cloud fusion: {self.lidar_topic} + {self.camera_topic} -> "
-            f"{self.output_topic} ({self.target_frame})"
+            f"{self.output_topic} ({self.target_frame}); "
+            f"output_z_offset={self.output_z_offset:.3f}"
         )
 
     def _validate_parameters(self):
@@ -428,6 +432,8 @@ class MultisensorCloudFusionNode(Node):
             PointField(name="intensity", offset=12, datatype=PointField.FLOAT32, count=1),
         ]
         rows = np.column_stack((points, confidence)).astype(np.float32, copy=False)
+        if self.output_z_offset:
+            rows[:, 2] += np.float32(self.output_z_offset)
         self.publisher.publish(point_cloud2.create_cloud(header, fields, rows))
 
     def publish_diagnostics(self, mode, stats, camera_age=None):

@@ -168,6 +168,9 @@ class TerrainMapper(Node):
             ).value
         )
         self.roughness_warn = float(self.declare_parameter("roughness_warn", 0.025).value)
+        self.slope_baseline_cells = max(
+            1, int(self.declare_parameter("slope_baseline_cells", 1).value)
+        )
         self.ceiling_filter_enabled = bool(
             self.declare_parameter("ceiling_filter_enabled", True).value
         )
@@ -569,9 +572,15 @@ class TerrainMapper(Node):
             return 0
         max_slope = 0.0
         unknown_neighbors = 0
-        # 8-connected neighbourhood so diagonal slopes are also detected.
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
+        # Compare against neighbours `slope_baseline_cells` away instead of the
+        # immediate 5 cm neighbours.  FAST-LIO2 z noise easily reaches 3-4 cm
+        # between adjacent 5 cm cells, which the old 1-cell baseline turned
+        # into fake 34+ degree lethal slopes across flat open ground.  A
+        # 2-cell (0.10 m, 0.141 m diagonal) baseline preserves real obstacles
+        # while averaging out most of that high-frequency z noise.
+        step = self.slope_baseline_cells
+        for dy in (-step, 0, step):
+            for dx in (-step, 0, step):
                 if dx == 0 and dy == 0:
                     continue
                 nr = row + dy

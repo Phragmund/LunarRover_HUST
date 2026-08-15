@@ -99,6 +99,10 @@ install(
   RUNTIME DESTINATION lib/${PROJECT_NAME}
   INCLUDES DESTINATION include
 )
+install(
+  PROGRAMS scripts/keyboard_arm_joint_controller.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)

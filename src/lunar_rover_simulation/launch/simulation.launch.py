@@ -204,6 +204,42 @@ def _launch_setup(context):
         ],
         output="screen",
     )
+    arm_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "arm_controller",
+            "--controller-type",
+            "joint_trajectory_controller/JointTrajectoryController",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "60",
+            "--switch-timeout",
+            "60",
+            "--param-file",
+            controller_config,
+        ],
+        output="screen",
+    )
+    gripper_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[
+            "gripper_controller",
+            "--controller-type",
+            "position_controllers/JointGroupPositionController",
+            "--controller-manager",
+            "/controller_manager",
+            "--controller-manager-timeout",
+            "60",
+            "--switch-timeout",
+            "60",
+            "--param-file",
+            controller_config,
+        ],
+        output="screen",
+    )
     sim_chassis_state = Node(
         package="lunar_rover_control",
         executable="sim_chassis_state_node",
@@ -218,6 +254,12 @@ def _launch_setup(context):
     )
     spawn_rover_after_rocker = RegisterEventHandler(
         OnProcessExit(target_action=rocker_spawner, on_exit=[rover_spawner])
+    )
+    spawn_arm_after_rover = RegisterEventHandler(
+        OnProcessExit(target_action=rover_spawner, on_exit=[arm_spawner])
+    )
+    spawn_gripper_after_arm = RegisterEventHandler(
+        OnProcessExit(target_action=arm_spawner, on_exit=[gripper_spawner])
     )
 
     bridge = Node(
@@ -322,6 +364,8 @@ def _launch_setup(context):
         spawn_controllers_after_robot,
         spawn_rocker_after_joint_states,
         spawn_rover_after_rocker,
+        spawn_arm_after_rover,
+        spawn_gripper_after_arm,
         sim_chassis_state,
         rviz,
     ]
