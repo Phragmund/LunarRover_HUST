@@ -1,45 +1,32 @@
-"""Start the physical chassis driver."""
+"""Start the physical H7 motion-solver chassis chain."""
 
-import os
-
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable
-from launch.substitutions import EnvironmentVariable, LaunchConfiguration
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    control_share = get_package_share_directory("lunar_rover_control")
-    config_file = os.path.join(control_share, "config", "real_chassis.yaml")
-
-    handoff_dir = LaunchConfiguration("handoff_dir")
-    steering_port = LaunchConfiguration("steering_port")
-
     return LaunchDescription(
         [
             DeclareLaunchArgument(
-                "handoff_dir",
-                default_value="/home/phragmund/LunarRover/tmp/3508_can_handoff",
+                "steering_port",
+                default_value="/dev/ttyACM0",
+                description="Deprecated alias for h7_port.",
             ),
-            DeclareLaunchArgument("steering_port", default_value="/dev/ttyACM0"),
-            SetEnvironmentVariable(
-                "LD_LIBRARY_PATH",
-                [
-                    handoff_dir,
-                    "/dlls:",
-                    EnvironmentVariable("LD_LIBRARY_PATH", default_value=""),
-                ],
+            DeclareLaunchArgument(
+                "h7_port",
+                default_value=LaunchConfiguration("steering_port"),
+                description="H7 USB CDC serial port.",
             ),
             Node(
                 package="lunar_rover_control",
-                executable="chassis_driver_node.py",
-                name="chassis_driver_node",
+                executable="motion_solver.py",
+                name="motion_solver",
                 parameters=[
-                    config_file,
                     {
-                        "handoff_dir": handoff_dir,
-                        "steering_port": steering_port,
+                        "use_sim_time": False,
+                        "h7_port": LaunchConfiguration("h7_port"),
                     },
                 ],
                 output="screen",

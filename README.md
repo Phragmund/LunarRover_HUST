@@ -334,6 +334,114 @@ pgrep -af "restart_gated|fastlio_mapping|rviz2|ign gazebo|terrain_mapper|keyboar
 - 如果启动后拔插过键盘，旧的 `keyboard_rover_teleop` 可能还在读取已经失效的 `/dev/input/event* (deleted)` 句柄，表现为节点存在但按键没有任何 `/chassis/cmd_vel` 输出。此时不要重启 Gazebo/FAST-LIO/建图，只需重启键盘节点：`pkill -f keyboard_rover_teleop.py || true`，然后在当前推荐链路中运行 `scripts/run_direct_keyboard_teleop.sh --topic /chassis/cmd_vel`。详细排查见 [`docs/keyboard_teleop_direct.md`](docs/keyboard_teleop_direct.md)。
 - 真值替换模式下如果快速转弯出现扇形发散，优先检查 LiDAR stamp 与 Gazebo truth pose 是否按时间对齐，以及 terrain mapper 是否持续 TF extrapolation。排查和修复记录见 [`docs/truth_localization_sync_debugging.md`](docs/truth_localization_sync_debugging.md)。
 
+## 实车验证启动链路：Livox + FAST-LIO2 + H7 + 手机遥控
+
+记录时间：2026-08-23 23:49 CST。该链路已在实车接线后验证可启动，当前用于实车
+雷达建图和手机遥控底盘测试。
+
+当前实车手动控制入口是：
+
+```text
+web_joystick_server.py
+  -> /manual_control (lunar_rover_msgs/ManualControl)
+  -> motion_solver.py
+  -> H7 USB CDC (/dev/ttyACM0)
+  -> 3508 + 舵轮
+```
+
+不要在这条实车手动链路里启动旧的
+`chassis_driver_node.py + chassis_cmd_mux_node.py + /chassis/cmd_vel`。旧链路保留给
+仿真/Nav 调试和后续自动导航兼容，不作为当前上车手动控制入口。
+
+### 启动前检查
+
+1. H7 USB CDC 已连接，通常为 `/dev/ttyACM0`。
+2. Livox Mid-360 以太网已连接，上位机有 `192.168.2.50/24`，雷达地址为
+   `192.168.2.204`。
+3. 手机和上位机在同一热点/Wi-Fi。当前验证时手机热点网段为
+   `192.168.43.0/24`，上位机 Wi-Fi 地址为 `192.168.43.113`。
+4. 车辆静置，FAST-LIO 和 map 水平校正完成前不要移动车体。
+5. `motion_solver.py` 启动即向 H7 发送 `$M3508:ENABLE,1`。启动前确认车轮悬空或
+   周围清空；手机摇杆一推，3508 就会响应。
+
+确认没有残留进程：
+
+```bash
+pgrep -af "ros2|rviz2|motion_solver.py|keyboard_controller.py|web_joystick_server.py|chassis_driver_node.py|chassis_cmd_mux_node.py|livox|fastlio|robot_state_publisher"
+```
+
+### 一键启动
+
+推荐固定一个短 token，避免手机输入长随机 token：
+
+```bash
+cd /home/phragmund/LunarRover
+REAL_CHASSIS_H7_PORT=/dev/ttyACM0 \
+WEB_JOYSTICK_TOKEN=r1234 \
+RUN_REAL_CHASSIS=true \
+RUN_RVIZ=true \
+scripts/run_real_lidar_mapping.sh
+```
+
+启动后终端应打印手机地址，例如：
+
+```text
+Phone controller: http://192.168.43.113:8000/?token=r1234
+```
+
+手机必须打开完整 URL，包括 `?token=r1234`。如果日志出现 `WebSocket /ws 403`，
+说明手机页面没有带 token、token 为空，或旧标签页还在重连。关掉旧标签，只保留
+完整 URL 页面即可。
+
+### 成功标志
+
+启动日志中应依次出现：
+
+```text
+motion_solver: 已使能 3508，等待控制指令...
+web_joystick_server.py: Web joystick server 已启动，发布话题: /manual_control
+livox_ros_driver2_node: successfully enable Livox Lidar imu
+fastlio_mapping: IMU Initial Done
+fastlio_mapping: Initialize the map kdtree
+fast_lio2_map_frame: Calibrated effective IMU mount attitude ...
+fast_lio2_map_frame: Startup FAST-LIO level correction calibrated ...
+```
+
+2026-08-23 实测校平结果示例：
+
+```text
+Calibrated effective IMU mount attitude: roll=+0.463 deg, pitch=+54.273 deg
+Startup FAST-LIO level correction calibrated:
+  measured rpy=(-0.221, +0.309, -0.166) deg
+  correction rpy=(+0.221, -0.310, -0.001) deg
+```
+
+验证话题：
+
+```bash
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 topic echo /localization/lio_odometry --once
+ros2 topic echo /livox/imu --once
+ros2 topic echo /manual_control --once
+```
+
+`/manual_control` 在手机页面连接后应持续发布；未操作摇杆时杆量为 0。
+
+### 只重启手机遥控
+
+如果完整链路已经在跑，只是 token 输入不方便，不要重启雷达和 FAST-LIO。只停
+`web_joystick_server.py`，再用短 token 单独启动：
+
+```bash
+pkill -INT -f web_joystick_server.py
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 run lunar_rover_navigation web_joystick_server.py --ros-args \
+  -p port:=8000 \
+  -p access_token:=r1234
+```
+
 ## 启动基础仿真
 
 ```bash

@@ -164,6 +164,9 @@ class ChassisDriverNode(Node):
         self.default_enabled = bool(
             self.declare_parameter('default_enabled', False).value
         )
+        self.require_steering_feedback = bool(
+            self.declare_parameter('require_steering_feedback', True).value
+        )
         self.state_topic = self.declare_parameter(
             'state_topic', '/chassis/state'
         ).value
@@ -361,7 +364,7 @@ class ChassisDriverNode(Node):
             bits |= self.FAULT_SERIAL
         if not self.h7.all_motors_online():
             bits |= self.FAULT_DRIVE_FEEDBACK
-        if not self.h7.all_steering_online():
+        if self.require_steering_feedback and not self.h7.all_steering_online():
             bits |= self.FAULT_STEERING
         return bits
 

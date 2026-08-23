@@ -1,9 +1,16 @@
 # 下位机控制接口契约
 
-本文档定义真实六轮摇臂月球车的 ROS 2 控制接口。当前实现由 NUC 上的
-`chassis_driver_node.py` 完成 4 个动力轮和 4 个舵轮的解算与闭环，再分别通过
-USB2CANFD/CAN 和 USB CDC 下发；中间两轮为无动力从动轮。旧版“全部解算由
-下位机完成”的描述已不适用于当前链路。
+本文档定义历史 `/chassis/cmd_vel` 实车控制接口，保留给仿真/Nav 兼容和后续自动
+导航接入参考。
+
+当前实车手动控制入口已经切换为
+`/manual_control -> motion_solver -> H7 USB CDC`，详见
+[`manual_control_and_motion_solver.md`](manual_control_and_motion_solver.md)。
+不要把本文档中的 `chassis_driver_node.py + chassis_cmd_mux_node.py` 当作当前手动
+上车启动链路。
+
+历史实现由 NUC 上的 `chassis_driver_node.py` 完成 4 个动力轮和 4 个舵轮的解算与
+闭环，再分别通过 USB2CANFD/CAN 和 USB CDC 下发；中间两轮为无动力从动轮。
 
 ## 上位机发布
 
@@ -74,10 +81,12 @@ right_bogie_joint
 - 故障保护：严重驱动器、编码器、通信或电源故障时进入 `FAULT`。
 - 时间戳：所有回传消息必须使用当前 ROS 时间或已同步系统时间。
 
-## 上位机假设
+## 历史上位机假设
 
-- 上位机不会在实车模式启动 `controller_manager` 或 `ros2_control` 底盘控制器。
-- `chassis_driver_node.py` 上电默认禁用，只有硬件在线、急停清除且收到
+- 历史 `/chassis/cmd_vel` 链路中，上位机不会在实车模式启动 `controller_manager`
+  或 `ros2_control` 底盘控制器。
+- 历史 `chassis_driver_node.py` 上电默认禁用，只有硬件在线、急停清除且收到
   `/chassis/controller_enabled=true` 后才允许非零输出。
-- 上位机使用 `/joint_states` 计算轮速里程计，并使用 `/chassis/state` 执行安全监督。
-- 下位机负责真实电机闭环，上位机只输出底盘级速度命令。
+- 历史链路使用 `/joint_states` 计算轮速里程计，并使用 `/chassis/state` 执行安全监督。
+- 当前 `motion_solver` 手动链路启动即向 H7 发送 `$M3508:ENABLE,1`，安全语义见
+  `manual_control_and_motion_solver.md`。

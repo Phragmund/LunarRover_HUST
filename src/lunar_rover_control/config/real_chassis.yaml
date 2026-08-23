@@ -8,6 +8,7 @@ chassis_driver_node:
     fault_topic: /chassis/fault_bits
     command_timeout: 0.25
     default_enabled: false
+    require_steering_feedback: false
 
     # H7 单串口（动力轮 + 舵轮统一走一个 USB CDC）
     h7_backend: serial            # serial | dummy

@@ -66,6 +66,8 @@ def _launch_setup(context):
         "on",
     )
     map_frame_runtime_params = {
+        "use_sim_time": LaunchConfiguration("use_sim_time"),
+        "lio_body_frame": LaunchConfiguration("lio_body_frame"),
         "imu_mount_pitch_source": LaunchConfiguration("imu_mount_pitch_source"),
         "imu_mount_pitch_deg": LaunchConfiguration("imu_mount_pitch_deg"),
         "imu_mount_pitch_samples": LaunchConfiguration("imu_mount_pitch_samples"),
@@ -218,6 +220,7 @@ def generate_launch_description():
                 "map_frame_params_file",
                 default_value=str(localization_share / "config" / "fast_lio2_map_frame.yaml"),
             ),
+            DeclareLaunchArgument("lio_body_frame", default_value="livox_imu_frame"),
             DeclareLaunchArgument("imu_mount_pitch_source", default_value="fixed"),
             DeclareLaunchArgument("imu_mount_pitch_deg", default_value="35.273"),
             DeclareLaunchArgument("imu_mount_pitch_samples", default_value="80"),

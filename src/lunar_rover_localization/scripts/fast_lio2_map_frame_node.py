@@ -324,8 +324,11 @@ class FastLio2MapFrameNode(Node):
         self.level_yaw_cos_sum = 0.0
         self.level_position_sum = [0.0, 0.0, 0.0]
         self.level_first_raw_odom_time = None
+        self.calibrated_imu_roll = None
         self.calibrated_imu_pitch = None
         self.imu_pitch_sample_count = 0
+        self.imu_roll_sin_sum = 0.0
+        self.imu_roll_cos_sum = 0.0
         self.imu_pitch_sum = 0.0
         self.last_pose_valid = False
         self.last_path_publish_time_ns = None
@@ -376,7 +379,12 @@ class FastLio2MapFrameNode(Node):
         )
 
         self.create_subscription(Odometry, self.raw_odom_topic, self.on_odom, 20)
-        if self.imu_mount_pitch_source in ("startup_imu_pitch", "imu", "measured"):
+        if self.imu_mount_pitch_source in (
+            "startup_imu_pitch",
+            "startup_imu_gravity",
+            "imu",
+            "measured",
+        ):
             self.create_subscription(Imu, self.imu_topic, self.on_imu, 50)
         if self.publish_path:
             self.create_subscription(Path, self.raw_path_topic, self.on_path, 10)
@@ -429,6 +437,50 @@ class FastLio2MapFrameNode(Node):
             return True
         return False
 
+    def lookup_transform_parts(self, target_frame, source_frame):
+        if target_frame == source_frame:
+            return (0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)
+        transform = self.tf_buffer.lookup_transform(target_frame, source_frame, Time())
+        return transform_parts(transform)
+
+    @staticmethod
+    def orientation_is_valid(msg):
+        q = q_tuple(msg.orientation)
+        norm = math.sqrt(sum(value * value for value in q))
+        if not math.isfinite(norm) or norm < 0.5 or norm > 1.5:
+            return False
+        # Many raw IMU drivers publish all-zero orientation or explicitly mark
+        # orientation unavailable with covariance[0] = -1.
+        if abs(q[0]) + abs(q[1]) + abs(q[2]) + abs(q[3]) < 1.0e-6:
+            return False
+        if len(msg.orientation_covariance) > 0 and msg.orientation_covariance[0] < 0.0:
+            return False
+        covariance_is_zero = all(abs(value) < 1.0e-12 for value in msg.orientation_covariance)
+        is_identity = (
+            abs(q[0]) < 1.0e-9
+            and abs(q[1]) < 1.0e-9
+            and abs(q[2]) < 1.0e-9
+            and abs(q[3] - 1.0) < 1.0e-9
+        )
+        if covariance_is_zero and is_identity:
+            return False
+        return True
+
+    @staticmethod
+    def rpy_from_acceleration(msg):
+        ax = float(msg.linear_acceleration.x)
+        ay = float(msg.linear_acceleration.y)
+        az = float(msg.linear_acceleration.z)
+        norm = math.sqrt(ax * ax + ay * ay + az * az)
+        if not math.isfinite(norm) or norm < 0.1:
+            return None
+        ax /= norm
+        ay /= norm
+        az /= norm
+        roll = math.atan2(ay, az)
+        pitch = math.atan2(-ax, math.sqrt(ay * ay + az * az))
+        return roll, pitch, 0.0
+
     def on_imu(self, msg):
         if self.calibrated_imu_pitch is not None:
             return
@@ -439,16 +491,30 @@ class FastLio2MapFrameNode(Node):
         )
         if self.imu_mount_pitch_max_gyro > 0.0 and gyro_norm > self.imu_mount_pitch_max_gyro:
             return
-        _, pitch, _ = rpy_from_q(q_tuple(msg.orientation))
-        if not math.isfinite(pitch):
+        source = "orientation"
+        if self.orientation_is_valid(msg):
+            roll, pitch, _ = rpy_from_q(q_tuple(msg.orientation))
+        else:
+            rpy = self.rpy_from_acceleration(msg)
+            if rpy is None:
+                return
+            roll, pitch, _ = rpy
+            source = "linear_acceleration"
+        if not math.isfinite(roll) or not math.isfinite(pitch):
             return
         self.imu_pitch_sample_count += 1
+        self.imu_roll_sin_sum += math.sin(roll)
+        self.imu_roll_cos_sum += math.cos(roll)
         self.imu_pitch_sum += pitch
         if self.imu_pitch_sample_count >= self.imu_mount_pitch_samples:
+            self.calibrated_imu_roll = self.average_angle(
+                self.imu_roll_sin_sum, self.imu_roll_cos_sum
+            )
             self.calibrated_imu_pitch = self.imu_pitch_sum / float(self.imu_pitch_sample_count)
             self.get_logger().info(
-                "Calibrated effective IMU mount pitch from startup IMU orientation: "
-                f"{math.degrees(self.calibrated_imu_pitch):.3f} deg "
+                "Calibrated effective IMU mount attitude from startup IMU "
+                f"{source}: roll={math.degrees(self.calibrated_imu_roll):+.3f} deg, "
+                f"pitch={math.degrees(self.calibrated_imu_pitch):+.3f} deg "
                 f"from {self.imu_pitch_sample_count} samples"
             )
 
@@ -456,22 +522,20 @@ class FastLio2MapFrameNode(Node):
         if self.map_from_lio is not None:
             return
         if (
-            self.imu_mount_pitch_source in ("startup_imu_pitch", "imu", "measured")
+            self.imu_mount_pitch_source
+            in ("startup_imu_pitch", "startup_imu_gravity", "imu", "measured")
             and self.calibrated_imu_pitch is None
         ):
             self.get_logger().warn(
-                "Waiting for startup IMU pitch calibration from "
+                "Waiting for startup IMU attitude calibration from "
                 f"{self.imu_topic}: {self.imu_pitch_sample_count}/"
                 f"{self.imu_mount_pitch_samples} samples",
                 throttle_duration_sec=2.0,
             )
             return
         try:
-            base_from_lio_body = self.tf_buffer.lookup_transform(
-                self.base_frame, self.lio_body_frame, Time()
-            )
-            lio_body_from_base = self.tf_buffer.lookup_transform(
-                self.lio_body_frame, self.base_frame, Time()
+            base_from_lio_body_t, base_from_lio_body_q = self.lookup_transform_parts(
+                self.base_frame, self.lio_body_frame
             )
         except TransformException as exc:
             self.get_logger().warn(
@@ -480,9 +544,15 @@ class FastLio2MapFrameNode(Node):
             )
             return
 
-        base_from_lio_body_t, base_from_lio_body_q = transform_parts(base_from_lio_body)
         pitch_source = "urdf"
-        if self.imu_mount_pitch_source in ("startup_imu_pitch", "imu", "measured"):
+        if self.imu_mount_pitch_source in ("startup_imu_gravity", "imu", "measured"):
+            _, _, urdf_yaw = rpy_from_q(base_from_lio_body_q)
+            roll = self.calibrated_imu_roll if self.calibrated_imu_roll is not None else 0.0
+            base_from_lio_body_q = q_normalize(
+                q_from_rpy(roll, self.calibrated_imu_pitch, urdf_yaw)
+            )
+            pitch_source = "startup_imu_gravity"
+        elif self.imu_mount_pitch_source == "startup_imu_pitch":
             urdf_roll, _, urdf_yaw = rpy_from_q(base_from_lio_body_q)
             base_from_lio_body_q = q_normalize(
                 q_from_rpy(urdf_roll, self.calibrated_imu_pitch, urdf_yaw)

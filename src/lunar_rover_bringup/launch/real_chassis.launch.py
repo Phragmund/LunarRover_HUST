@@ -1,4 +1,4 @@
-"""Start the complete physical chassis and manual-control chain."""
+"""Start the complete physical H7 manual-control chain."""
 
 import os
 
@@ -19,23 +19,26 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "handoff_dir",
                 default_value="/home/phragmund/LunarRover/tmp/3508_can_handoff",
+                description="Deprecated; kept for old scripts.",
             ),
-            DeclareLaunchArgument("steering_port", default_value="/dev/ttyACM0"),
+            DeclareLaunchArgument(
+                "steering_port",
+                default_value="/dev/ttyACM0",
+                description="Deprecated alias for h7_port.",
+            ),
+            DeclareLaunchArgument(
+                "h7_port",
+                default_value=LaunchConfiguration("steering_port"),
+                description="H7 USB CDC serial port.",
+            ),
             DeclareLaunchArgument("web_port", default_value="8000"),
             DeclareLaunchArgument("web_access_token", default_value=""),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(control_launch),
                 launch_arguments={
-                    "handoff_dir": LaunchConfiguration("handoff_dir"),
                     "steering_port": LaunchConfiguration("steering_port"),
+                    "h7_port": LaunchConfiguration("h7_port"),
                 }.items(),
-            ),
-            Node(
-                package="lunar_rover_navigation",
-                executable="chassis_cmd_mux_node.py",
-                name="chassis_cmd_mux",
-                parameters=[{"use_sim_time": False}],
-                output="screen",
             ),
             Node(
                 package="lunar_rover_navigation",

@@ -16,8 +16,10 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import GroupAction, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, SetRemap
 
 
@@ -26,12 +28,19 @@ def generate_launch_description():
     orbbec_share = Path(get_package_share_directory("orbbec_camera"))
     return LaunchDescription(
         [
+            DeclareLaunchArgument("run_lidar", default_value="true"),
+            DeclareLaunchArgument("run_camera", default_value="true"),
+            DeclareLaunchArgument("lidar_frame_id", default_value="livox_frame"),
+            DeclareLaunchArgument("lidar_output_topic", default_value="/livox/points"),
             Node(
                 package="livox_ros_driver2",
                 executable="livox_ros_driver2_node",
                 name="livox_lidar_publisher",
                 output="screen",
-                remappings=[("/livox/lidar", "/livox/points")],
+                condition=IfCondition(LaunchConfiguration("run_lidar")),
+                remappings=[
+                    ("/livox/lidar", LaunchConfiguration("lidar_output_topic"))
+                ],
                 parameters=[
                     {
                         "xfer_format": 0,
@@ -39,7 +48,7 @@ def generate_launch_description():
                         "data_src": 0,
                         "publish_freq": 10.0,
                         "output_data_type": 0,
-                        "frame_id": "livox_frame",
+                        "frame_id": LaunchConfiguration("lidar_frame_id"),
                         "user_config_path": str(
                             share / "config" / "livox_mid360.json"
                         ),
@@ -67,7 +76,8 @@ def generate_launch_description():
                             ),
                         }.items(),
                     ),
-                ]
+                ],
+                condition=IfCondition(LaunchConfiguration("run_camera")),
             ),
         ]
     )

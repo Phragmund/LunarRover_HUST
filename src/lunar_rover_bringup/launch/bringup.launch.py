@@ -8,6 +8,7 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, Opaq
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, FindExecutable, LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def _include(package, launch_file, arguments):
@@ -58,19 +59,31 @@ def _launch_setup(context):
             output="screen",
             parameters=[
                 {
-                    "robot_description": Command(
-                        [
-                            FindExecutable(name="xacro"),
-                            " ",
-                            str(xacro_file),
-                            " use_sim:=false",
-                        ]
+                    "robot_description": ParameterValue(
+                        Command(
+                            [
+                                FindExecutable(name="xacro"),
+                                " ",
+                                str(xacro_file),
+                                " use_sim:=false",
+                            ]
+                        ),
+                        value_type=str,
                     ),
                     "use_sim_time": False,
                 }
             ],
         ),
-        _include("lunar_rover_sensors", "real_sensors.launch.py", {}),
+        _include(
+            "lunar_rover_sensors",
+            "real_sensors.launch.py",
+            {
+                "run_lidar": LaunchConfiguration("real_run_lidar"),
+                "run_camera": LaunchConfiguration("real_run_camera"),
+                "lidar_frame_id": LaunchConfiguration("real_lidar_frame_id"),
+                "lidar_output_topic": LaunchConfiguration("real_lidar_output_topic"),
+            },
+        ),
     ]
 
 
@@ -100,6 +113,26 @@ def generate_launch_description():
                 "sensor_bridges",
                 default_value="true",
                 description="Bridge simulated sensor topics from Gazebo into ROS.",
+            ),
+            DeclareLaunchArgument(
+                "real_run_lidar",
+                default_value="true",
+                description="Start the physical Livox Mid-360 driver in real mode.",
+            ),
+            DeclareLaunchArgument(
+                "real_run_camera",
+                default_value="true",
+                description="Start the physical Gemini camera driver in real mode.",
+            ),
+            DeclareLaunchArgument(
+                "real_lidar_frame_id",
+                default_value="livox_frame",
+                description="Frame id used by the physical Livox point cloud.",
+            ),
+            DeclareLaunchArgument(
+                "real_lidar_output_topic",
+                default_value="/livox/points",
+                description="Output topic for the physical Livox point cloud.",
             ),
             OpaqueFunction(function=_launch_setup),
         ]
