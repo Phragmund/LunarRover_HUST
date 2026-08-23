@@ -100,13 +100,29 @@ install(
   INCLUDES DESTINATION include
 )
 install(
-  PROGRAMS scripts/keyboard_arm_joint_controller.py
+  PROGRAMS
+    scripts/keyboard_arm_joint_controller.py
+    scripts/m3508_can_api.py
+    scripts/steering_motor.py
+    scripts/usb_cdc_steering.py
+    scripts/h7_serial_client.py
+    scripts/chassis_driver_node.py
+    scripts/keyboard_h7_direct.py
+    scripts/keyboard_controller.py
+    scripts/motion_solver.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
+  find_package(ament_cmake_test REQUIRED)
   ament_add_gtest(test_kinematics test/test_kinematics.cpp)
+  ament_add_test(
+    test_real_chassis_python
+    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+    COMMAND /usr/bin/python3
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/test_real_chassis_python.py
+  )
   target_link_libraries(
     test_kinematics
     ${PROJECT_NAME}_kinematics

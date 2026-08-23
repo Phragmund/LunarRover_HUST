@@ -3,6 +3,51 @@
 This note is for first-power-on functional testing of a second-hand Livox
 Mid-360 before integrating it with the rover stack.
 
+## Tested Working Configuration (verified 2026-08)
+
+This exact unit was tested and confirmed working on this machine. Its network
+settings differ from the factory defaults described below: it is a second-hand
+unit that a previous owner reconfigured onto a different subnet, so **do not**
+assume the factory-default IP applies.
+
+| Item | Value |
+| --- | --- |
+| Lidar IP | `192.168.2.204` |
+| Lidar serial number | last two digits `96` (factory default would be `192.168.1.196`, but this unit has been moved to `192.168.2.x`) |
+| PC Ethernet | `enp7s0` = `192.168.2.50/24` (NetworkManager connection `livox-mid360`, autoconnect enabled) |
+| Driver config | `src/lunar_rover_sensors/config/livox_mid360.json` already holds host `192.168.2.50` / lidar `192.168.2.204` |
+| Driver | `livox_ros_driver2` v1.2.6, already built in this workspace |
+
+Verified results with `xfer_format:=0` (PointCloud2):
+
+- `/livox/lidar`: `sensor_msgs/msg/PointCloud2`, ~20000 points/frame @ 10 Hz,
+  fields `x y z intensity tag line timestamp` (LivoxPointXyzitl).
+- `/livox/imu`: `sensor_msgs/msg/Imu` @ 200 Hz.
+- RViz displays `/livox/lidar` directly using
+  `debug/mid360_smoke.rviz` (Fixed Frame `livox_frame`).
+
+For FAST-LIO2, use `src/lunar_rover_localization/config/fast_lio2_mid360_real.yaml`
+(`lidar_type: 4` = MID360 PointCloud2 handler, `use_sim_time: false`).
+
+### If the lidar IP is unknown (re-discovery)
+
+If the unit stops answering at `192.168.2.204` (e.g. a different unit, or it was
+reset to factory defaults), discover its actual IP instead of guessing:
+
+1. Connect Ethernet + power, then configure the PC to `192.168.2.50/24` first
+   (covers this unit) and also try `192.168.1.50/24` (covers factory-default
+   units).
+2. Open the official `LivoxViewer2` (see `docs/livox_mid360_vendor_index.md`) and
+   refresh adapters/devices — it broadcasts a Livox `LidarSearch` and reports the
+   device IP and serial number regardless of the configured subnet.
+3. Alternatively, a UDP ping-sweep of `192.168.1.0/24` and `192.168.2.0/24`
+   (`ping -c1 -W1 192.168.X.Y`) finds the address if the unit still responds to
+   ARP.
+
+Once the real IP is known, update `lidar_configs[0].ip` in
+`src/lunar_rover_sensors/config/livox_mid360.json` and put the PC on the matching
+subnet.
+
 ## Official Files Prepared
 
 The official binaries/manuals are not committed to this repository.  See
@@ -46,16 +91,17 @@ Subnet mask:    255.255.255.0
 Gateway:        optional, normally 192.168.1.1
 ```
 
-This repository currently has:
+This repository is currently configured for the tested unit:
 
 ```text
-host IP in config:  192.168.1.5
-lidar IP in config: 192.168.1.12
+host IP in config:  192.168.2.50
+lidar IP in config: 192.168.2.204
 ```
 
 Before running the ROS driver, make sure the PC Ethernet IP matches
 `host_net_info` in `src/lunar_rover_sensors/config/livox_mid360.json`, and make
-sure `lidar_configs[0].ip` matches the actual Mid-360 IP.
+sure `lidar_configs[0].ip` matches the actual Mid-360 IP. (For a different unit,
+follow the re-discovery steps at the top of this document.)
 
 ## Current PC Environment
 
@@ -70,6 +116,10 @@ Checked on this machine:
 - Current `enp7s0` state before hardware connection: down/unavailable.
 
 ## First Test Procedure
+
+The steps below describe a factory-default unit on `192.168.1.x`. For the unit
+tested in this repository, use the values in "Tested Working Configuration" above
+(`192.168.2.50` on the PC, `192.168.2.204` on the lidar) instead of `192.168.1.50`.
 
 1. Read the serial number on the Mid-360 body and compute the expected IP:
 
@@ -124,7 +174,7 @@ number. First verify live point cloud display before any firmware upgrade.
 Use this after Viewer 2 has found the device and the actual IP is known.
 
 If using the current repo config unchanged, set the PC Ethernet IP to
-`192.168.1.5/24` and make sure the lidar IP is `192.168.1.12`.
+`192.168.2.50/24` and make sure the lidar IP is `192.168.2.204`.
 
 ```bash
 cd /home/phragmund/LunarRover
@@ -153,10 +203,13 @@ ros2 topic echo /livox/lidar --once
 
 Expected minimum result:
 
-- Driver initializes successfully.
-- A Livox point cloud topic is published.
-- Topic frequency is near the configured publish frequency, usually 10 Hz.
-- `point_num` is nonzero in `livox_ros_driver2/msg/CustomMsg`.
+- Driver initializes successfully and logs `livox/lidar publish use PointCloud2 format`.
+- `/livox/lidar` is published at about the configured frequency (10 Hz).
+- `/livox/imu` is published at 200 Hz.
+- One `/livox/lidar` message contains ~20000 points (`width * height > 0`).
 
-For RViz PointCloud2 testing, use `xfer_format:=0` and inspect the published
-topic name from `ros2 topic list`.
+With `xfer_format:=0` the point cloud is `sensor_msgs/msg/PointCloud2`
+(LivoxPointXyzitl fields) and can be displayed directly in RViz. With
+`xfer_format:=1` it becomes `livox_ros_driver2/msg/CustomMsg`, which is what the
+AVIA (`lidar_type: 1`) FAST-LIO2 input expects; the real-unit FAST-LIO2 config in
+this repo uses PointCloud2 with `lidar_type: 4` instead.

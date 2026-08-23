@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LunarRover H7 统一调试台</title>
+  <style>
+    :root {
+      --bg:#eef2f5; --panel:#fff; --panel2:#f7f9fb; --text:#16202a; --muted:#5e6b78;
+      --line:#d7dee6; --accent:#0f766e; --blue:#155e75; --danger:#b42318; --ok:#16794c;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:"Segoe UI","Microsoft YaHei",Arial,sans-serif; }
+    button,input,select { font:inherit; }
+    button { min-height:36px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--text); cursor:pointer; padding:7px 10px; }
+    button:hover { border-color:#9aabb8; }
+    button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+    button.danger { color:var(--danger); background:#fff7f6; border-color:#f1b8b2; }
+    button.good { color:var(--ok); background:#effaf5; border-color:#a8dac3; }
+    button.active { background:var(--blue); border-color:var(--blue); color:#fff; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    input,select { width:100%; min-height:36px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--text); padding:7px 9px; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px 24px; background:#fff; border-bottom:1px solid var(--line); }
+    h1 { margin:0; font-size:22px; }
+    h2 { margin:0 0 12px; font-size:16px; }
+    label span { display:block; margin:8px 0 5px; color:var(--muted); font-size:12px; }
+    .status { display:flex; gap:8px; flex-wrap:wrap; }
+    .badge { border:1px solid var(--line); background:var(--panel2); color:var(--muted); border-radius:999px; padding:6px 10px; font-size:13px; }
+    .badge.ok { border-color:#a8dac3; color:var(--ok); background:#effaf5; }
+    .badge.bad { border-color:#f1b8b2; color:var(--danger); background:#fff7f6; }
+    .wrap { max-width:1440px; margin:0 auto; padding:18px; }
+    .top-grid { display:grid; grid-template-columns:360px 1fr; gap:14px; align-items:start; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:14px; }
+    .tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+    .page { display:none; }
+    .page.active { display:block; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .buttons { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+    .log { height:230px; overflow:auto; white-space:pre-wrap; background:#111827; color:#d1fae5; border:1px solid #263445; border-radius:8px; padding:10px; font:12px/1.45 Consolas,"Cascadia Mono",monospace; }
+    .tile { min-height:88px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px; }
+    .tile .name { color:var(--muted); font-size:12px; margin-bottom:6px; }
+    .tile .value { white-space:pre-line; font:13px/1.5 Consolas,"Cascadia Mono",monospace; }
+    .joint-list { display:grid; gap:8px; }
+    .joint-card { display:grid; grid-template-columns:44px 1fr auto; align-items:center; gap:10px; width:100%; min-height:58px; text-align:left; }
+    .joint-card.selected { border-color:var(--accent); background:#effaf8; }
+    .joint-name { display:grid; place-items:center; width:38px; height:38px; border-radius:6px; background:#e6eef5; font-weight:700; }
+    .joint-card.selected .joint-name { background:var(--accent); color:#fff; }
+    .muted { color:var(--muted); font-size:12px; line-height:1.5; }
+    .readout { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:12px; }
+    .readout > div { border:1px solid var(--line); background:var(--panel2); border-radius:8px; padding:10px; min-height:68px; }
+    .readout span { color:var(--muted); font-size:12px; }
+    .readout strong { display:block; margin-top:6px; font-size:20px; }
+    .mode-tabs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; padding:4px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; }
+    .hidden { display:none; }
+    .ik-status { margin:12px 0; border:1px solid var(--line); border-radius:8px; background:#f7fbff; color:#31465b; padding:10px; font-size:13px; }
+    canvas { width:100%; height:320px; border:1px solid var(--line); border-radius:8px; background:#fbfdff; }
+    @media (max-width:980px) { .top-grid,.grid2,.grid3,.grid4,.readout { grid-template-columns:1fr; } header{align-items:flex-start;flex-direction:column;} }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>LunarRover H7 统一调试台</h1>
+      <div class="muted">一个 USB CDC 串口同时调试 M3508、舵轮和机械臂 UART10 桥接</div>
+    </div>
+    <div class="status">
+      <span id="serialBadge" class="badge bad">串口未连接</span>
+      <span id="m3508Badge" class="badge">M3508 --</span>
+      <span id="steerBadge" class="badge">STEER --</span>
+      <span id="armBadge" class="badge">ARM --</span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="top-grid">
+      <div>
+        <section class="panel">
+          <h2>共享串口</h2>
+          <div class="buttons">
+            <button id="connectBtn" class="primary">连接 H7 USB</button>
+            <button id="disconnectBtn">断开</button>
+          </div>
+          <div class="buttons">
+            <button id="armPingBtn">ARM PING</button>
+            <button id="allStopBtn" class="danger">全部停止</button>
+          </div>
+          <p class="muted">浏览器只连接一次 H7 USB CDC。3508 使用 `$M3508:*`，舵轮使用 `$ANG/$SPD`，机械臂使用 `$ARM:*`。</p>
+        </section>
+        <section class="panel">
+          <h2>日志</h2>
+          <div id="log" class="log"></div>
+        </section>
+      </div>
+
+      <div>
+        <div class="tabs">
+          <button id="tabM3508" class="active">3508 底盘</button>
+          <button id="tabSteer">舵轮</button>
+          <button id="tabArm">机械臂</button>
+        </div>
+
+        <section id="pageM3508" class="page active">
+          <div class="grid2">
+            <div>
+              <section class="panel">
+                <h2>快捷速度</h2>
+                <label><span>速度 r/s</span><input id="speedValue" type="number" step="0.05" value="0.20"></label>
+                <div class="grid4">
+                  <button class="good" data-speed="forward">前进</button>
+                  <button class="good" data-speed="backward">后退</button>
+                  <button data-speed="left">左转</button>
+                  <button data-speed="right">右转</button>
+                </div>
+                <button id="m3508StopBtn" class="danger" style="width:100%; margin-top:10px;">3508 停止</button>
+              </section>
+              <section class="panel">
+                <h2>四电机自定义</h2>
+                <div class="grid4">
+                  <input id="m0" type="number" step="0.05" value="0.2">
+                  <input id="m1" type="number" step="0.05" value="0.2">
+                  <input id="m2" type="number" step="0.05" value="0.2">
+                  <input id="m3" type="number" step="0.05" value="0.2">
+                </div>
+                <div class="buttons">
+                  <button id="m3508CustomSpeed">按速度发送</button>
+                  <button id="m3508CustomPos">按位置发送</button>
+                </div>
+              </section>
+            </div>
+            <div>
+              <section class="panel">
+                <h2>四路反馈</h2>
+                <div class="grid4">
+                  <div class="tile"><div class="name">M1 右后</div><div id="fb0" class="value">--</div></div>
+                  <div class="tile"><div class="name">M2 左后</div><div id="fb1" class="value">--</div></div>
+                  <div class="tile"><div class="name">M3 右前</div><div id="fb2" class="value">--</div></div>
+                  <div class="tile"><div class="name">M4 左前</div><div id="fb3" class="value">--</div></div>
+                </div>
+              </section>
+              <section class="panel">
+                <h2>手动帧</h2>
+                <input id="manualFrame" value="$M3508:SPD,0.2,0.2,0.2,0.2!">
+                <div class="buttons">
+                  <button id="manualSendBtn">发送一次</button>
+                  <button id="repeatBtn">循环发送</button>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section id="pageSteer" class="page">
+          <div class="grid2">
+            <div>
+              <section class="panel">
+                <h2>四舵轮角度</h2>
+                <div class="grid4">
+                  <label><span>1 右后 deg</span><input id="steerAng0" type="number" value="0" min="-135" max="135" step="1"></label>
+                  <label><span>2 左后 deg</span><input id="steerAng1" type="number" value="0" min="-135" max="135" step="1"></label>
+                  <label><span>3 右前 deg</span><input id="steerAng2" type="number" value="0" min="-135" max="135" step="1"></label>
+                  <label><span>4 左前 deg</span><input id="steerAng3" type="number" value="0" min="-135" max="135" step="1"></label>
+                </div>
+                <div class="grid4" style="margin-top:10px;">
+                  <button id="steerSendAnglesBtn" class="primary">发送角度</button>
+                  <button id="steerCenterBtn">全部 0 度</button>
+                  <button id="steerZeroBtn">当前位置置零</button>
+                  <button id="steerStopBtn" class="danger">舵轮停止</button>
+                </div>
+              </section>
+              <section class="panel">
+                <h2>速度/原始帧</h2>
+                <div class="grid4">
+                  <label><span>1 右后</span><input id="steerSpd0" type="number" value="0" min="-1" max="1" step="0.05"></label>
+                  <label><span>2 左后</span><input id="steerSpd1" type="number" value="0" min="-1" max="1" step="0.05"></label>
+                  <label><span>3 右前</span><input id="steerSpd2" type="number" value="0" min="-1" max="1" step="0.05"></label>
+                  <label><span>4 左前</span><input id="steerSpd3" type="number" value="0" min="-1" max="1" step="0.05"></label>
+                </div>
+                <div class="buttons">
+                  <button id="steerSendSpeedsBtn">发送速度</button>
+                  <button id="steerRawBtn">发送四路板 RAW</button>
+                </div>
+                <label><span>RAW</span><input id="steerRawInput" value="$MOTOR_4CH_READ:encoder_total!"></label>
+              </section>
+            </div>
+            <div>
+              <section class="panel">
+                <h2>舵轮反馈</h2>
+                <div class="grid4">
+                  <div class="tile"><div class="name">STEER 1 右后</div><div id="steerFb0" class="value">--</div></div>
+                  <div class="tile"><div class="name">STEER 2 左后</div><div id="steerFb1" class="value">--</div></div>
+                  <div class="tile"><div class="name">STEER 3 右前</div><div id="steerFb2" class="value">--</div></div>
+                  <div class="tile"><div class="name">STEER 4 左前</div><div id="steerFb3" class="value">--</div></div>
+                </div>
+                <p class="muted">反馈来自下位机 `$STD` 遥测：online、当前角度、目标角度、输出速度和 USART1 诊断计数。</p>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section id="pageArm" class="page">
+          <div class="grid2">
+            <div>
+              <section class="panel">
+                <h2>选择关节</h2>
+                <div class="joint-list" id="jointList"></div>
+                <div class="buttons">
+                  <button id="armReadAllBtn">读取全部</button>
+                  <button id="armStopAllBtn" class="danger">机械臂全停</button>
+                </div>
+              </section>
+              <section class="panel">
+                <h2>校准与状态</h2>
+                <div class="grid3">
+                  <button id="armTorqueOnBtn">当前恢复扭矩</button>
+                  <button id="armTorqueOffBtn">当前释放扭矩</button>
+                  <button id="armTorqueOffAllBtn" class="danger">全部释放扭矩</button>
+                  <button id="armCenterBtn">当前回中</button>
+                  <button id="armReadBtn">读取当前</button>
+                  <button id="armStopBtn" class="danger">停止当前</button>
+                  <button id="armZeroBtn">当前设中位</button>
+                  <button id="armStartupBtn">当前设上电位</button>
+                  <button id="armReadModeBtn">读取模式</button>
+                  <button id="armMode1Btn">设模式1</button>
+                </div>
+                <div class="grid2" style="margin-top:10px;">
+                  <label><span>ARM RAW</span><input id="armRawInput" value="#001PRAD!"></label>
+                  <button id="armRawBtn">发送 RAW</button>
+                </div>
+              </section>
+            </div>
+            <div>
+              <section class="panel">
+                <div class="mode-tabs">
+                  <button id="jointModeBtn" class="active">关节控制</button>
+                  <button id="ikModeBtn">逆运动学</button>
+                </div>
+                <div id="jointModePanel">
+                  <div class="readout">
+                    <div><span>目标角度</span><strong id="targetAngleText">--</strong></div>
+                    <div><span>目标 P 值</span><strong id="targetPulseText">--</strong></div>
+                    <div><span>实时角度</span><strong id="actualAngleText">--</strong></div>
+                    <div><span>实时 P 值</span><strong id="actualPulseText">--</strong></div>
+                  </div>
+                  <label><span>角度滑条</span><input id="angleSlider" type="range" min="0" max="270" value="135" step="0.5"></label>
+                  <div class="grid4">
+                    <label><span>角度 deg</span><input id="angleInput" type="number" value="135" step="0.5"></label>
+                    <label><span>原始 P</span><input id="pulseInput" type="number" value="1500" min="500" max="2500" step="1"></label>
+                    <label><span>时间 ms</span><input id="armTimeInput" type="number" value="500" min="0" max="9999" step="50"></label>
+                    <label><span>步进 deg</span><input id="armStepInput" type="number" value="5" min="0.1" step="0.1"></label>
+                  </div>
+                  <div class="grid4" style="margin-top:10px;">
+                    <button id="armMinusBtn">-步进</button>
+                    <button id="armPlusBtn">+步进</button>
+                    <button id="armMoveAngleBtn" class="primary">发送角度</button>
+                    <button id="armMovePulseBtn">发送 P 值</button>
+                  </div>
+                </div>
+                <div id="ikModePanel" class="hidden">
+                  <div class="readout">
+                    <div><span>X 前后 mm</span><strong id="ikXText">271</strong></div>
+                    <div><span>Y 左右 mm</span><strong id="ikYText">0</strong></div>
+                    <div><span>Z 高度 mm</span><strong id="ikZText">-50</strong></div>
+                    <div><span>Pitch deg</span><strong id="ikPitchText">0</strong></div>
+                  </div>
+                  <div class="grid4">
+                    <label><span>X</span><input id="ikXInput" type="number" value="271" step="5"></label>
+                    <label><span>Y</span><input id="ikYInput" type="number" value="0" step="5"></label>
+                    <label><span>Z</span><input id="ikZInput" type="number" value="-50" step="5"></label>
+                    <label><span>Pitch</span><input id="ikPitchInput" type="number" value="0" step="2"></label>
+                    <label><span>键盘速度 mm/s</span><input id="ikStepInput" type="number" value="60" min="1"></label>
+                    <label><span>姿态速度 deg/s</span><input id="ikPitchStepInput" type="number" value="30" min="1"></label>
+                    <label><span>夹爪 deg</span><input id="ikGripInput" type="number" value="45" min="0" max="90"></label>
+                    <label><span>发送时间 ms</span><input id="ikTimeInput" type="number" value="400" min="0" max="9999"></label>
+                  </div>
+                  <div id="ikStatus" class="ik-status">W/S 前后，A/D 左右，Space/Shift 升降，方向键上下调姿态，左右调夹爪。</div>
+                  <canvas id="ikCanvas" width="600" height="320"></canvas>
+                  <div class="grid4" style="margin-top:10px;">
+                    <button id="ikSendBtn" class="primary">发送 IK</button>
+                    <button id="ikPreviewBtn">只解算</button>
+                    <button id="ikHomeBtn">IK 初始位</button>
+                    <button id="ikKeyboardBtn">键盘控制：开</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let port = null, writer = null, reader = null, readAbort = false, repeatTimer = null, activeFrame = "";
+    const encoder = new TextEncoder(), decoder = new TextDecoder();
+    const $ = (id) => document.getElementById(id);
+
+    const joints = [
+      { name:"j1", servo_id:1, min_deg:0, max_deg:270, min_pulse:500, max_pulse:2500, inverted:false },
+      { name:"j2", servo_id:2, min_deg:0, max_deg:270, min_pulse:500, max_pulse:2500, inverted:true },
+      { name:"j3", servo_id:3, min_deg:0, max_deg:270, min_pulse:500, max_pulse:2500, inverted:false },
+      { name:"j4", servo_id:4, min_deg:0, max_deg:270, min_pulse:500, max_pulse:2500, inverted:true },
+      { name:"j5", servo_id:5, min_deg:0, max_deg:90, min_pulse:500, max_pulse:2500, inverted:false },
+    ];
+    const armState = { selected:"j1", targetAngles:{}, live:{}, mode:"joint", keyboardIk:true, ik:{x:271,y:0,z:-50,pitch:0,grip:45,lastSolution:null,sending:false} };
+    const IK_GEOMETRY = { baseToShoulder:71, upperArm:115, forearm:107, tool:110 };
+    const HOME_ANGLES = { j1:90, j2:180, j3:135, j4:135, j5:45 };
+    const IK_LOOP_INTERVAL_MS = 30, IK_LOOP_MOVE_MS = 30, pressedKeys = new Set();
+    let ikLoopTimer = null;
+
+    function log(text) {
+      const el = $("log"), ts = new Date().toLocaleTimeString();
+      el.textContent += `[${ts}] ${text}\n`;
+      if (el.textContent.length > 12000) el.textContent = el.textContent.slice(-10000);
+      el.scrollTop = el.scrollHeight;
+    }
+    function setSerialState(connected) {
+      $("serialBadge").textContent = connected ? "串口已连接" : "串口未连接";
+      $("serialBadge").className = "badge " + (connected ? "ok" : "bad");
+      $("connectBtn").disabled = connected;
+      $("disconnectBtn").disabled = !connected;
+    }
+    async function writeFrame(frame, quiet=false) {
+      if (!writer) throw new Error("串口未连接");
+      await writer.write(encoder.encode(frame));
+      if (!quiet) log(`TX ${frame}`);
+    }
+    function stopRepeat() { if (repeatTimer) clearInterval(repeatTimer); repeatTimer = null; }
+    function formatM3508(cmd, values) { return `$M3508:${cmd},${values.map(v => Number(v).toFixed(4).replace(/\.?0+$/,"")).join(",")}!`; }
+    async function startRepeat(frame) {
+      stopRepeat(); activeFrame = frame; $("manualFrame").value = frame; await writeFrame(frame);
+      repeatTimer = setInterval(() => writeFrame(activeFrame, true).catch(e => log(`发送失败: ${e.message}`)), 100);
+    }
+    async function sendM3508Stop() { stopRepeat(); await writeFrame("$M3508:STOP!"); }
+
+    async function connectSerial() {
+      if (!("serial" in navigator)) { log("当前浏览器不支持 Web Serial，请使用 Chrome 或 Edge"); return; }
+      try {
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate:115200 });
+        writer = port.writable.getWriter();
+        setSerialState(true); log("串口已打开"); readLoop();
+      } catch (e) { log(`连接失败: ${e.message}`); setSerialState(false); }
+    }
+    async function disconnectSerial() {
+      try {
+        stopRepeat(); readAbort = true;
+        if (reader) await reader.cancel().catch(() => {});
+        if (writer) { writer.releaseLock(); writer = null; }
+        if (port) { await port.close(); port = null; }
+      } catch (e) { log(`断开失败: ${e.message}`); }
+      setSerialState(false);
+    }
+    async function readLoop() {
+      let buffer = ""; readAbort = false;
+      while (port && !readAbort) {
+        reader = port.readable.getReader();
+        try {
+          while (true) {
+            const {value, done} = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, {stream:true});
+            let idx;
+            while ((idx = buffer.indexOf("!")) >= 0) {
+              const frame = buffer.slice(0, idx + 1).trim();
+              buffer = buffer.slice(idx + 1);
+              if (!frame) continue;
+              if (frame.startsWith("$M3508:FB,")) parseM3508(frame);
+              else if (frame.startsWith("$STD,")) parseSteer(frame);
+              else if (frame.startsWith("$ARM:")) parseArm(frame);
+              log(`RX ${frame}`);
+            }
+          }
+        } catch (e) { if (!readAbort) log(`读取中断: ${e.message}`); }
+        finally { reader.releaseLock(); }
+      }
+    }
+
+    function parseM3508(frame) {
+      const p = frame.slice(10, -1).split(",");
+      if (p.length < 23) return;
+      const mask = Number.parseInt(p[2], 16), angle = p.slice(3,7).map(v=>Number(v)/10), speed = p.slice(7,11).map(v=>Number(v)/1000);
+      const cmd = p.slice(11,15).map(Number), cur = p.slice(15,19).map(Number), temp = p.slice(19,23).map(Number);
+      $("m3508Badge").textContent = `M3508 0x${mask.toString(16).padStart(2,"0").toUpperCase()}`;
+      $("m3508Badge").className = "badge " + (mask ? "ok" : "bad");
+      for (let i=0;i<4;i++) {
+        $(`fb${i}`).textContent = `${(mask & (1<<i)) ? "ON":"OFF"}\n角度 ${angle[i].toFixed(1)} deg\n速度 ${speed[i].toFixed(3)} r/s\n命令 ${cmd[i]}\n反馈 ${cur[i]}\n温度 ${temp[i]} C`;
+      }
+    }
+    function parseArm(frame) {
+      $("armBadge").textContent = frame.startsWith("$ARM:ERR") ? "ARM ERR" : "ARM OK";
+      $("armBadge").className = "badge " + (frame.startsWith("$ARM:ERR") ? "bad" : "ok");
+      const m = frame.match(/^\$ARM:RESP,#(\d{3})P(\d{4})!/);
+      if (m) updateArmReadout(Number(m[1]), Number(m[2]));
+    }
+    function parseSteer(frame) {
+      const p = frame.slice(5).replace(/[!\r\n]+$/g, "").split(",");
+      if (p.length < 13) return;
+      const fb = p.slice(0,4).map(Number), angle = p.slice(4,8).map(Number);
+      const target0 = Number(p[8]), output0 = Number(p[9]), isr = Number(p[10]), online = Number(p[11]), tx = Number(p[12]);
+      const mask = fb.reduce((m,v,i)=>m | (v ? (1<<i) : 0), 0);
+      $("steerBadge").textContent = `STEER 0x${mask.toString(16).toUpperCase()} ${online ? "ON" : "OFF"}`;
+      $("steerBadge").className = "badge " + (mask ? "ok" : "bad");
+      for (let i=0;i<4;i++) {
+        $(`steerFb${i}`).textContent = `${fb[i] ? "ON":"OFF"}\n角度 ${angle[i].toFixed(1)} deg${i===0 ? `\n目标 ${target0.toFixed(1)} deg\n输出 ${output0.toFixed(3)}\nISR ${isr}\nTX ${tx}` : ""}`;
+      }
+    }
+    function steerValues(prefix) { return [0,1,2,3].map(i => Number($(`${prefix}${i}`).value || 0)); }
+    function formatPlain(cmd, values) { return `$${cmd},${values.map(v => Number(v).toFixed(3).replace(/\.?0+$/,"")).join(",")}!`; }
+    async function sendSteerAngles(values=steerValues("steerAng")) { await writeFrame(formatPlain("ANG", values)); }
+    async function sendSteerSpeeds(values=steerValues("steerSpd")) { await writeFrame(formatPlain("SPD", values)); }
+    function setMainTab(name) {
+      const map = { m3508:["tabM3508","pageM3508"], steer:["tabSteer","pageSteer"], arm:["tabArm","pageArm"] };
+      for (const [key, ids] of Object.entries(map)) {
+        $(ids[0]).classList.toggle("active", key === name);
+        $(ids[1]).classList.toggle("active", key === name);
+      }
+    }
+
+    function joint(name=armState.selected) { return joints.find(j => j.name === name); }
+    function clamp(v,min,max){ return Math.min(Math.max(Number(v),min),max); }
+    function angleToPulse(j, angle) { let r=(angle-j.min_deg)/(j.max_deg-j.min_deg); if(j.inverted) r=1-r; return Math.round(j.min_pulse+r*(j.max_pulse-j.min_pulse)); }
+    function pulseToAngle(j, pulse) { let r=(pulse-j.min_pulse)/(j.max_pulse-j.min_pulse); if(j.inverted) r=1-r; return j.min_deg+r*(j.max_deg-j.min_deg); }
+    function degToRad(v){ return v*Math.PI/180; } function radToDeg(v){ return v*180/Math.PI; }
+    function normalizeDeg(v){ return ((v%360)+360)%360; }
+    function compensateJ2(j2){ if(j2>182.2) return j2-2; if(j2<177.8) return j2+2; return j2; }
+
+    function renderJoints() {
+      const root = $("jointList"); root.innerHTML = "";
+      for (const j of joints) {
+        const live = armState.live[j.name];
+        const b = document.createElement("button");
+        b.className = `joint-card ${j.name === armState.selected ? "selected" : ""}`;
+        b.innerHTML = `<span class="joint-name">${j.name.toUpperCase()}</span><span><b>ID ${j.servo_id}</b><br><span class="muted">${j.min_deg}..${j.max_deg} deg · P${j.min_pulse}..P${j.max_pulse}</span></span><span class="muted">${live ? live.angle.toFixed(1)+"°" : "--"}</span>`;
+        b.onclick = () => setSelectedJoint(j.name);
+        root.appendChild(b);
+      }
+    }
+    function setSelectedJoint(name) {
+      armState.selected = name;
+      const j = joint();
+      const a = armState.targetAngles[j.name] ?? (j.min_deg + j.max_deg) / 2;
+      $("angleSlider").min = j.min_deg; $("angleSlider").max = j.max_deg;
+      $("angleInput").min = j.min_deg; $("angleInput").max = j.max_deg;
+      $("pulseInput").min = j.min_pulse; $("pulseInput").max = j.max_pulse;
+      setTargetAngle(a); renderJoints();
+    }
+    function setTargetAngle(angle) {
+      const j = joint(), a = clamp(angle, j.min_deg, j.max_deg), p = angleToPulse(j, a);
+      armState.targetAngles[j.name] = a;
+      $("angleSlider").value = a; $("angleInput").value = a.toFixed(1); $("pulseInput").value = p;
+      $("targetAngleText").textContent = `${a.toFixed(1)}°`; $("targetPulseText").textContent = String(p);
+    }
+    function setTargetPulse(pulse) {
+      const j = joint(), p = clamp(pulse, j.min_pulse, j.max_pulse), a = pulseToAngle(j, p);
+      armState.targetAngles[j.name] = a;
+      $("pulseInput").value = Math.round(p); $("angleSlider").value = a; $("angleInput").value = a.toFixed(1);
+      $("targetAngleText").textContent = `${a.toFixed(1)}°`; $("targetPulseText").textContent = String(Math.round(p));
+    }
+    function updateArmReadout(id, pulse) {
+      const j = joints.find(x => x.servo_id === id);
+      if (!j) return;
+      const angle = pulseToAngle(j, pulse);
+      armState.live[j.name] = { angle, pulse };
+      if (j.name === armState.selected) {
+        $("actualAngleText").textContent = `${angle.toFixed(1)}°`;
+        $("actualPulseText").textContent = String(pulse);
+      }
+      renderJoints();
+    }
+    async function armMoveAngle(name=armState.selected, angle=Number($("angleInput").value), time=Number($("armTimeInput").value)) {
+      const j = joint(name), pulse = angleToPulse(j, angle);
+      await writeFrame(`$ARM:MOVE,${j.servo_id},${pulse},${time}!`);
+      armState.targetAngles[j.name] = angle; armState.live[j.name] = { angle, pulse }; renderJoints();
+    }
+    async function armMovePulse() {
+      const j = joint(), pulse = Number($("pulseInput").value), angle = pulseToAngle(j, pulse);
+      await writeFrame(`$ARM:MOVE,${j.servo_id},${pulse},${Number($("armTimeInput").value)}!`);
+      armState.targetAngles[j.name] = angle; armState.live[j.name] = { angle, pulse }; renderJoints();
+    }
+    async function armRead(name=armState.selected) { await writeFrame(`$ARM:READ,${joint(name).servo_id}!`); }
+    async function armReadAll() { for (const j of joints) { await armRead(j.name); await new Promise(r=>setTimeout(r,80)); } }
+    async function armRaw(raw) {
+      let body = String(raw || "").trim();
+      if (!body) throw new Error("ARM RAW is empty");
+      if (body.startsWith("$ARM:RAW,")) body = body.slice(9);
+      if (!body.startsWith("#")) throw new Error("ARM RAW must start with #");
+      if (body.endsWith("!")) body = body.slice(0, -1);
+      await writeFrame(`$ARM:RAW,${body}!`);
+    }
+    async function armRawForSelected(suffix) {
+      const id = String(joint().servo_id).padStart(3, "0");
+      await armRaw(`#${id}${suffix}`);
+    }
+    async function armAction(action) {
+      const id = action.endsWith("All") ? 255 : joint().servo_id;
+      if (action.startsWith("stop")) await writeFrame(`$ARM:STOP,${id}!`);
+      if (action.startsWith("torqueOff")) await writeFrame(`$ARM:TORQUE,${id},0!`);
+      if (action === "torqueOn") await writeFrame(`$ARM:TORQUE,${id},1!`);
+      if (action === "center") await writeFrame(`$ARM:MOVE,${id},1500,${Number($("armTimeInput").value)}!`);
+    }
+    async function armMoveManyAngles(moves, time) {
+      const parts = [];
+      for (const [name, angle] of Object.entries(moves)) {
+        const j = joint(name), pulse = angleToPulse(j, angle);
+        parts.push(j.servo_id, pulse);
+        armState.targetAngles[j.name] = angle; armState.live[j.name] = { angle, pulse };
+      }
+      parts.push(time);
+      await writeFrame(`$ARM:MULTI,${parts.join(",")}!`);
+      renderJoints();
+    }
+
+    function pitchDirection(t){ const r=degToRad(t); return {r:Math.sin(r), z:-Math.cos(r)}; }
+    function solveArmBranch(rW,zW,pitch,sign) {
+      const {upperArm, forearm} = IK_GEOMETRY, d = Math.hypot(rW,zW), min=Math.abs(upperArm-forearm), max=upperArm+forearm;
+      if (d < min - 1e-6 || d > max + 1e-6) return null;
+      const cosDelta = clamp((d*d-upperArm*upperArm-forearm*forearm)/(2*upperArm*forearm), -1, 1);
+      const delta = sign * Math.acos(cosDelta);
+      const gamma = Math.atan2(zW,rW);
+      const theta2 = gamma + Math.atan2(upperArm + forearm*Math.cos(delta), forearm*Math.sin(delta));
+      const theta3 = theta2 + delta;
+      return { j2:normalizeDeg(radToDeg(theta2)), j3:normalizeDeg(135-radToDeg(delta)), j4:normalizeDeg(radToDeg(theta3)+135-pitch) };
+    }
+    function solveIk() {
+      const g=IK_GEOMETRY, x=armState.ik.x, y=armState.ik.y, z=armState.ik.z, pitch=normalizeDeg(armState.ik.pitch), dir=pitchDirection(pitch);
+      let clamped=false, radius=Math.hypot(x,y);
+      if (radius < .5) { radius=.5; clamped=true; }
+      const j1 = normalizeDeg(radToDeg(Math.atan2(x,y)));
+      const rRaw = radius - g.baseToShoulder, r = Math.max(0, rRaw);
+      if (rRaw < 0) clamped = true;
+      let rW = r - g.tool*dir.r, zW = z - g.tool*dir.z;
+      const min = Math.abs(g.upperArm-g.forearm), max = g.upperArm+g.forearm, wd = Math.hypot(rW,zW);
+      if (wd > max) { const s=max/wd; rW*=s; zW*=s; clamped=true; }
+      else if (wd < min) { const s = wd < 1e-6 ? 1 : min/wd; rW = wd < 1e-6 ? min : rW*s; zW = wd < 1e-6 ? 0 : zW*s; clamped=true; }
+      const candidates=[solveArmBranch(rW,zW,pitch,-1), solveArmBranch(rW,zW,pitch,1)].filter(Boolean).map(b=>({j1,...b}));
+      let chosen = candidates.find(c => [c.j1,c.j2,c.j3,c.j4].every(a => a >= -1e-6 && a <= 270 + 1e-6));
+      if (!chosen) { chosen = candidates[0] || {j1,j2:90,j3:135,j4:135}; chosen={j1:clamp(chosen.j1,0,270),j2:clamp(chosen.j2,0,270),j3:clamp(chosen.j3,0,270),j4:clamp(chosen.j4,0,270)}; clamped=true; }
+      return { angles:{j1:chosen.j1,j2:compensateJ2(chosen.j2),j3:chosen.j3,j4:chosen.j4,j5:armState.ik.grip}, clamped };
+    }
+    function armGeometry(a) {
+      const g=IK_GEOMETRY, t2=degToRad(a.j2), t3=t2+degToRad(135-a.j3), t4=t3+degToRad(135-a.j4);
+      const j1={r:0,z:0}, j2={r:g.baseToShoulder,z:0};
+      const j3={r:j2.r+g.upperArm*Math.sin(t2), z:j2.z-g.upperArm*Math.cos(t2)};
+      const j4={r:j3.r+g.forearm*Math.sin(t3), z:j3.z-g.forearm*Math.cos(t3)};
+      const tip={r:j4.r+g.tool*Math.sin(t4), z:j4.z-g.tool*Math.cos(t4)};
+      return {j1,j2,j3,j4,tip};
+    }
+    function syncIkFromAngles(angles) {
+      const pose = armGeometry(angles);
+      const j1 = degToRad(angles.j1);
+      armState.ik.x = pose.tip.r * Math.sin(j1);
+      armState.ik.y = pose.tip.r * Math.cos(j1);
+      armState.ik.z = pose.tip.z;
+      armState.ik.pitch = normalizeDeg(radToDeg(
+        degToRad(angles.j2) +
+        degToRad(135 - angles.j3) +
+        degToRad(135 - angles.j4)
+      ));
+      armState.ik.grip = clamp(angles.j5, 0, 90);
+      armState.ik.lastSolution = { angles:{...angles}, clamped:false };
+      updateIkText();
+      drawIk(armState.ik.lastSolution);
+      $("ikStatus").textContent = Object.entries(angles).map(([n,a])=>`${n.toUpperCase()}=${Number(a).toFixed(1)}°`).join("  ");
+    }
+    function updateIkText() {
+      $("ikXText").textContent=armState.ik.x.toFixed(0); $("ikYText").textContent=armState.ik.y.toFixed(0);
+      $("ikZText").textContent=armState.ik.z.toFixed(0); $("ikPitchText").textContent=armState.ik.pitch.toFixed(1);
+      $("ikXInput").value=armState.ik.x.toFixed(0); $("ikYInput").value=armState.ik.y.toFixed(0);
+      $("ikZInput").value=armState.ik.z.toFixed(0); $("ikPitchInput").value=armState.ik.pitch.toFixed(1); $("ikGripInput").value=armState.ik.grip.toFixed(0);
+    }
+    function updateIkFromInputs() {
+      armState.ik.x=Number($("ikXInput").value); armState.ik.y=Number($("ikYInput").value); armState.ik.z=Number($("ikZInput").value);
+      armState.ik.pitch=Number($("ikPitchInput").value); armState.ik.grip=clamp($("ikGripInput").value,0,90); updateIkText();
+    }
+    function solveAndRenderIk(send=false, moveTime) {
+      updateIkFromInputs();
+      const sol = solveIk(); armState.ik.lastSolution = sol; drawIk(sol);
+      $("ikStatus").textContent = Object.entries(sol.angles).map(([n,a])=>`${n.toUpperCase()}=${a.toFixed(1)}°`).join("  ") + (sol.clamped ? "（已夹到边界）" : "");
+      if (send) armMoveManyAngles(sol.angles, moveTime ?? Number($("ikTimeInput").value)).catch(e => $("ikStatus").textContent = e.message);
+      return sol;
+    }
+    function drawIk(sol) {
+      const c=$("ikCanvas"), ctx=c.getContext("2d"), w=c.width, h=c.height, pad=28, view={rMin:-20,rMax:460,zMin:-200,zMax:360};
+      ctx.clearRect(0,0,w,h); ctx.fillStyle="#fbfdff"; ctx.fillRect(0,0,w,h);
+      const scale=Math.min((w-pad*2)/(view.rMax-view.rMin),(h-pad*2)/(view.zMax-view.zMin));
+      const mx=r=>pad+(r-view.rMin)*scale, my=z=>h-pad-(z-view.zMin)*scale;
+      ctx.strokeStyle="#e3e9ef"; ctx.beginPath(); ctx.moveTo(mx(view.rMin),my(0)); ctx.lineTo(mx(view.rMax),my(0)); ctx.stroke();
+      if (sol) {
+        const pts=armGeometry(sol.angles); ctx.strokeStyle="#0f766e"; ctx.lineWidth=5; ctx.lineCap="round"; ctx.beginPath();
+        ctx.moveTo(mx(pts.j1.r),my(pts.j1.z)); ctx.lineTo(mx(pts.j2.r),my(pts.j2.z)); ctx.lineTo(mx(pts.j3.r),my(pts.j3.z)); ctx.lineTo(mx(pts.j4.r),my(pts.j4.z)); ctx.lineTo(mx(pts.tip.r),my(pts.tip.z)); ctx.stroke();
+        for (const [label,p] of [["J1",pts.j1],["J2",pts.j2],["J3",pts.j3],["J4",pts.j4]]) { ctx.fillStyle="#16202a"; ctx.beginPath(); ctx.arc(mx(p.r),my(p.z),5,0,Math.PI*2); ctx.fill(); ctx.fillText(label,mx(p.r)+7,my(p.z)-7); }
+      }
+      const rt=Math.hypot(armState.ik.x,armState.ik.y), tx=mx(rt), ty=my(armState.ik.z), s=7;
+      ctx.strokeStyle="#b42318"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(tx-s,ty-s); ctx.lineTo(tx+s,ty+s); ctx.moveTo(tx-s,ty+s); ctx.lineTo(tx+s,ty-s); ctx.stroke();
+    }
+    function setArmMode(mode) {
+      armState.mode = mode; pressedKeys.clear();
+      $("jointModePanel").classList.toggle("hidden", mode !== "joint"); $("ikModePanel").classList.toggle("hidden", mode !== "ik");
+      $("jointModeBtn").classList.toggle("active", mode === "joint"); $("ikModeBtn").classList.toggle("active", mode === "ik");
+      if (mode === "ik") solveAndRenderIk(false);
+    }
+    function moveIkBy(dx,dy,dz,dp,dg,send=true,moveTime) {
+      armState.ik.x+=dx; armState.ik.y+=dy; armState.ik.z+=dz; armState.ik.pitch=normalizeDeg(armState.ik.pitch+dp); armState.ik.grip=clamp(armState.ik.grip+dg,0,90);
+      updateIkText(); solveAndRenderIk(send, moveTime);
+    }
+    function ikTick() {
+      if (!pressedKeys.size || armState.mode !== "ik" || !armState.keyboardIk) return;
+      const dt=IK_LOOP_INTERVAL_MS/1000, xyz=Number($("ikStepInput").value), ps=Number($("ikPitchStepInput").value), gs=20;
+      let dx=0,dy=0,dz=0,dp=0,dg=0;
+      if(pressedKeys.has("w"))dx++; if(pressedKeys.has("s"))dx--; if(pressedKeys.has("a"))dy--; if(pressedKeys.has("d"))dy++;
+      if(pressedKeys.has(" "))dz++; if(pressedKeys.has("shift"))dz--; if(pressedKeys.has("arrowup"))dp++; if(pressedKeys.has("arrowdown"))dp--;
+      if(pressedKeys.has("arrowleft"))dg++; if(pressedKeys.has("arrowright"))dg--;
+      moveIkBy(xyz*dt*dx, xyz*dt*dy, xyz*dt*dz, ps*dt*dp, gs*dt*dg, true, IK_LOOP_MOVE_MS);
+    }
+
+    function bind() {
+      $("connectBtn").onclick = connectSerial; $("disconnectBtn").onclick = disconnectSerial;
+      $("armPingBtn").onclick = () => writeFrame("$ARM:PING!").catch(e=>log(e.message));
+      $("allStopBtn").onclick = () => { sendM3508Stop().catch(e=>log(e.message)); writeFrame("$STOP!").catch(e=>log(e.message)); armAction("stopAll").catch(e=>log(e.message)); };
+      $("tabM3508").onclick = () => setMainTab("m3508");
+      $("tabSteer").onclick = () => setMainTab("steer");
+      $("tabArm").onclick = () => { setMainTab("arm"); solveAndRenderIk(false); };
+      document.querySelectorAll("[data-speed]").forEach(b => b.onclick = () => { const v=Math.abs(Number($("speedValue").value||0)); const map={forward:[v,v,v,v],backward:[-v,-v,-v,-v],left:[-v,v,-v,v],right:[v,-v,v,-v]}; startRepeat(formatM3508("SPD", map[b.dataset.speed])).catch(e=>log(e.message)); });
+      $("m3508StopBtn").onclick = () => sendM3508Stop().catch(e=>log(e.message));
+      $("m3508CustomSpeed").onclick = () => startRepeat(formatM3508("SPD",[0,1,2,3].map(i=>Number($(`m${i}`).value||0)))).catch(e=>log(e.message));
+      $("m3508CustomPos").onclick = () => startRepeat(formatM3508("POS",[0,1,2,3].map(i=>Number($(`m${i}`).value||0)))).catch(e=>log(e.message));
+      $("manualSendBtn").onclick = () => writeFrame($("manualFrame").value.trim()).catch(e=>log(e.message));
+      $("repeatBtn").onclick = () => startRepeat($("manualFrame").value.trim()).catch(e=>log(e.message));
+      $("steerSendAnglesBtn").onclick = () => sendSteerAngles().catch(e=>log(e.message));
+      $("steerCenterBtn").onclick = () => { for (let i=0;i<4;i++) $(`steerAng${i}`).value = 0; sendSteerAngles([0,0,0,0]).catch(e=>log(e.message)); };
+      $("steerZeroBtn").onclick = () => writeFrame("$ZERO!").catch(e=>log(e.message));
+      $("steerStopBtn").onclick = () => writeFrame("$STOP!").catch(e=>log(e.message));
+      $("steerSendSpeedsBtn").onclick = () => sendSteerSpeeds().catch(e=>log(e.message));
+      $("steerRawBtn").onclick = () => writeFrame($("steerRawInput").value.trim()).catch(e=>log(e.message));
+      $("angleSlider").oninput = e => setTargetAngle(e.target.value); $("angleInput").oninput = e => setTargetAngle(e.target.value); $("pulseInput").oninput = e => setTargetPulse(e.target.value);
+      $("armMinusBtn").onclick = () => { setTargetAngle(Number($("angleInput").value)-Number($("armStepInput").value)); armMoveAngle().catch(e=>log(e.message)); };
+      $("armPlusBtn").onclick = () => { setTargetAngle(Number($("angleInput").value)+Number($("armStepInput").value)); armMoveAngle().catch(e=>log(e.message)); };
+      $("armMoveAngleBtn").onclick = () => armMoveAngle().catch(e=>log(e.message)); $("armMovePulseBtn").onclick = () => armMovePulse().catch(e=>log(e.message));
+      $("armReadBtn").onclick = () => armRead().catch(e=>log(e.message)); $("armReadAllBtn").onclick = () => armReadAll().catch(e=>log(e.message));
+      $("armStopBtn").onclick = () => armAction("stop").catch(e=>log(e.message)); $("armStopAllBtn").onclick = () => armAction("stopAll").catch(e=>log(e.message));
+      $("armTorqueOnBtn").onclick = () => armAction("torqueOn").catch(e=>log(e.message)); $("armTorqueOffBtn").onclick = () => armAction("torqueOff").catch(e=>log(e.message)); $("armTorqueOffAllBtn").onclick = () => armAction("torqueOffAll").catch(e=>log(e.message)); $("armCenterBtn").onclick = () => armAction("center").catch(e=>log(e.message));
+      $("armZeroBtn").onclick = () => armRawForSelected("PSCK").catch(e=>log(e.message));
+      $("armStartupBtn").onclick = () => armRawForSelected("PCSD").catch(e=>log(e.message));
+      $("armReadModeBtn").onclick = () => armRawForSelected("PMOD").catch(e=>log(e.message));
+      $("armMode1Btn").onclick = () => armRawForSelected("PMOD1").catch(e=>log(e.message));
+      $("armRawBtn").onclick = () => armRaw($("armRawInput").value).catch(e=>log(e.message));
+      $("jointModeBtn").onclick = () => setArmMode("joint"); $("ikModeBtn").onclick = () => setArmMode("ik");
+      for (const id of ["ikXInput","ikYInput","ikZInput","ikPitchInput","ikGripInput"]) $(id).oninput = () => solveAndRenderIk(false);
+      $("ikPreviewBtn").onclick = () => solveAndRenderIk(false); $("ikSendBtn").onclick = () => solveAndRenderIk(true);
+      $("ikHomeBtn").onclick = () => {
+        pressedKeys.clear();
+        syncIkFromAngles(HOME_ANGLES);
+        armMoveManyAngles(HOME_ANGLES, Number($("ikTimeInput").value)).catch(e=>log(e.message));
+      };
+      $("ikKeyboardBtn").onclick = () => { armState.keyboardIk=!armState.keyboardIk; pressedKeys.clear(); $("ikKeyboardBtn").textContent=`键盘控制：${armState.keyboardIk?"开":"关"}`; };
+      window.onkeydown = e => { if(armState.mode !== "ik" || !armState.keyboardIk) return; const active=document.activeElement; if(active && ["INPUT","SELECT","TEXTAREA"].includes(active.tagName)) return; const key=e.key.toLowerCase(); if(["w","s","a","d"," ","shift","arrowup","arrowdown","arrowleft","arrowright"].includes(key)){ pressedKeys.add(key); e.preventDefault(); } };
+      window.onkeyup = e => pressedKeys.delete(e.key.toLowerCase());
+      ikLoopTimer = setInterval(ikTick, IK_LOOP_INTERVAL_MS);
+    }
+    function init() {
+      for (const j of joints) armState.targetAngles[j.name] = (j.min_deg + j.max_deg) / 2;
+      bind(); renderJoints(); setSelectedJoint("j1"); setSerialState(false); syncIkFromAngles(HOME_ANGLES); log("ready");
+    }
+    init();
+  </script>
+</body>
+</html>

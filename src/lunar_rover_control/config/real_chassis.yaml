@@ -1,0 +1,27 @@
+chassis_driver_node:
+  ros__parameters:
+    use_sim_time: false
+    command_topic: /chassis/cmd_vel
+    state_topic: /chassis/state
+    estop_topic: /chassis/emergency_stop
+    enable_topic: /chassis/controller_enabled
+    fault_topic: /chassis/fault_bits
+    command_timeout: 0.25
+    default_enabled: false
+
+    # H7 单串口（动力轮 + 舵轮统一走一个 USB CDC）
+    h7_backend: serial            # serial | dummy
+    h7_port: /dev/ttyACM0
+    h7_baud: 115200
+
+    # 几何（实车标定值，mm 转 m）
+    wheel_radius: 0.125
+    front_axle_x: 0.22            # 前轮轴在中轮轴前方 220 mm
+    rear_axle_x: -0.20            # 后轮轴在中轮轴后方 200 mm
+    front_track: 0.415            # 前轮距 415 mm
+    rear_track: 0.350             # 后轮距 350 mm
+    max_steering_angle: 1.0471975512   # 60°（轮舵硬件限幅）
+    max_wheel_speed_rps: 2.0           # 软安全上限；正常行进约 0.5 r/s，可超过 1
+
+    # 舵角符号：下位机 $ANG 正=顺时针(向右)、负=逆时针(向左)；运动学以逆时针为正，取 -1 取反
+    steering_sign: -1.0

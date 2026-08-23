@@ -112,6 +112,7 @@ Gazebo / 实车传感器
 - [`docs/composite_wheel_imu_odometry.md`](docs/composite_wheel_imu_odometry.md)：组合轮速 IMU 里程计设计和标定方法。
 - [`docs/keyboard_teleop_direct.md`](docs/keyboard_teleop_direct.md)：直接读取 `/dev/input` 的键盘接管说明。
 - [`docs/lower_controller_contract.md`](docs/lower_controller_contract.md)：上位机与实车下位机 ROS 接口契约。
+- [`docs/real_chassis_test.md`](docs/real_chassis_test.md)：实车底盘预检、安全使能和启动步骤。
 - [`docs/simulation_worlds.md`](docs/simulation_worlds.md)：Gazebo 世界清单和 `image_cave` 地图生成说明。
 - [`docs/SLAM_NAVIGATION_GUIDE.md`](docs/SLAM_NAVIGATION_GUIDE.md)：面向比赛任务的 SLAM、导航、采样总体技术路线。
 - [`docs/project_info/`](docs/project_info/)：赛题资料、答疑材料和往届参考。

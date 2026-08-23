@@ -24,8 +24,8 @@ HELP = """\
 Lunar rover keyboard teleop
 
   W/S : forward / reverse
-  A/D : in-place left / right rotation
-  W/S + A/D : Ackermann-style turning while driving
+  Q/E : in-place left / right rotation
+  A/D : Ackermann steering (turn while driving)
   Left Shift : 2x drive power while held
   SPACE : stop
   Ctrl-C : quit
@@ -37,6 +37,7 @@ EV_KEY = 0x01
 KEY_CODES = {
     16: "q",
     17: "w",
+    18: "e",
     30: "a",
     31: "s",
     32: "d",
@@ -44,7 +45,7 @@ KEY_CODES = {
     57: " ",
 }
 INPUT_EVENT = struct.Struct("llHHi")
-DRIVE_KEYS = {"w", "a", "s", "d"}
+DRIVE_KEYS = {"w", "a", "s", "d", "q", "e"}
 MODIFIER_KEYS = {"left_shift"}
 
 
@@ -178,13 +179,19 @@ class KeyboardRoverTeleop(Node):
     def __init__(self):
         super().__init__("keyboard_rover_teleop")
         self.command_topic = self.declare_parameter(
-            "command_topic", "/chassis/cmd_vel"
+            "command_topic", "/keyboard/chassis_cmd_vel"
         ).value
         self.base_frame = self.declare_parameter("base_frame", "base_link").value
         self.linear_speed = float(self.declare_parameter("linear_speed", 0.16).value)
         self.reverse_speed = float(self.declare_parameter("reverse_speed", 0.10).value)
         self.spin_angular_speed = float(
             self.declare_parameter("spin_angular_speed", 0.36).value
+        )
+        self.ackermann_speed = float(
+            self.declare_parameter("ackermann_speed", 0.12).value
+        )
+        self.ackermann_angular_speed = float(
+            self.declare_parameter("ackermann_angular_speed", 0.30).value
         )
         self.boost_multiplier = float(
             self.declare_parameter("boost_multiplier", 2.0).value
@@ -223,27 +230,46 @@ class KeyboardRoverTeleop(Node):
         keys = self.active_keys()
         forward = "w" in keys and "s" not in keys
         reverse = "s" in keys and "w" not in keys
-        left = "a" in keys and "d" not in keys
-        right = "d" in keys and "a" not in keys
+        ack_left = "a" in keys and "d" not in keys
+        ack_right = "d" in keys and "a" not in keys
+        spin_left = "q" in keys and "e" not in keys
+        spin_right = "e" in keys and "q" not in keys
         boosted = "left_shift" in keys
 
         linear_x = 0.0
         angular_z = 0.0
         mode = "stop"
 
-        if forward:
-            linear_x = self.linear_speed
-            mode = "forward"
-        elif reverse:
-            linear_x = -self.reverse_speed
-            mode = "reverse"
-
-        if left:
+        # 优先级：原地转(Q/E) > 阿克曼转向(A/D) > 直行(W/S)
+        if spin_left:
+            linear_x = 0.0
             angular_z = self.spin_angular_speed
-            mode = f"{mode} left" if linear_x else "spin left"
-        elif right:
+            mode = "spin left"
+        elif spin_right:
+            linear_x = 0.0
             angular_z = -self.spin_angular_speed
-            mode = f"{mode} right" if linear_x else "spin right"
+            mode = "spin right"
+        elif ack_left or ack_right:
+            # 阿克曼转向构型：舵轮转向 + 前进/后退
+            if forward:
+                linear_x = self.linear_speed
+            elif reverse:
+                linear_x = -self.reverse_speed
+            else:
+                linear_x = self.ackermann_speed
+            if ack_left:
+                angular_z = self.ackermann_angular_speed
+                mode = "ackermann left"
+            else:
+                angular_z = -self.ackermann_angular_speed
+                mode = "ackermann right"
+        else:
+            if forward:
+                linear_x = self.linear_speed
+                mode = "forward"
+            elif reverse:
+                linear_x = -self.reverse_speed
+                mode = "reverse"
 
         if mode != "stop" and boosted:
             linear_x *= self.boost_multiplier

@@ -11,6 +11,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(lunar_rover_msgs REQUIRED)
 find_package(nav2_costmap_2d REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(pluginlib REQUIRED)
@@ -61,6 +62,7 @@ install(
     scripts/chassis_cmd_mux_node.py
     scripts/keyboard_rover_teleop.py
     scripts/nav2_lifecycle_bringup_node.py
+    scripts/web_joystick_server.py
     scripts/navigation_smoke_test.py
   DESTINATION lib/${PROJECT_NAME}
 )

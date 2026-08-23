@@ -25,6 +25,8 @@ chassis_cmd_mux:
     use_sim_time: true
     nav_topic: /navigation/chassis_cmd_vel
     keyboard_topic: /keyboard/chassis_cmd_vel
+    web_topic: /web/chassis_cmd_vel
     output_topic: /chassis/cmd_vel
-    keyboard_timeout: 5.0
+    keyboard_timeout: 0.5
+    web_timeout: 0.5
     status_period: 1.0

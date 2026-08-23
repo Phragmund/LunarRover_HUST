@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>M3508 RX Monitor</title>
+  <style>
+    :root {
+      --bg: #101418;
+      --panel: #171d23;
+      --panel2: #0b1015;
+      --border: #2b3640;
+      --text: #e8eef5;
+      --muted: #91a0ad;
+      --green: #36c275;
+      --red: #ef5b62;
+      --blue: #5bb3ff;
+      --amber: #f2b84b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      padding: 18px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    h1 { margin: 0; font-size: 21px; }
+    .badge {
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .badge.ok { color: var(--green); border-color: #2c7a52; }
+    .badge.bad { color: var(--red); border-color: #8c353a; }
+    .badge.warn { color: var(--amber); border-color: #8d682b; }
+    section {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    button {
+      border: 1px solid var(--border);
+      background: #22303a;
+      color: var(--text);
+      border-radius: 6px;
+      min-height: 38px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button.primary { background: #145a8c; border-color: #287dbb; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .small { color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .log {
+      height: 250px;
+      overflow: auto;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 12px;
+      color: #cbd6e2;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .frame {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: Consolas, "Cascadia Mono", monospace;
+      min-height: 78px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>M3508 RX Monitor</h1>
+    <div class="row">
+      <span id="serialBadge" class="badge bad">串口未连接</span>
+      <span id="frameBadge" class="badge">协议帧 --</span>
+      <span id="byteBadge" class="badge">0 bytes</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="row">
+      <button id="connectBtn" class="primary">只读连接 H7 USB</button>
+      <button id="disconnectBtn">断开</button>
+      <button id="clearBtn">清空日志</button>
+    </div>
+    <p class="small">
+      本页只读取串口，不获取 writer，不发送任何运动、停止或归零指令。
+      正常固件遥测应出现 `$M3508:FB,...!`；hex 前缀应为 `24 4D 33 35 30 38 3A 46 42 2C`。
+    </p>
+  </section>
+
+  <section>
+    <h2>最近协议帧</h2>
+    <div id="lastFrame" class="frame">--</div>
+  </section>
+
+  <div class="grid">
+    <section>
+      <h2>RX 文本流</h2>
+      <div id="textLog" class="log"></div>
+    </section>
+    <section>
+      <h2>RX Hex 流</h2>
+      <div id="hexLog" class="log"></div>
+    </section>
+  </div>
+
+  <script>
+    let port = null;
+    let reader = null;
+    let readAbort = false;
+    let totalBytes = 0;
+    let buffer = "";
+    const decoder = new TextDecoder("utf-8", { fatal: false });
+    const $ = (id) => document.getElementById(id);
+
+    function setSerialState(connected) {
+      $("serialBadge").textContent = connected ? "串口已连接，只读" : "串口未连接";
+      $("serialBadge").className = "badge " + (connected ? "ok" : "bad");
+      $("connectBtn").disabled = connected;
+      $("disconnectBtn").disabled = !connected;
+    }
+
+    function append(id, text) {
+      const el = $(id);
+      el.textContent += text;
+      if (el.textContent.length > 20000) {
+        el.textContent = el.textContent.slice(-16000);
+      }
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function toHex(bytes) {
+      return Array.from(bytes, b => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");
+    }
+
+    function markFrame(frame) {
+      $("lastFrame").textContent = frame;
+      if (frame.startsWith("$M3508:FB,")) {
+        $("frameBadge").textContent = "M3508 FB OK";
+        $("frameBadge").className = "badge ok";
+      } else if (frame.startsWith("$M3508:")) {
+        $("frameBadge").textContent = "M3508 非反馈帧";
+        $("frameBadge").className = "badge warn";
+      } else {
+        $("frameBadge").textContent = "未识别协议";
+        $("frameBadge").className = "badge bad";
+      }
+    }
+
+    function consumeText(text) {
+      buffer += text;
+      let start = buffer.indexOf("$");
+      if (start > 0) buffer = buffer.slice(start);
+
+      while (true) {
+        start = buffer.indexOf("$");
+        const end = buffer.indexOf("!", start);
+        if (start < 0 || end < 0) {
+          if (buffer.length > 512) buffer = buffer.slice(-64);
+          return;
+        }
+        const frame = buffer.slice(start, end + 1).trim();
+        buffer = buffer.slice(end + 1);
+        if (frame) markFrame(frame);
+      }
+    }
+
+    async function readLoop() {
+      readAbort = false;
+      while (port && !readAbort) {
+        reader = port.readable.getReader();
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            totalBytes += value.length;
+            $("byteBadge").textContent = `${totalBytes} bytes`;
+            const text = decoder.decode(value, { stream: true });
+            append("textLog", text.replace(/\r/g, "\\r").replace(/\n/g, "\\n\n"));
+            append("hexLog", toHex(value) + "\n");
+            consumeText(text);
+          }
+        } catch (err) {
+          if (!readAbort) append("textLog", `\n[read error] ${err.message}\n`);
+        } finally {
+          reader.releaseLock();
+        }
+      }
+    }
+
+    async function connectSerial() {
+      if (!("serial" in navigator)) {
+        append("textLog", "当前浏览器不支持 Web Serial，请使用 Chrome 或 Edge。\n");
+        return;
+      }
+
+      try {
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 115200, dataBits: 8, stopBits: 1, parity: "none", flowControl: "none" });
+        setSerialState(true);
+        append("textLog", "[open readonly]\n");
+        readLoop();
+      } catch (err) {
+        append("textLog", `[open failed] ${err.message}\n`);
+        setSerialState(false);
+      }
+    }
+
+    async function disconnectSerial() {
+      try {
+        readAbort = true;
+        if (reader) await reader.cancel().catch(() => {});
+        if (port) {
+          await port.close();
+          port = null;
+        }
+      } catch (err) {
+        append("textLog", `[close failed] ${err.message}\n`);
+      }
+      setSerialState(false);
+    }
+
+    $("connectBtn").addEventListener("click", connectSerial);
+    $("disconnectBtn").addEventListener("click", disconnectSerial);
+    $("clearBtn").addEventListener("click", () => {
+      $("textLog").textContent = "";
+      $("hexLog").textContent = "";
+      $("lastFrame").textContent = "--";
+      totalBytes = 0;
+      buffer = "";
+      $("byteBadge").textContent = "0 bytes";
+      $("frameBadge").textContent = "协议帧 --";
+      $("frameBadge").className = "badge";
+    });
+
+    setSerialState(false);
+  </script>
+</body>
+</html>

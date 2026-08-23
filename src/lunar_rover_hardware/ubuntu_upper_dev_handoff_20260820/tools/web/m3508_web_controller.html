@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>M3508 USB 控制器</title>
+  <style>
+    :root {
+      --bg: #101418;
+      --panel: #171d23;
+      --panel2: #11171d;
+      --border: #2b3640;
+      --text: #e8eef5;
+      --muted: #91a0ad;
+      --blue: #5bb3ff;
+      --green: #36c275;
+      --red: #ef5b62;
+      --amber: #f2b84b;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      padding: 18px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    h1 { margin: 0; font-size: 21px; font-weight: 650; }
+    .status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .badge {
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .badge.ok { color: var(--green); border-color: #2c7a52; }
+    .badge.bad { color: var(--red); border-color: #8c353a; }
+    .grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      header { align-items: flex-start; flex-direction: column; }
+    }
+    section {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    h2 {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 650;
+    }
+    button {
+      border: 1px solid var(--border);
+      background: #22303a;
+      color: var(--text);
+      border-radius: 6px;
+      min-height: 38px;
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover { border-color: var(--blue); }
+    button.primary { background: #145a8c; border-color: #287dbb; }
+    button.good { background: #14663e; border-color: #27935c; }
+    button.warn { background: #72521b; border-color: #a77b29; }
+    button.danger { background: #7a2329; border-color: #ad363d; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .buttons.three { grid-template-columns: repeat(3, 1fr); }
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 10px 0 5px;
+    }
+    input {
+      width: 100%;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      min-height: 36px;
+      padding: 7px 9px;
+      font-size: 14px;
+      font-family: Consolas, "Cascadia Mono", monospace;
+    }
+    .motor-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .kv {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 10px;
+    }
+    @media (max-width: 760px) { .kv { grid-template-columns: repeat(2, 1fr); } }
+    .tile {
+      background: var(--panel2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      min-height: 82px;
+    }
+    .tile .name { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .tile .value {
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 13px;
+      line-height: 1.55;
+      white-space: pre-line;
+    }
+    .log {
+      height: 260px;
+      overflow: auto;
+      background: #0b1015;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 12px;
+      color: #cbd6e2;
+      white-space: pre-wrap;
+    }
+    .small { color: var(--muted); font-size: 12px; line-height: 1.55; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>M3508 USB 控制器</h1>
+    <div class="status">
+      <span id="serialBadge" class="badge bad">串口未连接</span>
+      <span id="runBadge" class="badge">未发送</span>
+      <span id="onlineBadge" class="badge">反馈 --</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div>
+      <section>
+        <h2>串口</h2>
+        <div class="buttons">
+          <button id="connectBtn" class="primary">连接 H7 USB</button>
+          <button id="disconnectBtn">断开</button>
+        </div>
+        <p class="small">使用 Chrome 或 Edge 打开。连接后页面会持续读取板端 `$M3508:FB...!` 遥测。</p>
+      </section>
+
+      <section>
+        <h2>快捷速度</h2>
+        <label>速度值，单位 r/s</label>
+        <input id="speedValue" type="number" step="0.05" value="0.20">
+        <div class="buttons">
+          <button class="good" data-speed="forward">前进</button>
+          <button class="good" data-speed="backward">后退</button>
+          <button data-speed="left">左转</button>
+          <button data-speed="right">右转</button>
+        </div>
+        <button id="stopBtn" class="danger" style="width:100%; margin-top:8px;">停止</button>
+      </section>
+
+      <section>
+        <h2>快捷位置</h2>
+        <label>角度值，单位 deg</label>
+        <input id="angleValue" type="number" step="5" value="90">
+        <div class="buttons three">
+          <button class="warn" data-pos="zero">归零</button>
+          <button data-pos="positive">+角度</button>
+          <button data-pos="negative">-角度</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>四电机自定义</h2>
+        <label>四个输出轴目标，左到右是电机 1-4</label>
+        <div class="motor-grid">
+          <input id="m0" type="number" step="0.05" value="0.2">
+          <input id="m1" type="number" step="0.05" value="0.2">
+          <input id="m2" type="number" step="0.05" value="0.2">
+          <input id="m3" type="number" step="0.05" value="0.2">
+        </div>
+        <div class="buttons" style="margin-top:8px;">
+          <button id="customSpeedBtn">按速度发送</button>
+          <button id="customPosBtn">按位置发送</button>
+        </div>
+      </section>
+    </div>
+
+    <div>
+      <section>
+        <h2>四路反馈</h2>
+        <div class="kv">
+          <div class="tile"><div class="name">M1</div><div id="fb0" class="value">--</div></div>
+          <div class="tile"><div class="name">M2</div><div id="fb1" class="value">--</div></div>
+          <div class="tile"><div class="name">M3</div><div id="fb2" class="value">--</div></div>
+          <div class="tile"><div class="name">M4</div><div id="fb3" class="value">--</div></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>发送帧</h2>
+        <input id="manualFrame" value="$M3508:SPD,0.2,0.2,0.2,0.2!">
+        <div class="buttons" style="margin-top:8px;">
+          <button id="manualSendBtn">发送一次</button>
+          <button id="repeatBtn">循环发送此帧</button>
+        </div>
+        <p class="small">速度/位置/电流控制会每 100ms 重发一次，满足固件 500ms 指令超时保护。停止会发送 `$M3508:STOP!` 并停止重发。</p>
+      </section>
+
+      <section>
+        <h2>日志</h2>
+        <div id="log" class="log"></div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    let port = null;
+    let writer = null;
+    let reader = null;
+    let readAbort = false;
+    let repeatTimer = null;
+    let activeFrame = "";
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    const $ = (id) => document.getElementById(id);
+
+    function log(text) {
+      const el = $("log");
+      const ts = new Date().toLocaleTimeString();
+      el.textContent += `[${ts}] ${text}\n`;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function setSerialState(connected) {
+      $("serialBadge").textContent = connected ? "串口已连接" : "串口未连接";
+      $("serialBadge").className = "badge " + (connected ? "ok" : "bad");
+      $("connectBtn").disabled = connected;
+      $("disconnectBtn").disabled = !connected;
+    }
+
+    function setRunState(text, running) {
+      $("runBadge").textContent = text;
+      $("runBadge").className = "badge " + (running ? "ok" : "");
+    }
+
+    function formatFrame(cmd, values) {
+      return `$M3508:${cmd},${values.map(v => Number(v).toFixed(4).replace(/\.?0+$/, "")).join(",")}!`;
+    }
+
+    async function writeFrame(frame) {
+      if (!writer) {
+        log("未连接串口，发送失败");
+        return;
+      }
+      await writer.write(encoder.encode(frame));
+      log(`TX ${frame}`);
+    }
+
+    async function sendOnce(frame) {
+      activeFrame = frame;
+      $("manualFrame").value = frame;
+      await writeFrame(frame);
+    }
+
+    function stopRepeat() {
+      if (repeatTimer) {
+        clearInterval(repeatTimer);
+        repeatTimer = null;
+      }
+    }
+
+    async function startRepeat(frame, label) {
+      stopRepeat();
+      activeFrame = frame;
+      $("manualFrame").value = frame;
+      await writeFrame(frame);
+      repeatTimer = setInterval(() => {
+        writeFrame(activeFrame).catch(err => log(`发送失败: ${err.message}`));
+      }, 100);
+      setRunState(label, true);
+    }
+
+    async function stopMotors() {
+      stopRepeat();
+      setRunState("停止", false);
+      activeFrame = "$M3508:STOP!";
+      $("manualFrame").value = activeFrame;
+      await writeFrame(activeFrame);
+    }
+
+    function customValues() {
+      return [0, 1, 2, 3].map(i => Number($(`m${i}`).value || 0));
+    }
+
+    function speedPreset(kind) {
+      const v = Math.abs(Number($("speedValue").value || 0));
+      if (kind === "forward") return [v, v, v, v];
+      if (kind === "backward") return [-v, -v, -v, -v];
+      if (kind === "left") return [-v, v, -v, v];
+      return [v, -v, v, -v];
+    }
+
+    function parseTelemetry(frame) {
+      if (!frame.startsWith("$M3508:FB,")) return;
+      const p = frame.slice(10, -1).split(",");
+      if (p.length < 23) return;
+
+      const enabled = Number(p[0]);
+      const mode = Number(p[1]);
+      const mask = Number.parseInt(p[2], 16);
+      const angle = p.slice(3, 7).map(v => Number(v) / 10);
+      const speed = p.slice(7, 11).map(v => Number(v) / 1000);
+      const cmd = p.slice(11, 15).map(Number);
+      const cur = p.slice(15, 19).map(Number);
+      const temp = p.slice(19, 23).map(Number);
+
+      $("onlineBadge").textContent = `在线掩码 0x${mask.toString(16).padStart(2, "0").toUpperCase()}`;
+      $("onlineBadge").className = "badge " + (mask ? "ok" : "bad");
+      if (!repeatTimer) {
+        setRunState(enabled ? `板端运行 mode=${mode}` : "板端停止", Boolean(enabled));
+      }
+
+      for (let i = 0; i < 4; i++) {
+        const online = (mask & (1 << i)) !== 0 ? "ON" : "OFF";
+        $(`fb${i}`).textContent =
+          `${online}\n角度 ${angle[i].toFixed(1)} deg\n速度 ${speed[i].toFixed(3)} r/s\n命令 ${cmd[i]}\n反馈 ${cur[i]}\n温度 ${temp[i]} C`;
+      }
+    }
+
+    async function readLoop() {
+      let buffer = "";
+      readAbort = false;
+      while (port && !readAbort) {
+        reader = port.readable.getReader();
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            let idx;
+            while ((idx = buffer.indexOf("!")) >= 0) {
+              const raw = buffer.slice(0, idx + 1).trim();
+              buffer = buffer.slice(idx + 1);
+              if (raw) {
+                log(`RX ${raw}`);
+                parseTelemetry(raw);
+              }
+            }
+          }
+        } catch (err) {
+          if (!readAbort) log(`读取中断: ${err.message}`);
+        } finally {
+          reader.releaseLock();
+        }
+      }
+    }
+
+    async function connectSerial() {
+      if (!("serial" in navigator)) {
+        log("当前浏览器不支持 Web Serial，请使用 Chrome 或 Edge");
+        return;
+      }
+      try {
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 115200 });
+        writer = port.writable.getWriter();
+        setSerialState(true);
+        log("串口已打开");
+        readLoop();
+      } catch (err) {
+        log(`连接失败: ${err.message}`);
+        setSerialState(false);
+      }
+    }
+
+    async function disconnectSerial() {
+      try {
+        stopRepeat();
+        readAbort = true;
+        if (reader) await reader.cancel().catch(() => {});
+        if (writer) {
+          writer.releaseLock();
+          writer = null;
+        }
+        if (port) {
+          await port.close();
+          port = null;
+        }
+      } catch (err) {
+        log(`断开失败: ${err.message}`);
+      }
+      setSerialState(false);
+      setRunState("未发送", false);
+    }
+
+    $("connectBtn").addEventListener("click", connectSerial);
+    $("disconnectBtn").addEventListener("click", disconnectSerial);
+    $("stopBtn").addEventListener("click", () => stopMotors().catch(err => log(err.message)));
+    $("customSpeedBtn").addEventListener("click", () => {
+      startRepeat(formatFrame("SPD", customValues()), "自定义速度").catch(err => log(err.message));
+    });
+    $("customPosBtn").addEventListener("click", () => {
+      startRepeat(formatFrame("POS", customValues()), "自定义位置").catch(err => log(err.message));
+    });
+    $("manualSendBtn").addEventListener("click", () => sendOnce($("manualFrame").value.trim()).catch(err => log(err.message)));
+    $("repeatBtn").addEventListener("click", () => {
+      const frame = $("manualFrame").value.trim();
+      startRepeat(frame, "循环发送").catch(err => log(err.message));
+    });
+
+    document.querySelectorAll("[data-speed]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const values = speedPreset(btn.dataset.speed);
+        startRepeat(formatFrame("SPD", values), btn.textContent).catch(err => log(err.message));
+      });
+    });
+
+    document.querySelectorAll("[data-pos]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (btn.dataset.pos === "zero") {
+          sendOnce("$M3508:ZERO!").catch(err => log(err.message));
+          return;
+        }
+        const v = Math.abs(Number($("angleValue").value || 0));
+        const target = btn.dataset.pos === "positive" ? v : -v;
+        startRepeat(formatFrame("POS", [target, target, target, target]), btn.textContent).catch(err => log(err.message));
+      });
+    });
+
+    setSerialState(false);
+    setRunState("未发送", false);
+  </script>
+</body>
+</html>

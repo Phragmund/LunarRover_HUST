@@ -63,7 +63,7 @@ cd /home/phragmund/LunarRover
 ./tools/keyboard_event_probe.py --all-keys
 ```
 
-Press `W/A/S/D` and left Shift. A working setup prints `press`, optional
+Press `W/A/S/D/Q/E` and left Shift. A working setup prints `press`, optional
 `repeat`, and immediate `release` lines. Left Shift should show as
 `left_shift` or `code=42` when `--all-keys` is used.
 
@@ -111,13 +111,15 @@ Expected values:
 ```text
 W       linear.x > 0, angular.z = 0
 S       linear.x < 0, angular.z = 0
-A       linear.x = 0, angular.z > 0
-D       linear.x = 0, angular.z < 0
+Q       linear.x = 0, angular.z > 0 (in-place spin)
+E       linear.x = 0, angular.z < 0 (in-place spin)
+A       linear.x > 0, angular.z > 0 (Ackermann creep)
+D       linear.x > 0, angular.z < 0 (Ackermann creep)
 W+A     linear.x > 0, angular.z > 0
 W+D     linear.x > 0, angular.z < 0
 S+A     linear.x < 0, angular.z > 0
 S+D     linear.x < 0, angular.z < 0
-LeftShift+W/A/S/D combinations double the nonzero command values by default
+LeftShift combinations double all nonzero command values by default
 SPACE   linear.x = 0, angular.z = 0
 ```
 
@@ -134,7 +136,8 @@ Controls:
 
 ```text
 W/S       forward / reverse
-A/D       in-place left / right rotation
+Q/E       in-place left / right rotation
+A/D       Ackermann left / right (uses a low creep speed without W/S)
 W/S+A/D   Ackermann-style turning while driving
 LeftShift 2x drive power while held
 SPACE     stop
