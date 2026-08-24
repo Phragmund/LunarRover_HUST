@@ -80,8 +80,11 @@ chmod +x start_web_controller.sh start_rx_monitor.sh
 - 单关节控制
 - 多关节联动
 - IK 解算与键盘控制
+- 动作设计（时间轴编排动作、播放 / 逆行回起点、导出动作文件）
 - RAW 指令透传
 - Home 姿态回位
+
+动作设计模式的详细用法、导出动作文件格式与上位机回放教程见 [`04_action_design_guide.md`](04_action_design_guide.md)。
 
 ## 5. 当前网页已修复的问题
 

@@ -52,10 +52,41 @@
     .readout > div { border:1px solid var(--line); background:var(--panel2); border-radius:8px; padding:10px; min-height:68px; }
     .readout span { color:var(--muted); font-size:12px; }
     .readout strong { display:block; margin-top:6px; font-size:20px; }
-    .mode-tabs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; padding:4px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; }
+    .mode-tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; padding:4px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; }
     .hidden { display:none; }
     .ik-status { margin:12px 0; border:1px solid var(--line); border-radius:8px; background:#f7fbff; color:#31465b; padding:10px; font-size:13px; }
     canvas { width:100%; height:320px; border:1px solid var(--line); border-radius:8px; background:#fbfdff; }
+    /* ---- 动作设计（时间轴编辑器）---- */
+    .motion-toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
+    .motion-edit { display:grid; grid-template-columns:repeat(4,1fr) auto auto; gap:8px; align-items:end; margin-bottom:10px; }
+    .motion-edit label { margin:0; }
+    .motion-edit label span { display:block; margin:0 0 4px; color:var(--muted); font-size:12px; }
+    .motion-status { margin:0 0 10px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#f7fbff; color:#31465b; font-size:13px; }
+    .motion-layout { display:grid; grid-template-columns:100px 1fr; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--panel2); }
+    .motion-labels { border-right:1px solid var(--line); background:var(--panel2); }
+    .motion-labels .motion-ruler-spacer { height:24px; border-bottom:1px solid var(--line); }
+    .motion-labels .motion-label { height:40px; display:flex; flex-direction:column; justify-content:center; padding:2px 8px; border-bottom:1px solid var(--line); cursor:pointer; user-select:none; }
+    .motion-labels .motion-label.selected { background:#e6f4f2; box-shadow:inset 3px 0 0 var(--accent); }
+    .motion-labels .motion-label .tname { font-weight:700; font-size:13px; }
+    .motion-labels .motion-label .tsub { color:var(--muted); font-size:11px; }
+    .motion-scroll { overflow-x:auto; overflow-y:hidden; background:#fff; }
+    .motion-inner { position:relative; min-height:224px; }
+    .motion-ruler { position:relative; height:24px; border-bottom:1px solid var(--line); background:#fbfdff; cursor:col-resize; }
+    .motion-ruler .tick { position:absolute; top:0; height:100%; border-left:1px solid #e6ecf2; }
+    .motion-ruler .tick.major { border-left-color:#c8d2dc; }
+    .motion-ruler .tick span { position:absolute; left:3px; top:2px; font-size:10px; color:var(--muted); pointer-events:none; }
+    .motion-track { position:relative; height:40px; border-bottom:1px solid #eef2f5; background:#fff; }
+    .motion-track.selected { background:#f2faf8; }
+    .motion-track .clip { position:absolute; top:4px; bottom:4px; border-radius:5px; background:#8fbfe8; border:1px solid #4a86bf; color:#0a2540; font-size:11px; padding:0 8px; cursor:grab; overflow:hidden; white-space:nowrap; display:flex; align-items:center; user-select:none; }
+    .motion-track .clip.selected { background:var(--accent); border-color:#0b5d56; color:#fff; box-shadow:0 0 0 2px rgba(15,118,110,.35); }
+    .motion-track .clip .clip-label { pointer-events:none; overflow:hidden; text-overflow:ellipsis; }
+    .motion-track .clip .h { position:absolute; top:0; bottom:0; width:8px; cursor:ew-resize; background:rgba(0,0,0,.12); }
+    .motion-track .clip .h.l { left:0; border-radius:5px 0 0 5px; }
+    .motion-track .clip .h.r { right:0; border-radius:0 5px 5px 0; }
+    .motion-pointer { position:absolute; top:0; bottom:0; width:2px; background:#b42318; z-index:10; cursor:ew-resize; }
+    .motion-pointer .grab { position:absolute; top:0; left:-6px; width:14px; height:16px; background:#b42318; border-radius:0 0 4px 4px; }
+    .motion-pointer .grab::after { content:""; position:absolute; top:5px; left:5px; border-left:4px solid transparent; border-right:4px solid transparent; border-top:6px solid #fff; }
+    @media (max-width:980px) { .motion-edit { grid-template-columns:1fr 1fr; } .motion-layout { grid-template-columns:76px 1fr; } }
     @media (max-width:980px) { .top-grid,.grid2,.grid3,.grid4,.readout { grid-template-columns:1fr; } header{align-items:flex-start;flex-direction:column;} }
   </style>
 </head>
@@ -235,6 +266,7 @@
                 <div class="mode-tabs">
                   <button id="jointModeBtn" class="active">关节控制</button>
                   <button id="ikModeBtn">逆运动学</button>
+                  <button id="motionModeBtn">动作设计</button>
                 </div>
                 <div id="jointModePanel">
                   <div class="readout">
@@ -282,6 +314,38 @@
                     <button id="ikHomeBtn">IK 初始位</button>
                     <button id="ikKeyboardBtn">键盘控制：开</button>
                   </div>
+                </div>
+                <div id="motionModePanel" class="hidden">
+                  <div class="motion-toolbar">
+                    <label style="display:flex;align-items:center;gap:6px;margin:0;"><span style="margin:0;">动作名称</span><input id="motionNameInput" value="arm_action" style="width:180px;min-height:34px;"></label>
+                    <button id="motionInsertBtn" class="primary">插入动作帧</button>
+                    <button id="motionEditBtn">编辑动作帧</button>
+                    <button id="motionPlayBtn" class="good">播放</button>
+                    <button id="motionRewindBtn">回到起点</button>
+                    <button id="motionStopBtn">停止</button>
+                    <button id="motionExportBtn">导出动作文件</button>
+                    <button id="motionClearBtn" class="danger">清空全部</button>
+                  </div>
+                  <div class="motion-edit">
+                    <label><span>目标角度 deg</span><input id="motionEditAngle" type="number" step="0.5"></label>
+                    <label><span>原始 P</span><input id="motionEditPulse" type="number" step="1"></label>
+                    <label><span>消耗时间 ms</span><input id="motionEditDuration" type="number" min="50" step="50" value="500"></label>
+                    <label><span>起始时刻 ms</span><input id="motionEditStart" type="number" min="0" step="50"></label>
+                    <button id="motionApplyBtn" class="primary">应用到选中</button>
+                    <button id="motionDeleteBtn" disabled>删除选中</button>
+                  </div>
+                  <div class="motion-status" id="motionStatus">就绪</div>
+                  <div class="motion-layout">
+                    <div class="motion-labels" id="motionLabels"></div>
+                    <div class="motion-scroll" id="motionScroll">
+                      <div class="motion-inner" id="motionInner">
+                        <div class="motion-ruler" id="motionRuler"></div>
+                        <div id="motionTracks"></div>
+                        <div class="motion-pointer" id="motionPointer"><div class="grab"></div></div>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="muted" id="motionEditHint">提示：←/→ 移动指针（Shift 微调），↑/↓ 切换轨道，Enter 插入动作帧，Space 播放/暂停，Delete 删除选中。点击选中指令条后可拖动两端改时长、拖动中间改时刻。</p>
                 </div>
               </section>
             </div>
@@ -416,6 +480,7 @@
         $(ids[0]).classList.toggle("active", key === name);
         $(ids[1]).classList.toggle("active", key === name);
       }
+      if (name !== "arm") motionStopPlayback();
     }
 
     function joint(name=armState.selected) { return joints.find(j => j.name === name); }
@@ -597,9 +662,11 @@
     }
     function setArmMode(mode) {
       armState.mode = mode; pressedKeys.clear();
-      $("jointModePanel").classList.toggle("hidden", mode !== "joint"); $("ikModePanel").classList.toggle("hidden", mode !== "ik");
-      $("jointModeBtn").classList.toggle("active", mode === "joint"); $("ikModeBtn").classList.toggle("active", mode === "ik");
+      $("jointModePanel").classList.toggle("hidden", mode !== "joint"); $("ikModePanel").classList.toggle("hidden", mode !== "ik"); $("motionModePanel").classList.toggle("hidden", mode !== "motion");
+      $("jointModeBtn").classList.toggle("active", mode === "joint"); $("ikModeBtn").classList.toggle("active", mode === "ik"); $("motionModeBtn").classList.toggle("active", mode === "motion");
       if (mode === "ik") solveAndRenderIk(false);
+      if (mode === "motion") { renderMotion(); motionSetPointer(motionState.pointerMs); }
+      else motionStopPlayback();
     }
     function moveIkBy(dx,dy,dz,dp,dg,send=true,moveTime) {
       armState.ik.x+=dx; armState.ik.y+=dy; armState.ik.z+=dz; armState.ik.pitch=normalizeDeg(armState.ik.pitch+dp); armState.ik.grip=clamp(armState.ik.grip+dg,0,90);
@@ -615,10 +682,347 @@
       moveIkBy(xyz*dt*dx, xyz*dt*dy, xyz*dt*dz, ps*dt*dp, gs*dt*dg, true, IK_LOOP_MOVE_MS);
     }
 
+
+    // ============ 动作设计（时间轴编辑器）============
+    const MOTION_MIN_DUR = 50, MOTION_DEFAULT_DUR = 500;
+    const motionState = {
+      clips: [], selectedTrack: "j1", selectedClipId: null,
+      pointerMs: 0, durationMs: 6000, pxPerMs: 0.12,
+      playing: false, playDir: 0, playStartWall: 0, playStartPointer: 0,
+      triggered: new Set(), reversed: new Set(), reversePlan: {}
+    };
+    let motionClipSeq = 0, motionRafId = null, motionDrag = null;
+
+    function motionTrackClips(track) { return motionState.clips.filter(c => c.track === track).sort((a,b) => a.start - b.start); }
+    function motionClip(id) { return motionState.clips.find(c => c.id === id); }
+    function motionClipEnd(c) { return c.start + c.duration; }
+    function motionMaxEnd() { return motionState.clips.reduce((m,c)=>Math.max(m, motionClipEnd(c)), 0); }
+    function motionClipFromAngle(c) {
+      const arr = motionTrackClips(c.track);
+      const i = arr.findIndex(x => x.id === c.id);
+      return i <= 0 ? HOME_ANGLES[c.track] : arr[i-1].targetAngle;
+    }
+    function motionClipFromPulse(c) { return angleToPulse(joint(c.track), motionClipFromAngle(c)); }
+    function motionNeighbors(c) {
+      const arr = motionTrackClips(c.track);
+      const i = arr.findIndex(x => x.id === c.id);
+      return { prev: i > 0 ? arr[i-1] : null, next: i < arr.length-1 ? arr[i+1] : null };
+    }
+    function motionTimeToX(t) { return t * motionState.pxPerMs; }
+    function motionUpdateDuration() {
+      const need = Math.max(6000, motionMaxEnd() + 1500);
+      motionState.durationMs = Math.ceil(need / 1000) * 1000;
+    }
+    function motionStatusText() {
+      const st = motionState.playing ? (motionState.playDir > 0 ? "播放中" : "逆行回起点") : "就绪";
+      return st + " · 指针 " + Math.round(motionState.pointerMs) + "ms / " + motionState.durationMs + "ms · 选中轨道 " + motionState.selectedTrack.toUpperCase() + " · 共 " + motionState.clips.length + " 个动作帧";
+    }
+    function renderMotionRuler() {
+      const r = $("motionRuler"); r.innerHTML = "";
+      for (let t = 0; t <= motionState.durationMs; t += 500) {
+        const tick = document.createElement("div");
+        tick.className = "tick" + (t % 1000 === 0 ? " major" : "");
+        tick.style.left = motionTimeToX(t) + "px";
+        if (t % 1000 === 0) { const s = document.createElement("span"); s.textContent = (t/1000) + "s"; tick.appendChild(s); }
+        r.appendChild(tick);
+      }
+    }
+    function renderMotionLabels() {
+      const root = $("motionLabels"); root.innerHTML = "";
+      const spacer = document.createElement("div"); spacer.className = "motion-ruler-spacer"; root.appendChild(spacer);
+      for (const j of joints) {
+        const d = document.createElement("div");
+        d.className = "motion-label" + (j.name === motionState.selectedTrack ? " selected" : "");
+        d.innerHTML = '<span class="tname">' + j.name.toUpperCase() + '</span><span class="tsub">ID ' + j.servo_id + ' · ' + j.min_deg + '..' + j.max_deg + '°</span>';
+        d.onclick = () => { motionState.selectedTrack = j.name; renderMotion(); };
+        root.appendChild(d);
+      }
+    }
+    function motionClipEl(c) {
+      const el = document.createElement("div");
+      el.className = "clip" + (c.id === motionState.selectedClipId ? " selected" : "");
+      el.style.left = motionTimeToX(c.start) + "px";
+      el.style.width = Math.max(12, motionTimeToX(c.duration)) + "px";
+      const label = document.createElement("span");
+      label.className = "clip-label";
+      label.textContent = c.targetAngle.toFixed(0) + "° P" + c.targetPulse;
+      el.title = c.track.toUpperCase() + " · " + Math.round(c.start) + "ms 起 · " + Math.round(c.duration) + "ms · " + motionClipFromAngle(c).toFixed(1) + "° → " + c.targetAngle.toFixed(1) + "° (P" + c.targetPulse + ")";
+      el.appendChild(label);
+      const hl = document.createElement("div"); hl.className = "h l"; hl.dataset.edge = "left";
+      const hr = document.createElement("div"); hr.className = "h r"; hr.dataset.edge = "right";
+      el.appendChild(hl); el.appendChild(hr);
+      el.onmousedown = (e) => {
+        e.stopPropagation(); e.preventDefault();
+        const edge = e.target.dataset ? e.target.dataset.edge : null;
+        motionSelectClip(c.id);
+        motionStartDrag(e, edge ? ("resize-" + edge) : "move", c.id);
+      };
+      return el;
+    }
+    function renderMotionTracks() {
+      const root = $("motionTracks"); root.innerHTML = "";
+      for (const j of joints) {
+        const tr = document.createElement("div");
+        tr.className = "motion-track" + (j.name === motionState.selectedTrack ? " selected" : "");
+        tr.dataset.track = j.name;
+        for (const c of motionTrackClips(j.name)) tr.appendChild(motionClipEl(c));
+        root.appendChild(tr);
+      }
+    }
+    function renderMotionPointer() {
+      $("motionPointer").style.left = motionTimeToX(motionState.pointerMs) + "px";
+      $("motionStatus").textContent = motionStatusText();
+    }
+    function renderMotion() {
+      motionUpdateDuration();
+      $("motionInner").style.width = motionTimeToX(motionState.durationMs) + "px";
+      renderMotionRuler();
+      renderMotionLabels();
+      renderMotionTracks();
+      renderMotionPointer();
+    }
+    function motionSetPointer(t) {
+      motionState.pointerMs = clamp(Math.round(t), 0, motionState.durationMs);
+      renderMotionPointer();
+      motionEnsurePointerVisible();
+    }
+    function motionEnsurePointerVisible() {
+      const sc = $("motionScroll");
+      const x = motionTimeToX(motionState.pointerMs);
+      const view = sc.clientWidth;
+      if (x < sc.scrollLeft + 40) sc.scrollLeft = Math.max(0, x - 40);
+      else if (x > sc.scrollLeft + view - 40) sc.scrollLeft = x - view + 40;
+    }
+    function motionSelectClip(id) { motionState.selectedClipId = id; renderMotion(); syncMotionEdit(); }
+    function syncMotionEdit() {
+      const c = motionClip(motionState.selectedClipId);
+      const angle = $("motionEditAngle"), pulse = $("motionEditPulse"), dur = $("motionEditDuration"), start = $("motionEditStart");
+      const hint = $("motionEditHint"), del = $("motionDeleteBtn");
+      if (!c) {
+        angle.value = ""; pulse.value = ""; start.value = "";
+        if (!dur.value) dur.value = MOTION_DEFAULT_DUR;
+        del.disabled = true;
+        hint.textContent = "未选中指令条。点击轨道上的指令条选中它；←/→ 移指针，↑/↓ 切轨道，Enter 插入，Space 播放/暂停，Delete 删除。";
+        return;
+      }
+      const j = joint(c.track);
+      angle.min = j.min_deg; angle.max = j.max_deg; angle.value = c.targetAngle.toFixed(1);
+      pulse.min = j.min_pulse; pulse.max = j.max_pulse; pulse.value = c.targetPulse;
+      dur.value = Math.round(c.duration); start.value = Math.round(c.start);
+      del.disabled = false;
+      hint.textContent = "编辑 " + c.track.toUpperCase() + "：" + motionClipFromAngle(c).toFixed(1) + "° → " + c.targetAngle.toFixed(1) + "°（拖动两端改时长，拖动中间改起始时刻）";
+    }
+    function motionInsertClip() {
+      const track = motionState.selectedTrack, j = joint(track);
+      let start = Math.max(0, Math.round(motionState.pointerMs));
+      for (const c of motionTrackClips(track)) {
+        if (start < motionClipEnd(c) && motionClipEnd(c) > start) start = motionClipEnd(c);
+      }
+      const targetAngle = HOME_ANGLES[track];
+      const clip = { id:"c"+(++motionClipSeq), track, start, duration:MOTION_DEFAULT_DUR, targetAngle, targetPulse:angleToPulse(j, targetAngle) };
+      motionState.clips.push(clip);
+      motionState.selectedClipId = clip.id;
+      renderMotion(); syncMotionEdit();
+      log("插入动作帧 " + track.toUpperCase() + " @" + Math.round(start) + "ms（" + MOTION_DEFAULT_DUR + "ms，目标 " + targetAngle.toFixed(0) + "°）");
+    }
+    function motionApplyEdit() {
+      const c = motionClip(motionState.selectedClipId);
+      if (!c) { log("请先选中一个指令条（点击轨道上的指令条）"); return; }
+      const j = joint(c.track);
+      const angle = clamp(Number($("motionEditAngle").value), j.min_deg, j.max_deg);
+      const dur = clamp(Number($("motionEditDuration").value) || MOTION_DEFAULT_DUR, MOTION_MIN_DUR, 600000);
+      const nb = motionNeighbors(c);
+      const lo = nb.prev ? motionClipEnd(nb.prev) : 0;
+      const hi = nb.next ? nb.next.start - dur : Math.max(lo, motionState.durationMs - dur);
+      const start = clamp(Number($("motionEditStart").value) || 0, lo, Math.max(lo, hi));
+      c.targetAngle = angle; c.targetPulse = angleToPulse(j, angle);
+      c.duration = dur; c.start = start;
+      renderMotion(); syncMotionEdit();
+      log("更新 " + c.track.toUpperCase() + "：" + Math.round(start) + "ms 起 · " + Math.round(dur) + "ms · 目标 " + angle.toFixed(1) + "° (P" + c.targetPulse + ")");
+    }
+    function motionDeleteSelected() {
+      const c = motionClip(motionState.selectedClipId);
+      if (!c) return;
+      motionState.clips = motionState.clips.filter(x => x.id !== c.id);
+      motionState.selectedClipId = null;
+      renderMotion(); syncMotionEdit();
+      log("删除动作帧 " + c.track.toUpperCase());
+    }
+    function motionClearAll() {
+      if (!motionState.clips.length) return;
+      if (!confirm("确定清空全部 " + motionState.clips.length + " 个动作帧？")) return;
+      motionStopPlayback();
+      motionState.clips = []; motionState.selectedClipId = null; motionState.pointerMs = 0; motionState.durationMs = 6000;
+      renderMotion(); syncMotionEdit();
+      log("已清空全部动作帧");
+    }
+    function motionStartDrag(e, type, clipId) {
+      e.preventDefault();
+      const c = clipId ? motionClip(clipId) : null;
+      motionDrag = {
+        type, clipId, startX: e.clientX,
+        orig: type === "pointer" ? { t: motionState.pointerMs }
+            : type === "move" ? { start: c.start }
+            : { start: c.start, duration: c.duration }
+      };
+      window.addEventListener("mousemove", motionDragMove);
+      window.addEventListener("mouseup", motionDragEnd);
+    }
+    function motionDragMove(e) {
+      if (!motionDrag) return;
+      const dt = (e.clientX - motionDrag.startX) / motionState.pxPerMs;
+      if (motionDrag.type === "pointer") { motionSetPointer(motionDrag.orig.t + dt); return; }
+      const c = motionClip(motionDrag.clipId); if (!c) return;
+      const nb = motionNeighbors(c);
+      if (motionDrag.type === "move") {
+        const lo = nb.prev ? motionClipEnd(nb.prev) : 0;
+        const hi = nb.next ? nb.next.start - c.duration : motionState.durationMs - c.duration;
+        c.start = clamp(motionDrag.orig.start + dt, lo, Math.max(lo, hi));
+      } else if (motionDrag.type === "resize-right") {
+        const end = clamp(motionClipEnd(motionDrag.orig) + dt, motionDrag.orig.start + MOTION_MIN_DUR, nb.next ? nb.next.start : motionState.durationMs);
+        c.duration = end - c.start;
+      } else if (motionDrag.type === "resize-left") {
+        const lo = nb.prev ? motionClipEnd(nb.prev) : 0;
+        const ns = clamp(motionDrag.orig.start + dt, lo, motionClipEnd(motionDrag.orig) - MOTION_MIN_DUR);
+        c.duration = motionClipEnd(motionDrag.orig) - ns; c.start = ns;
+      }
+      renderMotion(); syncMotionEdit();
+    }
+    function motionDragEnd() {
+      window.removeEventListener("mousemove", motionDragMove);
+      window.removeEventListener("mouseup", motionDragEnd);
+      motionDrag = null;
+    }
+    function motionSendClip(c, dir) {
+      const j = joint(c.track);
+      let pulse, dur;
+      if (dir > 0) { pulse = c.targetPulse; dur = c.duration; }
+      else { pulse = motionClipFromPulse(c); const plan = motionState.reversePlan[c.id]; dur = plan ? plan.rdur : c.duration; }
+      const frame = "$ARM:MOVE," + j.servo_id + "," + pulse + "," + Math.round(dur) + "!";
+      writeFrame(frame).catch(e => log("发送失败: " + e.message));
+    }
+    function motionStartPlayback(dir) {
+      if (!motionState.clips.length) { log("没有动作帧，先插入动作帧"); return; }
+      if (dir > 0 && motionState.pointerMs >= motionState.durationMs) { log("指针已在终点，请先回到起点或拖回指针"); return; }
+      if (dir < 0 && motionState.pointerMs <= 0) { log("指针已在起点"); return; }
+      motionStopPlayback();
+      motionState.playing = true; motionState.playDir = dir;
+      motionState.playStartWall = performance.now(); motionState.playStartPointer = motionState.pointerMs;
+      motionState.triggered = new Set(); motionState.reversed = new Set(); motionState.reversePlan = {};
+      if (dir < 0) {
+        for (const c of motionState.clips) {
+          if (c.start >= motionState.playStartPointer) continue;
+          const triggerT = Math.min(motionClipEnd(c), motionState.playStartPointer);
+          motionState.reversePlan[c.id] = { triggerT, rdur: Math.max(0, triggerT - c.start) };
+        }
+      }
+      renderMotionPointer();
+      log(dir > 0 ? "开始播放（正向）" : "回到起点（逆行）");
+      motionRafId = requestAnimationFrame(motionTick);
+    }
+    function motionStopPlayback() {
+      motionState.playing = false;
+      if (motionRafId) { cancelAnimationFrame(motionRafId); motionRafId = null; }
+      renderMotionPointer();
+    }
+    function motionTick(now) {
+      if (!motionState.playing) return;
+      const t = motionState.playStartPointer + motionState.playDir * (now - motionState.playStartWall);
+      if (motionState.playDir > 0) {
+        const clips = motionState.clips.slice().sort((a,b) => a.start - b.start);
+        for (const c of clips) {
+          if (c.start < motionState.playStartPointer) continue;
+          if (!motionState.triggered.has(c.id) && t >= c.start) { motionState.triggered.add(c.id); motionSendClip(c, 1); }
+        }
+        if (t >= motionState.durationMs) { motionSetPointer(motionState.durationMs); motionStopPlayback(); log("播放完成"); return; }
+      } else {
+        const clips = motionState.clips.filter(c => motionState.reversePlan[c.id]).sort((a,b) => motionState.reversePlan[b.id].triggerT - motionState.reversePlan[a.id].triggerT);
+        for (const c of clips) {
+          const plan = motionState.reversePlan[c.id]; if (!plan) continue;
+          if (!motionState.reversed.has(c.id) && t <= plan.triggerT) { motionState.reversed.add(c.id); motionSendClip(c, -1); }
+        }
+        if (t <= 0) { motionSetPointer(0); motionStopPlayback(); log("已回到起点"); return; }
+      }
+      motionSetPointer(t);
+      motionRafId = requestAnimationFrame(motionTick);
+    }
+    function motionPlayForward() {
+      if (motionState.playing) { motionStopPlayback(); return; }
+      if (motionState.pointerMs >= motionState.durationMs) motionSetPointer(0);
+      motionStartPlayback(1);
+    }
+    function motionPlayReverse() {
+      if (motionState.playing) { motionStopPlayback(); return; }
+      motionStartPlayback(-1);
+    }
+    function motionPrevTrack() { const a = joints.map(j=>j.name); const i = a.indexOf(motionState.selectedTrack); return a[(i-1+a.length)%a.length]; }
+    function motionNextTrack() { const a = joints.map(j=>j.name); const i = a.indexOf(motionState.selectedTrack); return a[(i+1)%a.length]; }
+    function motionKeydown(e) {
+      const active = document.activeElement;
+      if (active && ["INPUT","SELECT","TEXTAREA"].includes(active.tagName)) return;
+      const k = e.key.toLowerCase();
+      const fine = e.shiftKey ? 20 : (e.ctrlKey || e.altKey ? 10 : 100);
+      let handled = true;
+      if (k === "arrowleft") motionSetPointer(motionState.pointerMs - fine);
+      else if (k === "arrowright") motionSetPointer(motionState.pointerMs + fine);
+      else if (k === "arrowup") { motionState.selectedTrack = motionPrevTrack(); renderMotion(); }
+      else if (k === "arrowdown") { motionState.selectedTrack = motionNextTrack(); renderMotion(); }
+      else if (k === "enter") motionInsertClip();
+      else if (k === "delete" || k === "backspace") motionDeleteSelected();
+      else if (k === " ") motionPlayForward();
+      else handled = false;
+      if (handled) e.preventDefault();
+    }
+    function motionBuildExport() {
+      const jointsMeta = joints.map(j => ({ name:j.name, servo_id:j.servo_id, min_deg:j.min_deg, max_deg:j.max_deg, min_pulse:j.min_pulse, max_pulse:j.max_pulse, inverted:j.inverted }));
+      const clips = motionState.clips.slice().sort((a,b) => a.start - b.start || joints.findIndex(j=>j.name===a.track) - joints.findIndex(j=>j.name===b.track)).map(c => {
+        const fromAngle = motionClipFromAngle(c), fromPulse = motionClipFromPulse(c);
+        return { id:c.id, track:c.track, servo_id:joint(c.track).servo_id, start_ms:Math.round(c.start), duration_ms:Math.round(c.duration), from_angle:+fromAngle.toFixed(1), from_pulse:fromPulse, target_angle:+c.targetAngle.toFixed(1), target_pulse:c.targetPulse };
+      });
+      const play = clips.map(c => ({ at_ms:c.start_ms, track:c.track, servo_id:c.servo_id, command:"$ARM:MOVE," + c.servo_id + "," + c.target_pulse + "," + c.duration_ms + "!", from_pulse:c.from_pulse, to_pulse:c.target_pulse, duration_ms:c.duration_ms }));
+      const reverse = clips.slice().sort((a,b) => (b.start_ms + b.duration_ms) - (a.start_ms + a.duration_ms)).map(c => ({ at_ms:c.start_ms + c.duration_ms, track:c.track, servo_id:c.servo_id, command:"$ARM:MOVE," + c.servo_id + "," + c.from_pulse + "," + c.duration_ms + "!", from_pulse:c.target_pulse, to_pulse:c.from_pulse, duration_ms:c.duration_ms }));
+      const times = new Set([0]);
+      for (const c of clips) { times.add(c.start_ms); times.add(c.start_ms + c.duration_ms); }
+      const poses = Array.from(times).sort((a,b)=>a-b).map(t => {
+        const angles = {};
+        for (const j of joints) {
+          const arr = clips.filter(c => c.track === j.name);
+          let ang = HOME_ANGLES[j.name];
+          for (const c of arr) if (c.start_ms <= t) ang = c.target_angle;
+          const active = arr.find(c => c.start_ms <= t && t < c.start_ms + c.duration_ms);
+          if (active) ang = active.from_angle + (active.target_angle - active.from_angle) * ((t - active.start_ms) / active.duration_ms);
+          angles[j.name] = +ang.toFixed(1);
+        }
+        return { t_ms:t, angles };
+      });
+      const name = ($("motionNameInput").value || "arm_action").trim() || "arm_action";
+      return {
+        format:"lunar-rover-arm-action", version:1,
+        meta:{ name, exported_at:new Date().toISOString(), time_unit:"ms", home_angles:Object.assign({}, HOME_ANGLES) },
+        joints:jointsMeta,
+        timeline:{ duration_ms:Math.round(motionState.durationMs) },
+        clips,
+        sequence:{ play, reverse },
+        poses,
+        note:"play 按 at_ms 递增依次发送；reverse 按 at_ms 递减依次发送，用于'回到起点'逆行（不要直接发 home 位置）。所有时刻相对动作时间轴 0 点。初始姿态 = meta.home_angles。"
+      };
+    }
+    function motionExport() {
+      const data = motionBuildExport();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      const safe = data.meta.name.replace(/[^A-Za-z0-9_-]+/g, "_");
+      a.download = safe + ".action.json";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      log("已导出 " + data.clips.length + " 个动作帧 → " + a.download);
+    }
+
     function bind() {
       $("connectBtn").onclick = connectSerial; $("disconnectBtn").onclick = disconnectSerial;
       $("armPingBtn").onclick = () => writeFrame("$ARM:PING!").catch(e=>log(e.message));
-      $("allStopBtn").onclick = () => { sendM3508Stop().catch(e=>log(e.message)); writeFrame("$STOP!").catch(e=>log(e.message)); armAction("stopAll").catch(e=>log(e.message)); };
+      $("allStopBtn").onclick = () => { motionStopPlayback(); sendM3508Stop().catch(e=>log(e.message)); writeFrame("$STOP!").catch(e=>log(e.message)); armAction("stopAll").catch(e=>log(e.message)); };
       $("tabM3508").onclick = () => setMainTab("m3508");
       $("tabSteer").onclick = () => setMainTab("steer");
       $("tabArm").onclick = () => { setMainTab("arm"); solveAndRenderIk(false); };
@@ -646,7 +1050,20 @@
       $("armReadModeBtn").onclick = () => armRawForSelected("PMOD").catch(e=>log(e.message));
       $("armMode1Btn").onclick = () => armRawForSelected("PMOD1").catch(e=>log(e.message));
       $("armRawBtn").onclick = () => armRaw($("armRawInput").value).catch(e=>log(e.message));
-      $("jointModeBtn").onclick = () => setArmMode("joint"); $("ikModeBtn").onclick = () => setArmMode("ik");
+      $("jointModeBtn").onclick = () => setArmMode("joint"); $("ikModeBtn").onclick = () => setArmMode("ik"); $("motionModeBtn").onclick = () => setArmMode("motion");
+      $("motionInsertBtn").onclick = motionInsertClip;
+      $("motionEditBtn").onclick = motionApplyEdit;
+      $("motionApplyBtn").onclick = motionApplyEdit;
+      $("motionDeleteBtn").onclick = motionDeleteSelected;
+      $("motionPlayBtn").onclick = motionPlayForward;
+      $("motionRewindBtn").onclick = motionPlayReverse;
+      $("motionStopBtn").onclick = motionStopPlayback;
+      $("motionExportBtn").onclick = motionExport;
+      $("motionClearBtn").onclick = motionClearAll;
+      $("motionEditAngle").oninput = () => { const c = motionClip(motionState.selectedClipId); if (!c) return; const j = joint(c.track); $("motionEditPulse").value = angleToPulse(j, Number($("motionEditAngle").value)); };
+      $("motionEditPulse").oninput = () => { const c = motionClip(motionState.selectedClipId); if (!c) return; const j = joint(c.track); $("motionEditAngle").value = pulseToAngle(j, Number($("motionEditPulse").value)).toFixed(1); };
+      $("motionPointer").onmousedown = (e) => { e.stopPropagation(); e.preventDefault(); motionStartDrag(e, "pointer", null); };
+      $("motionInner").onmousedown = (e) => { if (e.target.closest(".clip") || e.target.closest(".motion-pointer")) return; const tr = e.target.closest(".motion-track"); if (tr) motionState.selectedTrack = tr.dataset.track; const r = $("motionInner").getBoundingClientRect(); motionSetPointer((e.clientX - r.left) / motionState.pxPerMs); renderMotion(); };
       for (const id of ["ikXInput","ikYInput","ikZInput","ikPitchInput","ikGripInput"]) $(id).oninput = () => solveAndRenderIk(false);
       $("ikPreviewBtn").onclick = () => solveAndRenderIk(false); $("ikSendBtn").onclick = () => solveAndRenderIk(true);
       $("ikHomeBtn").onclick = () => {
@@ -655,7 +1072,7 @@
         armMoveManyAngles(HOME_ANGLES, Number($("ikTimeInput").value)).catch(e=>log(e.message));
       };
       $("ikKeyboardBtn").onclick = () => { armState.keyboardIk=!armState.keyboardIk; pressedKeys.clear(); $("ikKeyboardBtn").textContent=`键盘控制：${armState.keyboardIk?"开":"关"}`; };
-      window.onkeydown = e => { if(armState.mode !== "ik" || !armState.keyboardIk) return; const active=document.activeElement; if(active && ["INPUT","SELECT","TEXTAREA"].includes(active.tagName)) return; const key=e.key.toLowerCase(); if(["w","s","a","d"," ","shift","arrowup","arrowdown","arrowleft","arrowright"].includes(key)){ pressedKeys.add(key); e.preventDefault(); } };
+      window.onkeydown = e => { if (armState.mode === "motion") { motionKeydown(e); return; } if(armState.mode !== "ik" || !armState.keyboardIk) return; const active=document.activeElement; if(active && ["INPUT","SELECT","TEXTAREA"].includes(active.tagName)) return; const key=e.key.toLowerCase(); if(["w","s","a","d"," ","shift","arrowup","arrowdown","arrowleft","arrowright"].includes(key)){ pressedKeys.add(key); e.preventDefault(); } };
       window.onkeyup = e => pressedKeys.delete(e.key.toLowerCase());
       ikLoopTimer = setInterval(ikTick, IK_LOOP_INTERVAL_MS);
     }
