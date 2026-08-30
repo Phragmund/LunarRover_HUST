@@ -38,7 +38,11 @@
     .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
     .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
     .buttons { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
-    .log { height:230px; overflow:auto; white-space:pre-wrap; background:#111827; color:#d1fae5; border:1px solid #263445; border-radius:8px; padding:10px; font:12px/1.45 Consolas,"Cascadia Mono",monospace; }
+    .log { height:150px; overflow:auto; white-space:pre-wrap; background:#111827; color:#d1fae5; border:1px solid #263445; border-radius:8px; padding:10px; font:12px/1.45 Consolas,"Cascadia Mono",monospace; }
+    .log-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .log-cell { min-width:0; }
+    .log-title { color:var(--muted); font-size:12px; font-weight:600; margin-bottom:5px; }
+    @media (max-width:980px) { .log-grid { grid-template-columns:1fr 1fr; } }
     .tile { min-height:88px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px; }
     .tile .name { color:var(--muted); font-size:12px; margin-bottom:6px; }
     .tile .value { white-space:pre-line; font:13px/1.5 Consolas,"Cascadia Mono",monospace; }
@@ -55,7 +59,7 @@
     .mode-tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; padding:4px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; }
     .hidden { display:none; }
     .ik-status { margin:12px 0; border:1px solid var(--line); border-radius:8px; background:#f7fbff; color:#31465b; padding:10px; font-size:13px; }
-    canvas { width:100%; height:320px; border:1px solid var(--line); border-radius:8px; background:#fbfdff; }
+    canvas { width:100%; height:440px; border:1px solid var(--line); border-radius:8px; background:#0e1624; cursor:grab; }
     /* ---- 动作设计（时间轴编辑器）---- */
     .motion-toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
     .motion-edit { display:grid; grid-template-columns:repeat(4,1fr) auto auto; gap:8px; align-items:end; margin-bottom:10px; }
@@ -118,10 +122,6 @@
             <button id="allStopBtn" class="danger">全部停止</button>
           </div>
           <p class="muted">浏览器只连接一次 H7 USB CDC。3508 使用 `$M3508:*`，舵轮使用 `$ANG/$SPD`，机械臂使用 `$ARM:*`。</p>
-        </section>
-        <section class="panel">
-          <h2>日志</h2>
-          <div id="log" class="log"></div>
         </section>
       </div>
 
@@ -198,6 +198,7 @@
                   <button id="steerCenterBtn">全部 0 度</button>
                   <button id="steerZeroBtn">当前位置置零</button>
                   <button id="steerStopBtn" class="danger">舵轮停止</button>
+                  <button id="steerCalBtn" class="good">一键标定四轮</button>
                 </div>
               </section>
               <section class="panel">
@@ -307,7 +308,7 @@
                     <label><span>发送时间 ms</span><input id="ikTimeInput" type="number" value="400" min="0" max="9999"></label>
                   </div>
                   <div id="ikStatus" class="ik-status">W/S 前后，A/D 左右，Space/Shift 升降，方向键上下调姿态，左右调夹爪。</div>
-                  <canvas id="ikCanvas" width="600" height="320"></canvas>
+                  <canvas id="ikCanvas" width="720" height="440"></canvas>
                   <div class="grid4" style="margin-top:10px;">
                     <button id="ikSendBtn" class="primary">发送 IK</button>
                     <button id="ikPreviewBtn">只解算</button>
@@ -324,7 +325,9 @@
                     <button id="motionRewindBtn">回到起点</button>
                     <button id="motionStopBtn">停止</button>
                     <button id="motionExportBtn">导出动作文件</button>
+                    <button id="motionImportBtn">导入动作文件</button>
                     <button id="motionClearBtn" class="danger">清空全部</button>
+                    <input type="file" id="motionImportFile" accept=".json,application/json" style="display:none;">
                   </div>
                   <div class="motion-edit">
                     <label><span>目标角度 deg</span><input id="motionEditAngle" type="number" step="0.5"></label>
@@ -345,7 +348,8 @@
                       </div>
                     </div>
                   </div>
-                  <p class="muted" id="motionEditHint">提示：←/→ 移动指针（Shift 微调），↑/↓ 切换轨道，Enter 插入动作帧，Space 播放/暂停，Delete 删除选中。点击选中指令条后可拖动两端改时长、拖动中间改时刻。</p>
+                  <canvas id="motionCanvas" width="720" height="440"></canvas>
+                  <p class="muted" id="motionEditHint">提示：←/→ 移动指针（Shift 微调），↑/↓ 切换轨道，Enter 插入动作帧，Space 播放/暂停，Delete 删除选中。点击选中指令条后可拖动两端改时长、拖动中间改时刻。三维视图可拖动旋转、滚轮缩放，随指针/播放同步。</p>
                 </div>
               </section>
             </div>
@@ -353,6 +357,15 @@
         </section>
       </div>
     </div>
+    <section class="panel">
+      <h2>通信日志</h2>
+      <div class="log-grid">
+        <div class="log-cell"><div class="log-title">3508 底盘</div><div id="logM3508" class="log"></div></div>
+        <div class="log-cell"><div class="log-title">舵轮</div><div id="logSteer" class="log"></div></div>
+        <div class="log-cell"><div class="log-title">机械臂</div><div id="logArm" class="log"></div></div>
+        <div class="log-cell"><div class="log-title">其余信息</div><div id="logOther" class="log"></div></div>
+      </div>
+    </section>
   </main>
 
   <script>
@@ -372,9 +385,19 @@
     const HOME_ANGLES = { j1:90, j2:180, j3:135, j4:135, j5:45 };
     const IK_LOOP_INTERVAL_MS = 30, IK_LOOP_MOVE_MS = 30, pressedKeys = new Set();
     let ikLoopTimer = null;
+    let steerCalAutoCenterPending = false;
 
+    function logBoxFor(text) {
+      const s = String(text), i = s.indexOf("$");
+      if (i < 0) return "logOther";
+      const body = s.slice(i);
+      if (body.startsWith("$M3508:")) return "logM3508";
+      if (body.startsWith("$ARM:")) return "logArm";
+      if (body.startsWith("$STD")) return "logSteer"; // 舵轮区只显示舵电机回传($STD)
+      return "logOther";
+    }
     function log(text) {
-      const el = $("log"), ts = new Date().toLocaleTimeString();
+      const el = $(logBoxFor(text)), ts = new Date().toLocaleTimeString();
       el.textContent += `[${ts}] ${text}\n`;
       if (el.textContent.length > 12000) el.textContent = el.textContent.slice(-10000);
       el.scrollTop = el.scrollHeight;
@@ -433,6 +456,7 @@
               if (frame.startsWith("$M3508:FB,")) parseM3508(frame);
               else if (frame.startsWith("$STD,")) parseSteer(frame);
               else if (frame.startsWith("$ARM:")) parseArm(frame);
+              if (frame.startsWith("$STEER:CALDONE")) handleSteerCalibrationDone();
               log(`RX ${frame}`);
             }
           }
@@ -455,7 +479,7 @@
     function parseArm(frame) {
       $("armBadge").textContent = frame.startsWith("$ARM:ERR") ? "ARM ERR" : "ARM OK";
       $("armBadge").className = "badge " + (frame.startsWith("$ARM:ERR") ? "bad" : "ok");
-      const m = frame.match(/^\$ARM:RESP,#(\d{3})P(\d{4})!/);
+      const m = frame.match(/^\$ARM:RESP,#(\d{1,3})P(\d{1,4})!/);
       if (m) updateArmReadout(Number(m[1]), Number(m[2]));
     }
     function parseSteer(frame) {
@@ -474,6 +498,20 @@
     function formatPlain(cmd, values) { return `$${cmd},${values.map(v => Number(v).toFixed(3).replace(/\.?0+$/,"")).join(",")}!`; }
     async function sendSteerAngles(values=steerValues("steerAng")) { await writeFrame(formatPlain("ANG", values)); }
     async function sendSteerSpeeds(values=steerValues("steerSpd")) { await writeFrame(formatPlain("SPD", values)); }
+    async function calibrateSteering() {
+      const frame = "$STEER:CAL,15,8000!";
+      stopRepeat();
+      $("manualFrame").value = frame;
+      steerCalAutoCenterPending = true;
+      await writeFrame(frame);
+    }
+    function handleSteerCalibrationDone() {
+      if (!steerCalAutoCenterPending) return;
+      steerCalAutoCenterPending = false;
+      setTimeout(() => {
+        sendSteerAngles([0,0,0,0]).catch(e => log(`标定后归零失败: ${e.message}`));
+      }, 200);
+    }
     function setMainTab(name) {
       const map = { m3508:["tabM3508","pageM3508"], steer:["tabSteer","pageSteer"], arm:["tabArm","pageArm"] };
       for (const [key, ids] of Object.entries(map)) {
@@ -646,19 +684,139 @@
       if (send) armMoveManyAngles(sol.angles, moveTime ?? Number($("ikTimeInput").value)).catch(e => $("ikStatus").textContent = e.message);
       return sol;
     }
-    function drawIk(sol) {
-      const c=$("ikCanvas"), ctx=c.getContext("2d"), w=c.width, h=c.height, pad=28, view={rMin:-20,rMax:460,zMin:-200,zMax:360};
-      ctx.clearRect(0,0,w,h); ctx.fillStyle="#fbfdff"; ctx.fillRect(0,0,w,h);
-      const scale=Math.min((w-pad*2)/(view.rMax-view.rMin),(h-pad*2)/(view.zMax-view.zMin));
-      const mx=r=>pad+(r-view.rMin)*scale, my=z=>h-pad-(z-view.zMin)*scale;
-      ctx.strokeStyle="#e3e9ef"; ctx.beginPath(); ctx.moveTo(mx(view.rMin),my(0)); ctx.lineTo(mx(view.rMax),my(0)); ctx.stroke();
-      if (sol) {
-        const pts=armGeometry(sol.angles); ctx.strokeStyle="#0f766e"; ctx.lineWidth=5; ctx.lineCap="round"; ctx.beginPath();
-        ctx.moveTo(mx(pts.j1.r),my(pts.j1.z)); ctx.lineTo(mx(pts.j2.r),my(pts.j2.z)); ctx.lineTo(mx(pts.j3.r),my(pts.j3.z)); ctx.lineTo(mx(pts.j4.r),my(pts.j4.z)); ctx.lineTo(mx(pts.tip.r),my(pts.tip.z)); ctx.stroke();
-        for (const [label,p] of [["J1",pts.j1],["J2",pts.j2],["J3",pts.j3],["J4",pts.j4]]) { ctx.fillStyle="#16202a"; ctx.beginPath(); ctx.arc(mx(p.r),my(p.z),5,0,Math.PI*2); ctx.fill(); ctx.fillText(label,mx(p.r)+7,my(p.z)-7); }
+    const ikView = { yaw: 40, pitch: 24, dist: 640, dragging:false, lastX:0, lastY:0, minDist:200, maxDist:2600 };
+    const motionView = { yaw: 40, pitch: 24, dist: 640, dragging:false, lastX:0, lastY:0, minDist:200, maxDist:2600 };
+    function ikVec(a,b){ return {x:a.x-b.x,y:a.y-b.y,z:a.z-b.z}; }
+    function ikCross(a,b){ return {x:a.y*b.z-a.z*b.y,y:a.z*b.x-a.x*b.z,z:a.x*b.y-a.y*b.x}; }
+    function ikDot(a,b){ return a.x*b.x+a.y*b.y+a.z*b.z; }
+    function ikNorm(a){ const l=Math.hypot(a.x,a.y,a.z)||1; return {x:a.x/l,y:a.y/l,z:a.z/l}; }
+    function armGeometry3D(angles) {
+      const p = armGeometry(angles), yaw = degToRad(angles.j1);
+      const to3 = (v) => ({ x: v.r * Math.sin(yaw), y: v.r * Math.cos(yaw), z: v.z });
+      return { base:{x:0,y:0,z:0}, j2:to3(p.j2), j3:to3(p.j3), j4:to3(p.j4), tip:to3(p.tip) };
+    }
+    function motionPoseAt(t) {
+      const angles = {};
+      for (const j of joints) {
+        const arr = motionTrackClips(j.name);
+        let ang = HOME_ANGLES[j.name];
+        for (const c of arr) {
+          if (t >= c.start + c.duration) { ang = c.targetAngle; continue; }
+          if (t >= c.start) {
+            const from = motionClipFromAngle(c);
+            ang = from + (c.targetAngle - from) * ((t - c.start) / c.duration);
+          }
+          break;
+        }
+        angles[j.name] = ang;
       }
-      const rt=Math.hypot(armState.ik.x,armState.ik.y), tx=mx(rt), ty=my(armState.ik.z), s=7;
-      ctx.strokeStyle="#b42318"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(tx-s,ty-s); ctx.lineTo(tx+s,ty+s); ctx.moveTo(tx-s,ty+s); ctx.lineTo(tx+s,ty-s); ctx.stroke();
+      return angles;
+    }
+    function drawArm3D(canvas, angles, view, target) {
+      const ctx=canvas.getContext("2d");
+      const dpr=window.devicePixelRatio||1, rect=canvas.getBoundingClientRect();
+      const w=Math.max(320, rect.width), h=Math.max(240, rect.height||440);
+      if (canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){ canvas.width=Math.round(w*dpr); canvas.height=Math.round(h*dpr); }
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      ctx.clearRect(0,0,w,h);
+      const bg=ctx.createLinearGradient(0,0,0,h); bg.addColorStop(0,"#0b1420"); bg.addColorStop(1,"#15222e");
+      ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
+      const yaw=degToRad(view.yaw), pitch=degToRad(view.pitch), cp=Math.cos(pitch);
+      const cam={ x:view.dist*cp*Math.sin(yaw), y:view.dist*cp*Math.cos(yaw), z:view.dist*Math.sin(pitch) };
+      const fwd=ikNorm({x:-cam.x,y:-cam.y,z:-cam.z});
+      const right=ikNorm(ikCross(fwd,{x:0,y:0,z:1}));
+      const up=ikCross(right,fwd);
+      const focal=h*1.05;
+      function proj(p){
+        const d=ikVec(p,cam), z=ikDot(d,fwd);
+        if (z<1) return null;
+        return { x:w/2+ikDot(d,right)*focal/z, y:h/2-ikDot(d,up)*focal/z, z };
+      }
+      function line3(a,b,stroke,width){
+        const A=proj(a), B=proj(b); if(!A||!B) return;
+        ctx.strokeStyle=stroke; ctx.lineWidth=width; ctx.lineCap="round";
+        ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
+      }
+      function node3(p,color,r){
+        const P=proj(p); if(!P) return;
+        ctx.fillStyle=color; ctx.beginPath(); ctx.arc(P.x,P.y,r,0,Math.PI*2); ctx.fill();
+      }
+      // 网格世界平面（z=0）
+      const R=400, step=50;
+      for (let g=-R; g<=R; g+=step) {
+        line3({x:g,y:-R,z:0},{x:g,y:R,z:0}, (g===0?"rgba(120,180,220,0.55)":"rgba(120,160,200,0.16)"), 1);
+        line3({x:-R,y:g,z:0},{x:R,y:g,z:0}, (g===0?"rgba(120,180,220,0.55)":"rgba(120,160,200,0.16)"), 1);
+      }
+      // 坐标轴（原点 = J1 底座）
+      line3({x:0,y:0,z:0},{x:260,y:0,z:0},"#e06c75",2);
+      line3({x:0,y:0,z:0},{x:0,y:260,z:0},"#7fbf7f",2);
+      line3({x:0,y:0,z:0},{x:0,y:0,z:260},"#6ca0e0",2);
+      if (angles) {
+        const A=armGeometry3D(angles);
+        const shadow=(v)=>({x:v.x,y:v.y,z:0});
+        line3(shadow(A.base),shadow(A.j2),"rgba(15,118,110,0.30)",2);
+        line3(shadow(A.j2),shadow(A.j3),"rgba(15,118,110,0.30)",2);
+        line3(shadow(A.j3),shadow(A.j4),"rgba(15,118,110,0.30)",2);
+        line3(shadow(A.j4),shadow(A.tip),"rgba(15,118,110,0.30)",2);
+        line3({x:0,y:0,z:-16},{x:0,y:0,z:34},"#5c6b7a",8);
+        node3({x:0,y:0,z:0},"#8fa1b3",5);
+        line3(A.base,A.j2,"#0f766e",7);
+        line3(A.j2,A.j3,"#0f766e",7);
+        line3(A.j3,A.j4,"#0f766e",7);
+        line3(A.j4,A.tip,"#c8973a",6);
+        node3(A.base,"#8fa1b3",4);
+        node3(A.j2,"#0f766e",6);
+        node3(A.j3,"#0f766e",6);
+        node3(A.j4,"#0f766e",6);
+        node3(A.tip,"#d4a017",5);
+      }
+      if (target) {
+        const T=proj(target);
+        if (T) {
+          const s=9;
+          line3(target,{x:target.x,y:target.y,z:0},"rgba(255,92,92,0.35)",1);
+          ctx.strokeStyle="#ff5c5c"; ctx.lineWidth=2;
+          ctx.beginPath();
+          ctx.moveTo(T.x-s,T.y); ctx.lineTo(T.x+s,T.y);
+          ctx.moveTo(T.x,T.y-s); ctx.lineTo(T.x,T.y+s);
+          ctx.stroke();
+          ctx.fillStyle="#ff5c5c"; ctx.beginPath(); ctx.arc(T.x,T.y,3,0,Math.PI*2); ctx.fill();
+        }
+      }
+    }
+    function drawIk(sol) {
+      drawArm3D($("ikCanvas"), sol ? sol.angles : null, ikView, {x:armState.ik.x,y:armState.ik.y,z:armState.ik.z});
+    }
+    function drawMotion3D() {
+      if (armState.mode !== "motion") return;
+      drawArm3D($("motionCanvas"), motionPoseAt(motionState.pointerMs), motionView, null);
+    }
+    function bindArm3DOrbit(canvas, view, redraw) {
+      canvas.onmousedown = (e) => {
+        e.preventDefault();
+        view.dragging=true; view.lastX=e.clientX; view.lastY=e.clientY;
+        window.addEventListener("mousemove", onMove);
+        window.addEventListener("mouseup", onUp);
+      };
+      function onMove(e){
+        if(!view.dragging) return;
+        const dx=e.clientX-view.lastX, dy=e.clientY-view.lastY;
+        view.lastX=e.clientX; view.lastY=e.clientY;
+        view.yaw=(view.yaw+dx*0.4)%360;
+        view.pitch=clamp(view.pitch+dy*0.4,8,86);
+        redraw();
+      }
+      function onUp(){
+        view.dragging=false;
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      }
+      canvas.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const f=e.deltaY>0?1.12:1/1.12;
+        view.dist=clamp(view.dist*f, view.minDist, view.maxDist);
+        redraw();
+      }, { passive:false });
     }
     function setArmMode(mode) {
       armState.mode = mode; pressedKeys.clear();
@@ -685,13 +843,17 @@
 
     // ============ 动作设计（时间轴编辑器）============
     const MOTION_MIN_DUR = 50, MOTION_DEFAULT_DUR = 500;
+    const MOTION_SNAP_MS = 200;
+    const MOTION_PLAY_SPEED = 2;   // 播放速度缩放：2 = 2倍慢（半速）
+    const MOTION_SEND_MS = 200;    // 位置下发周期：200ms = 5Hz
     const motionState = {
       clips: [], selectedTrack: "j1", selectedClipId: null,
       pointerMs: 0, durationMs: 6000, pxPerMs: 0.12,
       playing: false, playDir: 0, playStartWall: 0, playStartPointer: 0,
-      triggered: new Set(), reversed: new Set(), reversePlan: {}
+      triggered: new Set(), reversed: new Set(), reversePlan: {},
+      lastSentPulse: null
     };
-    let motionClipSeq = 0, motionRafId = null, motionDrag = null;
+    let motionClipSeq = 0, motionRafId = null, motionDrag = null, motionSendTimer = null;
 
     function motionTrackClips(track) { return motionState.clips.filter(c => c.track === track).sort((a,b) => a.start - b.start); }
     function motionClip(id) { return motionState.clips.find(c => c.id === id); }
@@ -709,6 +871,8 @@
       return { prev: i > 0 ? arr[i-1] : null, next: i < arr.length-1 ? arr[i+1] : null };
     }
     function motionTimeToX(t) { return t * motionState.pxPerMs; }
+    function motionSnap(t) { return Math.round(t / MOTION_SNAP_MS) * MOTION_SNAP_MS; }
+    function motionSnapDur(d) { return Math.max(MOTION_SNAP_MS, motionSnap(d)); }
     function motionUpdateDuration() {
       const need = Math.max(6000, motionMaxEnd() + 1500);
       motionState.durationMs = Math.ceil(need / 1000) * 1000;
@@ -772,6 +936,7 @@
     function renderMotionPointer() {
       $("motionPointer").style.left = motionTimeToX(motionState.pointerMs) + "px";
       $("motionStatus").textContent = motionStatusText();
+      drawMotion3D();
     }
     function renderMotion() {
       motionUpdateDuration();
@@ -814,27 +979,28 @@
     }
     function motionInsertClip() {
       const track = motionState.selectedTrack, j = joint(track);
-      let start = Math.max(0, Math.round(motionState.pointerMs));
+      let start = Math.max(0, motionSnap(motionState.pointerMs));
+      const dur = motionSnapDur(MOTION_DEFAULT_DUR);
       for (const c of motionTrackClips(track)) {
-        if (start < motionClipEnd(c) && motionClipEnd(c) > start) start = motionClipEnd(c);
+        if (start < motionClipEnd(c) && motionClipEnd(c) > start) start = Math.ceil(motionClipEnd(c) / MOTION_SNAP_MS) * MOTION_SNAP_MS;
       }
       const targetAngle = HOME_ANGLES[track];
-      const clip = { id:"c"+(++motionClipSeq), track, start, duration:MOTION_DEFAULT_DUR, targetAngle, targetPulse:angleToPulse(j, targetAngle) };
+      const clip = { id:"c"+(++motionClipSeq), track, start, duration:dur, targetAngle, targetPulse:angleToPulse(j, targetAngle) };
       motionState.clips.push(clip);
       motionState.selectedClipId = clip.id;
       renderMotion(); syncMotionEdit();
-      log("插入动作帧 " + track.toUpperCase() + " @" + Math.round(start) + "ms（" + MOTION_DEFAULT_DUR + "ms，目标 " + targetAngle.toFixed(0) + "°）");
+      log("插入动作帧 " + track.toUpperCase() + " @" + Math.round(start) + "ms（" + dur + "ms，目标 " + targetAngle.toFixed(0) + "°）");
     }
     function motionApplyEdit() {
       const c = motionClip(motionState.selectedClipId);
       if (!c) { log("请先选中一个指令条（点击轨道上的指令条）"); return; }
       const j = joint(c.track);
       const angle = clamp(Number($("motionEditAngle").value), j.min_deg, j.max_deg);
-      const dur = clamp(Number($("motionEditDuration").value) || MOTION_DEFAULT_DUR, MOTION_MIN_DUR, 600000);
+      const dur = motionSnapDur(Number($("motionEditDuration").value) || MOTION_DEFAULT_DUR);
       const nb = motionNeighbors(c);
       const lo = nb.prev ? motionClipEnd(nb.prev) : 0;
       const hi = nb.next ? nb.next.start - dur : Math.max(lo, motionState.durationMs - dur);
-      const start = clamp(Number($("motionEditStart").value) || 0, lo, Math.max(lo, hi));
+      const start = motionSnap(clamp(Number($("motionEditStart").value) || 0, lo, Math.max(lo, hi)));
       c.targetAngle = angle; c.targetPulse = angleToPulse(j, angle);
       c.duration = dur; c.start = start;
       renderMotion(); syncMotionEdit();
@@ -877,13 +1043,13 @@
       if (motionDrag.type === "move") {
         const lo = nb.prev ? motionClipEnd(nb.prev) : 0;
         const hi = nb.next ? nb.next.start - c.duration : motionState.durationMs - c.duration;
-        c.start = clamp(motionDrag.orig.start + dt, lo, Math.max(lo, hi));
+        c.start = motionSnap(clamp(motionDrag.orig.start + dt, lo, Math.max(lo, hi)));
       } else if (motionDrag.type === "resize-right") {
-        const end = clamp(motionClipEnd(motionDrag.orig) + dt, motionDrag.orig.start + MOTION_MIN_DUR, nb.next ? nb.next.start : motionState.durationMs);
-        c.duration = end - c.start;
+        const rawEnd = clamp(motionClipEnd(motionDrag.orig) + dt, motionDrag.orig.start + MOTION_SNAP_MS, nb.next ? nb.next.start : motionState.durationMs);
+        c.duration = motionSnap(rawEnd) - c.start;
       } else if (motionDrag.type === "resize-left") {
         const lo = nb.prev ? motionClipEnd(nb.prev) : 0;
-        const ns = clamp(motionDrag.orig.start + dt, lo, motionClipEnd(motionDrag.orig) - MOTION_MIN_DUR);
+        const ns = motionSnap(clamp(motionDrag.orig.start + dt, lo, motionClipEnd(motionDrag.orig) - MOTION_SNAP_MS));
         c.duration = motionClipEnd(motionDrag.orig) - ns; c.start = ns;
       }
       renderMotion(); syncMotionEdit();
@@ -893,13 +1059,44 @@
       window.removeEventListener("mouseup", motionDragEnd);
       motionDrag = null;
     }
-    function motionSendClip(c, dir) {
+    function motionClipFrame(c, dir) {
       const j = joint(c.track);
       let pulse, dur;
       if (dir > 0) { pulse = c.targetPulse; dur = c.duration; }
       else { pulse = motionClipFromPulse(c); const plan = motionState.reversePlan[c.id]; dur = plan ? plan.rdur : c.duration; }
-      const frame = "$ARM:MOVE," + j.servo_id + "," + pulse + "," + Math.round(dur) + "!";
-      writeFrame(frame).catch(e => log("发送失败: " + e.message));
+      return "$ARM:MOVE," + j.servo_id + "," + pulse + "," + Math.round(dur) + "!";
+    }
+    async function motionSendClip(c, dir) {
+      const frame = motionClipFrame(c, dir);
+      log("TX " + frame);
+      try {
+        await writeFrame(frame, true);
+      } catch (e) {
+        log("发送失败: " + e.message);
+      }
+    }
+    async function motionSendGroup(group, dir) {
+      if (group.length > 1) {
+        const parts = [];
+        for (const c of group) {
+          parts.push(joint(c.track).servo_id, dir > 0 ? c.targetPulse : motionClipFromPulse(c));
+        }
+        let time = group[0].duration;
+        if (dir < 0) {
+          const plan = motionState.reversePlan[group[0].id];
+          time = plan ? plan.rdur : group[0].duration;
+        }
+        parts.push(Math.round(time));
+        const frame = "$ARM:MULTI," + parts.join(",") + "!";
+        log("TX " + frame);
+        try {
+          await writeFrame(frame, true);
+        } catch (e) {
+          log("发送失败: " + e.message);
+        }
+        return;
+      }
+      for (const c of group) motionSendClip(c, dir);
     }
     function motionStartPlayback(dir) {
       if (!motionState.clips.length) { log("没有动作帧，先插入动作帧"); return; }
@@ -908,43 +1105,46 @@
       motionStopPlayback();
       motionState.playing = true; motionState.playDir = dir;
       motionState.playStartWall = performance.now(); motionState.playStartPointer = motionState.pointerMs;
-      motionState.triggered = new Set(); motionState.reversed = new Set(); motionState.reversePlan = {};
-      if (dir < 0) {
-        for (const c of motionState.clips) {
-          if (c.start >= motionState.playStartPointer) continue;
-          const triggerT = Math.min(motionClipEnd(c), motionState.playStartPointer);
-          motionState.reversePlan[c.id] = { triggerT, rdur: Math.max(0, triggerT - c.start) };
-        }
-      }
+      motionState.lastSentPulse = null;
       renderMotionPointer();
-      log(dir > 0 ? "开始播放（正向）" : "回到起点（逆行）");
+      log(dir > 0 ? "开始播放（插值流式 " + (1000 / MOTION_SEND_MS) + "Hz · " + MOTION_PLAY_SPEED + "x慢）" : "回到起点（插值流式）");
+      motionSendTimer = setInterval(motionSendTick, MOTION_SEND_MS);
       motionRafId = requestAnimationFrame(motionTick);
     }
     function motionStopPlayback() {
       motionState.playing = false;
       if (motionRafId) { cancelAnimationFrame(motionRafId); motionRafId = null; }
+      if (motionSendTimer) { clearInterval(motionSendTimer); motionSendTimer = null; }
       renderMotionPointer();
     }
     function motionTick(now) {
       if (!motionState.playing) return;
-      const t = motionState.playStartPointer + motionState.playDir * (now - motionState.playStartWall);
+      const t = motionState.playStartPointer + motionState.playDir * (now - motionState.playStartWall) / MOTION_PLAY_SPEED;
       if (motionState.playDir > 0) {
-        const clips = motionState.clips.slice().sort((a,b) => a.start - b.start);
-        for (const c of clips) {
-          if (c.start < motionState.playStartPointer) continue;
-          if (!motionState.triggered.has(c.id) && t >= c.start) { motionState.triggered.add(c.id); motionSendClip(c, 1); }
-        }
         if (t >= motionState.durationMs) { motionSetPointer(motionState.durationMs); motionStopPlayback(); log("播放完成"); return; }
       } else {
-        const clips = motionState.clips.filter(c => motionState.reversePlan[c.id]).sort((a,b) => motionState.reversePlan[b.id].triggerT - motionState.reversePlan[a.id].triggerT);
-        for (const c of clips) {
-          const plan = motionState.reversePlan[c.id]; if (!plan) continue;
-          if (!motionState.reversed.has(c.id) && t <= plan.triggerT) { motionState.reversed.add(c.id); motionSendClip(c, -1); }
-        }
         if (t <= 0) { motionSetPointer(0); motionStopPlayback(); log("已回到起点"); return; }
       }
       motionSetPointer(t);
       motionRafId = requestAnimationFrame(motionTick);
+    }
+    function motionSendTick() {
+      if (!motionState.playing) return;
+      const pose = motionPoseAt(motionState.pointerMs);
+      const parts = [];
+      let changed = false;
+      for (const j of joints) {
+        const pulse = angleToPulse(j, pose[j.name]);
+        parts.push(j.servo_id, pulse);
+        if (!motionState.lastSentPulse || Math.abs((motionState.lastSentPulse[j.name] || 0) - pulse) > 1) changed = true;
+      }
+      if (!changed) return;
+      motionState.lastSentPulse = {};
+      for (const j of joints) motionState.lastSentPulse[j.name] = angleToPulse(j, pose[j.name]);
+      parts.push(MOTION_SEND_MS);
+      const frame = "$ARM:MULTI," + parts.join(",") + "!";
+      log("TX " + frame);
+      writeFrame(frame, true).catch(e => log("发送失败: " + e.message));
     }
     function motionPlayForward() {
       if (motionState.playing) { motionStopPlayback(); return; }
@@ -1018,6 +1218,49 @@
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
       log("已导出 " + data.clips.length + " 个动作帧 → " + a.download);
     }
+    function motionImport() {
+      const input = $("motionImportFile");
+      input.value = "";
+      input.click();
+    }
+    function motionImportFileChange() {
+      const input = $("motionImportFile");
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (!data || data.format !== "lunar-rover-arm-action" || !Array.isArray(data.clips)) {
+            log("导入失败：不是有效的动作文件（缺少 format/clips）");
+            return;
+          }
+          motionStopPlayback();
+          const validTracks = new Set(joints.map(j => j.name));
+          const clips = [];
+          for (const e of data.clips) {
+            const track = String(e.track);
+            if (!validTracks.has(track)) { log("导入跳过未知轨道: " + track); continue; }
+            const j = joint(track);
+            const start = Math.max(0, motionSnap(Number(e.start_ms) || 0));
+            const duration = motionSnapDur(Number(e.duration_ms) || MOTION_DEFAULT_DUR);
+            const targetPulse = clamp(Math.round(Number(e.target_pulse) || angleToPulse(j, HOME_ANGLES[track])), j.min_pulse, j.max_pulse);
+            const targetAngle = pulseToAngle(j, targetPulse);
+            clips.push({ id: "c" + (++motionClipSeq), track, start, duration, targetAngle, targetPulse });
+          }
+          motionState.clips = clips;
+          motionState.selectedClipId = null;
+          motionState.pointerMs = 0;
+          if (data.meta && data.meta.name) $("motionNameInput").value = data.meta.name;
+          motionUpdateDuration();
+          renderMotion(); syncMotionEdit(); motionSetPointer(0);
+          log("导入成功：" + clips.length + " 个动作帧" + (data.meta && data.meta.name ? "（" + data.meta.name + "）" : ""));
+        } catch (err) {
+          log("导入失败：JSON 解析错误 " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
 
     function bind() {
       $("connectBtn").onclick = connectSerial; $("disconnectBtn").onclick = disconnectSerial;
@@ -1036,6 +1279,7 @@
       $("steerCenterBtn").onclick = () => { for (let i=0;i<4;i++) $(`steerAng${i}`).value = 0; sendSteerAngles([0,0,0,0]).catch(e=>log(e.message)); };
       $("steerZeroBtn").onclick = () => writeFrame("$ZERO!").catch(e=>log(e.message));
       $("steerStopBtn").onclick = () => writeFrame("$STOP!").catch(e=>log(e.message));
+      $("steerCalBtn").onclick = () => calibrateSteering().catch(e=>log(e.message));
       $("steerSendSpeedsBtn").onclick = () => sendSteerSpeeds().catch(e=>log(e.message));
       $("steerRawBtn").onclick = () => writeFrame($("steerRawInput").value.trim()).catch(e=>log(e.message));
       $("angleSlider").oninput = e => setTargetAngle(e.target.value); $("angleInput").oninput = e => setTargetAngle(e.target.value); $("pulseInput").oninput = e => setTargetPulse(e.target.value);
@@ -1059,6 +1303,8 @@
       $("motionRewindBtn").onclick = motionPlayReverse;
       $("motionStopBtn").onclick = motionStopPlayback;
       $("motionExportBtn").onclick = motionExport;
+      $("motionImportBtn").onclick = motionImport;
+      $("motionImportFile").onchange = motionImportFileChange;
       $("motionClearBtn").onclick = motionClearAll;
       $("motionEditAngle").oninput = () => { const c = motionClip(motionState.selectedClipId); if (!c) return; const j = joint(c.track); $("motionEditPulse").value = angleToPulse(j, Number($("motionEditAngle").value)); };
       $("motionEditPulse").oninput = () => { const c = motionClip(motionState.selectedClipId); if (!c) return; const j = joint(c.track); $("motionEditAngle").value = pulseToAngle(j, Number($("motionEditPulse").value)).toFixed(1); };
@@ -1072,6 +1318,8 @@
         armMoveManyAngles(HOME_ANGLES, Number($("ikTimeInput").value)).catch(e=>log(e.message));
       };
       $("ikKeyboardBtn").onclick = () => { armState.keyboardIk=!armState.keyboardIk; pressedKeys.clear(); $("ikKeyboardBtn").textContent=`键盘控制：${armState.keyboardIk?"开":"关"}`; };
+      bindArm3DOrbit($("ikCanvas"), ikView, () => drawIk(armState.ik.lastSolution));
+      bindArm3DOrbit($("motionCanvas"), motionView, () => drawMotion3D());
       window.onkeydown = e => { if (armState.mode === "motion") { motionKeydown(e); return; } if(armState.mode !== "ik" || !armState.keyboardIk) return; const active=document.activeElement; if(active && ["INPUT","SELECT","TEXTAREA"].includes(active.tagName)) return; const key=e.key.toLowerCase(); if(["w","s","a","d"," ","shift","arrowup","arrowdown","arrowleft","arrowright"].includes(key)){ pressedKeys.add(key); e.preventDefault(); } };
       window.onkeyup = e => pressedKeys.delete(e.key.toLowerCase());
       ikLoopTimer = setInterval(ikTick, IK_LOOP_INTERVAL_MS);
