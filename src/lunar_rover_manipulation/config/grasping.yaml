@@ -1,0 +1,300 @@
+target_detector:
+  ros__parameters:
+    image_topic: /camera/color/image_raw/compressed
+    image_is_compressed: true
+    # auto uses custom Ultralytics weights when model_path exists; otherwise it
+    # falls back to saturated-color segmentation for initial commissioning.
+    backend: auto
+    model_path: ""
+    device: "0"
+    confidence_threshold: 0.45
+    allowed_classes: [wood_block, artificial_object, rock_sample]
+    max_inference_hz: 8.0
+    min_area_pixels: 300
+    min_saturation: 105
+    min_value: 55
+    max_area_fraction: 0.35
+    # Pixel ROIs [x, y, width, height] to suppress fixed camera self-occlusion
+    # from the high-saturation gripper.
+    ignore_rois: [0, 0, 40, 120, 90, 0, 90, 90, 185, 0, 120, 85, 610, 0, 30, 85]
+
+target_fusion_detector:
+  ros__parameters:
+    image_topic: /camera/color/image_raw/compressed
+    image_is_compressed: true
+    camera_info_topic: /camera/color/camera_info
+    draw_work_center: true
+    # Temporarily use the manually measured RGB tool-center pixel for visual servo reference.
+    # TF projection remains available when this switch is disabled.
+    use_manual_tool_center_pixel: true
+    manual_tool_center_pixel: [420, 1]
+    work_center_frame: handeye_tool_frame
+    # Diagnostic projection published by the state machine. x/y are RGB pixels;
+    # z is camera depth. The fusion overlay draws it as a yellow target point.
+    tf_target_pixel_topic: /grasp/tf_target_pixel
+    tf_timeout_sec: 0.03
+    max_inference_hz: 4.0
+    min_area_pixels: 300
+    min_saturation: 105
+    min_value: 55
+    max_area_fraction: 0.35
+    max_candidates: 6
+    # SAM prompt: enlarge the locked HSV seed by only 10%, not 35%, to avoid
+    # selecting the surrounding ground/background as the mask.
+    crop_expand_ratio: 0.10
+    ignore_rois: [0, 0, 40, 120, 90, 0, 90, 90, 185, 0, 120, 85, 610, 0, 30, 85]
+    open_vocab_enabled: false
+    open_vocab_model: yolov8s-world.pt
+    open_vocab_prompts:
+      - cube
+      - block
+      - small cube
+      - toy block
+      - artificial object
+    open_vocab_confidence: 0.20
+    open_vocab_min_iou: 0.10
+    open_vocab_imgsz: 320
+    open_vocab_max_candidates: 6
+    # After YOLOWorld confirms a target, locked_hsv and precise_hsv_sam only
+    # accept HSV candidates close to that target's median HSV profile.
+    lock_hsv_hue_tolerance: 10.0
+    lock_hsv_saturation_tolerance: 55.0
+    lock_hsv_value_tolerance: 85.0
+    sam_enabled: true
+    sam_model: sam2_t.pt
+    # Keep HSV localisation responsive while a single worker refines masks with SAM.
+    sam_async_enabled: true
+    precise_sam_period_sec: 1.0
+    # A SAM box prompt can select the surrounding ground/background. Keep a
+    # result only when it substantially overlaps the locked HSV seed and stays
+    # compact relative to that seed.
+    sam_min_seed_coverage: 0.45
+    sam_min_seed_iou: 0.10
+    sam_max_area_ratio_to_seed: 8.0
+    sam_max_area_fraction: 0.20
+    sam_apply_min_iou: 0.10
+    sam_apply_max_center_distance_frac: 0.75
+    initial_grasp_mode: idle
+
+grasp_target_localizer:
+  ros__parameters:
+    depth_topic: /camera/depth/image_raw
+    camera_info_topic: /camera/color/camera_info
+    mask_topic: /perception/target_mask
+    detection_topic: /perception/target_detection
+    base_frame: base_link
+    # Gemini 335L starts at 0.17 m officially; below that close-range depth is
+    # not reliable enough for grasp-point localization.
+    min_depth_m: 0.17
+    max_depth_m: 1.20
+    sync_tolerance_sec: 0.08
+    tf_timeout_sec: 0.12
+    min_target_points: 30
+    # Physical objects are <= 50 mm. The wider 90 mm gate leaves margin for
+    # RGB-depth registration and mask boundary noise while rejecting walls.
+    max_target_extent_m: 0.09
+    support_ring_pixels: 25
+    ground_normal_min_z: 0.70
+    wall_normal_max_z: 0.35
+    ground_height_fallback_m: 0.18
+
+active_search:
+  ros__parameters:
+    enabled: true
+    auto_trigger_grasp: false
+    periodic_sweep_enabled: false
+    confirmation_frames: 5
+    confirmation_window_sec: 1.2
+    max_position_spread_m: 0.035
+    min_confidence: 0.45
+    memory_merge_distance_m: 0.12
+    retrigger_cooldown_sec: 20.0
+    stationary_speed_mps: 0.02
+    stationary_before_sweep_sec: 3.0
+    startup_delay_sec: 20.0
+    sweep_interval_sec: 30.0
+    sweep_dwell_sec: 1.0
+    # These are conservative placeholders. Calibrate them before enabling the
+    # periodic sweep on the physical arm.
+    search_left: [0.65, 0.20, -0.45, 0.25]
+    search_center: [0.0, 0.20, -0.45, 0.25]
+    search_right: [-0.65, 0.20, -0.45, 0.25]
+
+foundationpose_input_adapter:
+  ros__parameters:
+    color_topic: /camera/color/image_raw
+    depth_topic: /camera/depth/image_raw
+    camera_info_topic: /camera/color/camera_info
+    mask_topic: /perception/target_mask
+    output_namespace: /foundationpose
+    sync_tolerance_sec: 0.10
+
+foundationpose_result_bridge:
+  ros__parameters:
+    input_topic: /foundationpose/output
+    output_topic: /perception/target_pose_precise
+    base_frame: base_link
+    rough_observation_max_age_sec: 1.0
+    rough_match_distance_m: 0.10
+    object_class_id: ""
+    tf_timeout_sec: 0.12
+
+grasp_coordinator:
+  ros__parameters:
+    target_samples: 5
+    servo_samples: 3
+    chassis_settle_sec: 1.0
+    target_timeout_sec: 8.0
+    action_timeout_sec: 45.0
+    visual_servo_enabled: true
+    servo_coarse_tolerance_m: 0.018
+    servo_fine_tolerance_m: 0.008
+    servo_max_iterations: 2
+    precise_preference_sec: 0.75
+    pregrasp_height_m: 0.08
+    fine_standoff_m: 0.04
+    grasp_z_offset_m: 0.015
+    lift_height_m: 0.12
+    wall_pregrasp_standoff_m: 0.08
+    wall_fine_standoff_m: 0.04
+    wall_grasp_offset_m: 0.005
+    wall_retreat_m: 0.10
+    max_wall_yaw_mismatch_deg: 35.0
+    gripper_open_m: 0.040
+    gripper_closed_m: 0.004
+    planning_time_sec: 5.0
+    velocity_scaling: 0.20
+    acceleration_scaling: 0.15
+    shoulder_x_m: 0.13
+    shoulder_z_m: 0.13145
+    upper_arm_m: 0.11391
+    forearm_m: 0.11000
+    tool_m: 0.15601
+
+grasp_state_machine:
+  ros__parameters:
+    # Unconfirmed HSV proposals keep this class_id prefix until YOLOWorld
+    # confirms them. Locking requires YOLO confirmation; pure HSV never locks.
+    hsv_class_id: hsv_candidate
+    lock_confirmation_frames: 3
+    lock_center_spread_frac: 0.5
+    lock_window_sec: 3.0
+    target_timeout_sec: 1.5
+    observation_max_age_sec: 0.8
+    camera_frame: camera_color_optical_frame
+    # Publish the active base-frame TF target projected to RGB pixels.
+    tf_target_pixel_topic: /grasp/tf_target_pixel
+    # Only use target pose samples while the target is far enough for reliable
+    # Gemini 335L depth. Close-range servo should use image feedback instead.
+    # Cumulative fixed batches. YOLO lock automatically moves the arm through
+    # four J1/J4 square corners around the recognized pose, then each settled
+    # corner contributes one batch.
+    pose_average_pose_count: 4
+    pose_average_samples_per_pose: 10
+    pose_average_pose_change_deg: 8.0
+    pose_average_settle_sec: 0.8
+    pose_average_joint_stable_deg: 0.6
+    pose_average_min_camera_depth_m: 0.20
+    pose_average_max_camera_depth_m: 1.20
+    pose_average_max_spread_m: 0.05
+    auto_sampling_enabled: true
+    auto_sampling_j1_offset_deg: 8.0
+    auto_sampling_j4_offset_deg: 8.0
+    auto_sampling_motion_duration_sec: 1.0
+    auto_sampling_motion_margin_sec: 0.15
+    # After YOLO lock, first center the locked HSV target in RGB using the
+    # existing calibrated J1/J4 image-gimbal direction before sampling.
+    auto_center_before_sampling_enabled: true
+    auto_center_pixel: [320.0, 200.0]
+    auto_center_deadband_px: 12.0
+    auto_center_motion_duration_sec: 0.5
+    auto_center_motion_margin_sec: 0.15
+    auto_center_max_steps: 12
+    auto_center_timeout_sec: 15.0
+    # When all four samples pass workspace checking, trigger the existing
+    # direct-TF grasp sequence exactly once.
+    auto_execute_increment_enabled: true
+    tf_timeout_sec: 0.12
+    workspace_center_x_m: 0.13
+    workspace_center_y_m: 0.0
+    workspace_center_z_m: 0.056
+    workspace_radius_m: 0.45537
+    # 2026-08-30 legacy box thresholds retained only as historical reference.
+    workspace_x_min_m: 0.18
+    workspace_x_max_m: 0.30
+    workspace_abs_y_max_m: 0.08
+    workspace_z_min_m: -0.15
+    workspace_z_max_m: 0.35
+    arm_joint_names: [arm_joint1, arm_joint2, arm_joint3, arm_joint4, arm_joint5]
+    arm_zero_degrees: [90.0, 180.0, 135.0, 135.0, 0.0]
+    arm_ros_directions: [1.0, -1.0, 1.0, 1.0, 1.0]
+    base_to_shoulder_m: 0.07545
+    upper_arm_m: 0.11391
+    forearm_m: 0.11000
+    tool_m: 0.15601
+    gripper_stroke_m: 0.045
+    increment_step_m: 0.05
+    increment_duration_sec: 1.5
+    increment_goal_tolerance_m: 0.025
+    tf_direct_target_enabled: false
+    tf_direct_target_duration_sec: 2.0
+    # Pure TF-direct pre-stage for repeatable grasp tests.
+    tf_direct_pre_gripper_reset_enabled: false
+    tf_direct_pre_gripper_deg: 45.0
+    tf_direct_pre_gripper_duration_sec: 1.0
+    # After J1 is complete, recompute from its new tool point and go this far
+    # beyond the base-frame target along the current target direction.
+    tf_direct_overshoot_m: 0.035
+    increment_sample_log_path: generated/logs/grasp_increment_samples.jsonl
+    # Applied only when tf_direct_target_enabled is true.  Positive J1 is
+    # rover-left under the calibrated joint convention.
+    tf_direct_j1_offset_deg: 0.0
+    # Positive means upward in the camera display.  Since the Gemini image is
+    # inverted relative to J4, this is applied as a negative raw J4 angle.
+    tf_direct_j4_image_up_offset_deg: 0.0
+    # Experimental post-reach sequence. Enable only for the current pure
+    # TF-direct grasp test: TF complete -> 1s -> J5 -> 1s -> J2 home.
+    tf_direct_post_sequence_enabled: false
+    tf_direct_post_tf_settle_sec: 1.0
+    tf_direct_post_gripper_deg: 27.0
+    tf_direct_post_gripper_duration_sec: 1.0
+    tf_direct_post_j2_deg: 180.0
+    tf_direct_post_j2_duration_sec: 1.0
+    # For a TF-direct reach, J1 moves first.  Current H7 joint states are
+    # command-shadowed on TX, so release the other joints only after J1's
+    # commanded duration plus this completion margin.
+    tf_direct_j1_completion_margin_sec: 0.15
+    # H7 does not provide a reliable per-command completion acknowledgement
+    # through the ROS trajectory topic.  For the experimental long TF-direct
+    # command, repeat the identical absolute goal three times to tolerate a
+    # single serial/H7 parse loss (for example J4 not receiving its target).
+    tf_direct_target_repeat_count: 3
+    tf_direct_target_repeat_interval_sec: 0.12
+    increment_min_xyz: [-0.32, -0.32, -0.18]
+    increment_max_xyz: [0.42, 0.32, 0.42]
+    # Valid RGB observations lead every manual increment.  The averaged TF
+    # target is only a fallback, corrected in the camera image plane whenever
+    # vision and TF disagree.  Lower gain if the learned fallback bias changes
+    # too fast between manual steps.
+    visual_servo_enabled: true
+    visual_servo_tool_pixel: [420.0, 1.0]
+    visual_servo_depth_weight: 0.70
+    visual_servo_max_pixel_error: 600.0
+    visual_servo_max_age_sec: 0.8
+    tf_plane_correction_gain: 0.12
+    tf_plane_correction_limit: 0.75
+    # Experimental alternative: TF supplies the 5 cm approach step, while
+    # image x/y error adds only small J1/J4 angle corrections.
+    gimbal_servo_enabled: false
+    gimbal_tf_approach_enabled: true
+    gimbal_j1_gain_deg_per_px: 0.05
+    gimbal_j4_gain_deg_per_px: 0.05
+    gimbal_j1_sign: 1.0
+    gimbal_j4_sign: -1.0
+    gimbal_pixel_deadband: 8.0
+    gimbal_phase_delay_sec: 0.5
+    gimbal_correction_duration_sec: 0.5
+    # At or beyond 33.8 cm, use the full per-pixel gain. Linearly attenuate
+    # it to zero at 5 cm, using the current observed camera depth.
+    gimbal_gain_reference_depth_m: 0.338
+    gimbal_gain_zero_depth_m: 0.05

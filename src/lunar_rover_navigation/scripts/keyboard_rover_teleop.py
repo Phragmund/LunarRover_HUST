@@ -18,6 +18,7 @@ import time
 import rclpy
 from geometry_msgs.msg import TwistStamped
 from rclpy.node import Node
+from std_msgs.msg import Empty
 
 
 HELP = """\
@@ -27,6 +28,7 @@ Lunar rover keyboard teleop
   Q/E : in-place left / right rotation
   A/D : Ackermann steering (turn while driving)
   Left Shift : 2x drive power while held
+  C : start autonomous grasping
   SPACE : stop
   Ctrl-C : quit
 
@@ -41,6 +43,7 @@ KEY_CODES = {
     30: "a",
     31: "s",
     32: "d",
+    46: "c",
     42: "left_shift",
     57: " ",
 }
@@ -209,12 +212,22 @@ class KeyboardRoverTeleop(Node):
         )
 
         self.publisher = self.create_publisher(TwistStamped, self.command_topic, 1)
+        self.grasp_trigger_topic = self.declare_parameter(
+            "grasp_trigger_topic", "/grasp/trigger"
+        ).value
+        self.grasp_trigger_publisher = self.create_publisher(
+            Empty, self.grasp_trigger_topic, 1
+        )
         self.held_keys = set()
         self.last_mode = ""
         self.last_print = 0.0
 
     def set_key_state(self, key, pressed):
         key = key.lower()
+        if key == "c" and pressed:
+            self.grasp_trigger_publisher.publish(Empty())
+            self.get_logger().info("C: autonomous grasp requested")
+            return
         if key in DRIVE_KEYS or key in MODIFIER_KEYS:
             if pressed:
                 self.held_keys.add(key)

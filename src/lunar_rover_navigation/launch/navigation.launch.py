@@ -5,6 +5,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -25,10 +26,12 @@ def generate_launch_description():
                 default_value=nav2_params,
                 description="Nav2 parameters for online mapping validation.",
             ),
+            DeclareLaunchArgument("use_sim_time", default_value="true"),
+            DeclareLaunchArgument("run_command_adapters", default_value="true"),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(nav2_launch),
                 launch_arguments={
-                    "use_sim_time": "true",
+                    "use_sim_time": LaunchConfiguration("use_sim_time"),
                     "autostart": "false",
                     "params_file": LaunchConfiguration("params_file"),
                     "use_composition": "False",
@@ -50,7 +53,7 @@ def generate_launch_description():
                         name="nav2_lifecycle_bringup",
                         parameters=[
                             {
-                                "use_sim_time": True,
+                                "use_sim_time": LaunchConfiguration("use_sim_time"),
                                 "wait_timeout": 90.0,
                                 "call_timeout": 20.0,
                             }
@@ -65,6 +68,7 @@ def generate_launch_description():
                 name="twist_stamper",
                 parameters=[stamper_config],
                 output="screen",
+                condition=IfCondition(LaunchConfiguration("run_command_adapters")),
             ),
             Node(
                 package="lunar_rover_navigation",
@@ -72,6 +76,7 @@ def generate_launch_description():
                 name="chassis_cmd_mux",
                 parameters=[stamper_config],
                 output="screen",
+                condition=IfCondition(LaunchConfiguration("run_command_adapters")),
             ),
         ]
     )

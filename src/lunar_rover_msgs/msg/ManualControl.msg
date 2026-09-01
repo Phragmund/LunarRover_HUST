@@ -13,6 +13,7 @@
 # 按键约定（0/1 电平，运动解算节点做上升沿触发）：
 #   relax = R 键：断开所有转矩输出（3508 停止、舵轮/机械臂取消位置保持）
 #   rearm = T 键：重启舵轮/机械臂位置保持，舵轮当前位置设零
+#   calibrate = C 键/标定按钮：触发四轮机械限位标定（单次触发，下位机自动跑）
 int16 lx
 int16 ly
 int16 rx
@@ -20,3 +21,5 @@ int16 ry
 bool relax
 bool rearm
 bool boost
+bool calibrate
+bool auto_takeover  # true=电脑(Nav2)接管底盘, false=手机手动接管

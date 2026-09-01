@@ -1,0 +1,16 @@
+motion_solver:
+  ros__parameters:
+    arm_joint_ids: [1, 2, 3, 4, 5]
+    arm_joint_names: [arm_joint1, arm_joint2, arm_joint3, arm_joint4, arm_joint5]
+    # ROS zero corresponds to physical Home: 90/180/135/135 degrees.
+    arm_zero_degrees: [90.0, 180.0, 135.0, 135.0, 0.0]
+    arm_ros_directions: [1.0, -1.0, 1.0, 1.0, 1.0]
+    arm_min_degrees: [0.0, 0.0, 0.0, 0.0, 0.0]
+    arm_max_degrees: [270.0, 270.0, 270.0, 270.0, 90.0]
+    arm_min_pulses: [500, 500, 500, 500, 500]
+    arm_max_pulses: [2500, 2500, 2500, 2500, 2500]
+    arm_inverted: [false, true, false, true, false]
+    gripper_stroke_m: 0.045
+    arm_read_period: 0.10
+    arm_min_segment_ms: 120
+    arm_max_segment_ms: 5000

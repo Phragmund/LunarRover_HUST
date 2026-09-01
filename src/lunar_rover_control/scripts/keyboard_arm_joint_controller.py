@@ -244,24 +244,27 @@ class KeyboardArmJointController(Node):
 
         # Joint limits and keyboard step rates. Limits are intentionally kept in
         # sync with lunar_rover.urdf.xacro and the configured controllers.
-        self.joint_limits = [
-            list(row)
-            for row in self.declare_parameter(
-                "joint_limits",
-                [
-                    [-math.pi / 2.0, 1.0],
-                    [-1.5, 1.5],
-                    [-2.0, 2.0],
-                    [-1.5, 1.5],
-                    [0.0, 0.045],
-                ],
-            ).value
-        ]
-        if len(self.joint_limits) != 5:
+        # ROS parameters do not support nested arrays, so the 5 [lower, upper]
+        # rows are stored as a flat list of 10 floats and reshaped here.
+        limits_flat = self.declare_parameter(
+            "joint_limits",
+            [
+                -math.pi / 2.0, 1.0,
+                -1.5, 1.5,
+                -2.0, 2.0,
+                -1.5, 1.5,
+                0.0, 0.045,
+            ],
+        ).value
+        if len(limits_flat) != 10:
             raise ValueError(
-                f"joint_limits must contain exactly 5 [lower, upper] rows, got "
-                f"{self.joint_limits!r}"
+                f"joint_limits must be a flat list of 10 floats "
+                f"(5 [lower, upper] rows), got {limits_flat!r}"
             )
+        self.joint_limits = [
+            [float(limits_flat[i]), float(limits_flat[i + 1])]
+            for i in range(0, 10, 2)
+        ]
         for row in self.joint_limits:
             if len(row) != 2 or not row[0] <= row[1]:
                 raise ValueError(f"invalid joint limit row {row!r}")

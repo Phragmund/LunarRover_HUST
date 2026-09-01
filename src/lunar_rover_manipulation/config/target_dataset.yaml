@@ -1,0 +1,10 @@
+# Ultralytics segmentation dataset layout. Change path before training.
+path: datasets/lunar_targets
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: wood_block
+  1: artificial_object
+  2: rock_sample

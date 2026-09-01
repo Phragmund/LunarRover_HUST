@@ -32,6 +32,7 @@ def generate_launch_description():
             DeclareLaunchArgument("run_camera", default_value="true"),
             DeclareLaunchArgument("lidar_frame_id", default_value="livox_frame"),
             DeclareLaunchArgument("lidar_output_topic", default_value="/livox/points"),
+            DeclareLaunchArgument("imu_output_topic", default_value="/livox/imu"),
             Node(
                 package="livox_ros_driver2",
                 executable="livox_ros_driver2_node",
@@ -39,7 +40,8 @@ def generate_launch_description():
                 output="screen",
                 condition=IfCondition(LaunchConfiguration("run_lidar")),
                 remappings=[
-                    ("/livox/lidar", LaunchConfiguration("lidar_output_topic"))
+                    ("/livox/lidar", LaunchConfiguration("lidar_output_topic")),
+                    ("/livox/imu", LaunchConfiguration("imu_output_topic")),
                 ],
                 parameters=[
                     {

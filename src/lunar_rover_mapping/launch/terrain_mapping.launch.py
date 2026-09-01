@@ -24,13 +24,17 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "fusion_params_file", default_value=str(default_fusion_params)
             ),
+            DeclareLaunchArgument("use_sim_time", default_value="true"),
             DeclareLaunchArgument("enable_cloud_fusion", default_value="false"),
             DeclareLaunchArgument("enable_elevation_grid", default_value="false"),
             Node(
                 package="lunar_rover_mapping",
                 executable="multisensor_cloud_fusion_node.py",
                 name="multisensor_cloud_fusion",
-                parameters=[LaunchConfiguration("fusion_params_file")],
+                parameters=[
+                    LaunchConfiguration("fusion_params_file"),
+                    {"use_sim_time": LaunchConfiguration("use_sim_time")},
+                ],
                 output="screen",
                 condition=IfCondition(LaunchConfiguration("enable_cloud_fusion")),
             ),
@@ -41,6 +45,7 @@ def generate_launch_description():
                 parameters=[
                     LaunchConfiguration("params_file"),
                     {
+                        "use_sim_time": LaunchConfiguration("use_sim_time"),
                         "input_topic": PythonExpression(
                             [
                                 "'/localization/cloud_fused' if '",
@@ -60,6 +65,7 @@ def generate_launch_description():
                 parameters=[
                     LaunchConfiguration("elevation_params_file"),
                     {
+                        "use_sim_time": LaunchConfiguration("use_sim_time"),
                         "input_topic": PythonExpression(
                             [
                                 "'/localization/cloud_fused' if '",

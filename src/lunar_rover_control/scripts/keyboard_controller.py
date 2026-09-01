@@ -34,6 +34,7 @@ KEY_CODES = {
     19: "r",
     20: "t",
     30: "a",
+    46: "c",
     31: "s",
     32: "d",
     42: "left_shift",
@@ -185,7 +186,7 @@ class KeyboardController(Node):
         if key == " ":
             if pressed:
                 self.held.difference_update(DRIVE_KEYS)
-        elif key in DRIVE_KEYS or key in ("r", "t", "left_shift"):
+        elif key in DRIVE_KEYS or key in ("r", "t", "c", "left_shift"):
             if pressed:
                 self.held.add(key)
             else:
@@ -203,6 +204,7 @@ class KeyboardController(Node):
         msg.relax = "r" in self.held
         msg.rearm = "t" in self.held
         msg.boost = "left_shift" in self.held
+        msg.calibrate = "c" in self.held
         self.publisher.publish(msg)
 
     def run(self):

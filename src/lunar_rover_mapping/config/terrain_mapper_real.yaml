@@ -1,0 +1,70 @@
+terrain_mapper:
+  ros__parameters:
+    use_sim_time: false
+    input_topic: /localization/cloud_registered
+    traversability_topic: /terrain/traversability
+    diagnostics_topic: /terrain/diagnostics
+    map_frame: map
+    base_frame: base_link
+    sensor_origin_frame: base_link
+    resolution: 0.05
+    width_cells: 440
+    height_cells: 320
+    origin_x: -11.0
+    origin_y: -8.0
+    min_z: -0.50
+    # The maze has a transparent LiDAR-visible ceiling (laser_retro=1.0) at
+    # 1.0 m above the floor.  In THIS map frame (rover spawn at z=0.45,
+    # FAST-LIO z origin ~0.215 m above the floor) that puts the floor at
+    # z~-0.215 and the ceiling at z~+0.785.  With max_z=1.80 the ceiling hits
+    # land in the SAME cells as the ground, and with a sparse 11-line LiDAR
+    # many cells catch ONLY ceiling points -> mean_z=+0.785 vs neighbouring
+    # floor cells at -0.215 -> fake 85 deg slope -> flat open floor marked
+    # LETHAL ("平地被打成紫").  Capping max_z below the ceiling (0.60 < 0.785)
+    # drops the ceiling hits entirely.  The 1 m walls are still detected via
+    # their face points (floor .. +0.60, height_range>0.28) and the 7 cm
+    # obstacles stay visible.  NOTE: this value is map-frame z; it must sit
+    # above the wall-face band but below the ceiling for the current spawn.
+    max_z: 1.00
+    min_points_per_cell: 2
+    cautious_step_height: 0.12
+    lethal_step_height: 0.28
+    max_slope_deg: 16.0
+    lethal_slope_deg: 34.0
+    roughness_warn: 0.06
+    # Compare neighbour slopes at a 2-cell baseline (0.10 m, 0.141 m diagonal)
+    # so FAST-LIO2 z noise between adjacent 5 cm cells is not interpreted as a
+    # lethal 34+ degree slope across flat cave floor.
+    slope_baseline_cells: 2
+    slope_weight: 0.6
+    ceiling_filter_enabled: false
+    ceiling_filter_bin_size: 0.05
+    ceiling_filter_min_gap: 0.40
+    # A sparse 11-line LiDAR often puts exactly ONE ground hit in a cell (plus
+    # the ceiling above it).  Requiring >=2 points per cluster made the filter
+    # reject those cells, returning RAW stats and leaking the ceiling into
+    # height_range -> false lethal on flat floor.  min_cluster_points=1 lets a
+    # single-point ground cluster survive the filter as a safety net.
+    ceiling_filter_min_cluster_points: 1
+    ceiling_filter_ground_cluster_max_height: 0.45
+    unknown_is_risky: false
+    max_points_per_cloud: 60000
+    publish_period: 0.5
+    rolling_window: false
+    recenter_margin_m: 6.0
+    cell_decay_time: 0.0
+    raytrace_free_space: true
+    raytrace_stride: 6
+    raytrace_max_range: 8.0
+    raytrace_endpoint_margin: 0.20
+    self_filter_enabled: true
+    # Expanded bounding box.  Vehicle wheelbase 0.52 m, track 0.50 m,
+    # wheel radius 0.0625 m.  The box must fully enclose the rover body
+    # plus wheels so that self-points are not misinterpreted as terrain.
+    self_filter_min_x: -0.40
+    self_filter_max_x: 0.40
+    self_filter_min_y: -0.35
+    self_filter_max_y: 0.35
+    self_filter_min_z: -0.50
+    self_filter_max_z: 0.85
+    clear_robot_footprint: true

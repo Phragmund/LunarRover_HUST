@@ -16,6 +16,7 @@
   <exec_depend>lunar_rover_exploration</exec_depend>
   <exec_depend>lunar_rover_localization</exec_depend>
   <exec_depend>lunar_rover_mapping</exec_depend>
+  <exec_depend>lunar_rover_manipulation</exec_depend>
   <exec_depend>lunar_rover_navigation</exec_depend>
   <exec_depend>lunar_rover_sensors</exec_depend>
   <exec_depend>lunar_rover_simulation</exec_depend>

@@ -17,5 +17,17 @@ third_party/
 .vscode/
 local_backups/
 
+# Local inference/runtime assets. Obtain weights through the documented setup
+# scripts instead of committing multi-GB environments or model checkpoints.
+.venv_yolo/
+weights/
+generated/
+*.pt
+rover_web_console_windows.zip
+
+# Vendor H7 IDE exports contain large prebuilt CMSIS libraries and tool output.
+src/lunar_rover_hardware/Lunarover_v1.0_0821/
+src/lunar_rover_hardware/Lunarover_v1.0_0827/
+
 # Official vendor binaries/manuals (download on demand, see docs/livox_mid360_vendor_index.md)
 docs/vendor/

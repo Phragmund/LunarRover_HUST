@@ -70,6 +70,8 @@ HTML_PAGE = """<!DOCTYPE html>
   #estop { background: #dc2626; }
   #estop.latched { box-shadow: inset 0 0 0 3px #fca5a5; }
   #arm { background: #15803d; }
+  #autoBtn { background: #1e293b; }
+  #autoBtn.on { background: #0e7490; box-shadow: inset 0 0 0 3px #67e8f9; }
   .note { width: 100%; max-width: 480px; color: #64748b; font-size: 12px; line-height: 1.7; margin-top: 12px; }
 </style>
 </head>
@@ -92,8 +94,14 @@ HTML_PAGE = """<!DOCTYPE html>
     <button id="arm">✅ 解除急停</button>
   </div>
   <div class="row">
+    <button id="autoBtn">💻 电脑接管</button>
+  </div>
+  <div class="row">
     <button id="relaxBtn" style="background:#b45309;">🔌 断开转矩 (R)</button>
     <button id="rearmBtn" style="background:#0e7490;">🔄 重启设零 (T)</button>
+  </div>
+  <div class="row">
+    <button id="calibBtn" style="background:#7c3aed;">🛠 标定四轮 (C)</button>
   </div>
   <div class="note">摇杆上下=前进/后退；左右=阿克曼转向（杆量越大转弯半径越小）。原地转向请按住左右按键。松手即停，切后台或断连自动停。</div>
   <script>
@@ -108,6 +116,7 @@ HTML_PAGE = """<!DOCTYPE html>
     var spinR = document.getElementById('spinR');
     var estopBtn = document.getElementById('estop');
     var armBtn = document.getElementById('arm');
+    var autoBtn = document.getElementById('autoBtn');
 
     var ws = null;
     function connect() {
@@ -124,6 +133,7 @@ HTML_PAGE = """<!DOCTYPE html>
             rxEl.textContent = m.rx;
             modeEl.textContent = m.estop ? 'ESTOP' : m.mode;
             estopBtn.classList.toggle('latched', !!m.estop);
+            autoBtn.classList.toggle('on', !!m.auto);
           }
         } catch (e) {}
       };
@@ -179,8 +189,10 @@ HTML_PAGE = """<!DOCTYPE html>
 
     estopBtn.addEventListener('click', function () { send({ t: 'estop' }); });
     armBtn.addEventListener('click', function () { send({ t: 'arm' }); });
+    autoBtn.addEventListener('click', function () { send({ t: 'toggle_auto' }); });
     document.getElementById('relaxBtn').addEventListener('click', function () { send({ t: 'relax' }); });
     document.getElementById('rearmBtn').addEventListener('click', function () { send({ t: 'rearm' }); });
+    document.getElementById('calibBtn').addEventListener('click', function () { send({ t: 'calibrate' }); });
 
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) {
@@ -231,6 +243,8 @@ class WebJoystickServer:
             "estop": False,
             "relax_pending": False,
             "rearm_pending": False,
+            "calibrate_pending": False,
+            "auto_takeover": False,
             "last_input": time.monotonic(),
             "last_disconnect": -1.0e9,
             "clients": 0,
@@ -289,8 +303,11 @@ class WebJoystickServer:
                 last_disconnect = self.state["last_disconnect"]
                 relax_pending = self.state["relax_pending"]
                 rearm_pending = self.state["rearm_pending"]
+                calibrate_pending = self.state["calibrate_pending"]
+                auto_takeover = self.state["auto_takeover"]
                 self.state["relax_pending"] = False
                 self.state["rearm_pending"] = False
+                self.state["calibrate_pending"] = False
 
             stale = (now - last_input) > self.deadman_timeout
             in_grace = (now - last_disconnect) < self.idle_grace_period
@@ -308,13 +325,16 @@ class WebJoystickServer:
                 message.relax = relax_pending
                 message.rearm = rearm_pending
                 message.boost = False
+                message.calibrate = calibrate_pending
+                message.auto_takeover = auto_takeover
                 self.publisher.publish(message)
 
             display_mode = mode if publishing else "idle"
 
             with self.lock:
                 self.state["last_published"] = {
-                    "lx": lx, "ly": ly, "rx": rx, "mode": display_mode, "estop": estop
+                    "lx": lx, "ly": ly, "rx": rx, "mode": display_mode, "estop": estop,
+                    "auto": auto_takeover,
                 }
 
             if display_mode != last_mode or now - last_log > 1.0:
@@ -364,6 +384,7 @@ class WebJoystickServer:
                 self.state["ny"] = 0.0
                 self.state["spin_left"] = False
                 self.state["spin_right"] = False
+                self.state["auto_takeover"] = False
             elif kind == "arm":
                 self.state["last_input"] = time.monotonic()
                 self.state["estop"] = False
@@ -377,6 +398,12 @@ class WebJoystickServer:
             elif kind == "rearm":
                 self.state["last_input"] = time.monotonic()
                 self.state["rearm_pending"] = True
+            elif kind == "calibrate":
+                self.state["last_input"] = time.monotonic()
+                self.state["calibrate_pending"] = True
+            elif kind == "toggle_auto":
+                self.state["last_input"] = time.monotonic()
+                self.state["auto_takeover"] = not self.state["auto_takeover"]
             elif kind == "heartbeat":
                 self.state["last_input"] = time.monotonic()
 

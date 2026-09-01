@@ -6,6 +6,8 @@
   <xacro:arg
     name="ros2_control_hardware_plugin"
     default="gz_ros2_control/GazeboSimSystem"/>
+  <xacro:arg name="arm_camera_xyz" default="0.04 0 0.065"/>
+  <xacro:arg name="arm_camera_rpy" default="0 -1.57079632679 0"/>
 
   <!-- Compact rover envelope: 0.54 m long x 0.40 m wide including wheels. -->
   <xacro:property name="track" value="0.345"/>
@@ -306,7 +308,7 @@
   <joint name="mid360_joint" type="fixed">
     <parent link="sensor_mast_link"/>
     <child link="mid360_link"/>
-    <origin xyz="0 0 0.155" rpy="0 ${35.0 * pi / 180.0} 0"/>
+    <origin xyz="0 0 0.155" rpy="0 ${45.0 * pi / 180.0} 0"/>
   </joint>
   <link name="livox_frame"/>
   <joint name="livox_frame_joint" type="fixed">
@@ -336,10 +338,15 @@
     </collision>
     <xacro:box_inertial mass="0.097" x="0.030" y="0.090" z="0.025"/>
   </link>
+  <!--
+    Legacy coarse camera mount retained for the old Rover_0 simulation / MoveIt
+    path only. As of 2026-08-30, do not treat this mount as the real-arm
+    hand-eye truth; use the temporary hand-eye TF chain instead.
+  -->
   <joint name="gemini335_joint" type="fixed">
-    <parent link="base_link"/>
+    <parent link="arm_link4"/>
     <child link="gemini335_link"/>
-    <origin xyz="0.1975 0 0.005" rpy="0 0 0"/>
+    <origin xyz="$(arg arm_camera_xyz)" rpy="$(arg arm_camera_rpy)"/>
   </joint>
 
   <link name="gemini335_color_optical_frame"/>
@@ -368,38 +375,19 @@
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 
-  <!--
-    5-DOF manipulator + parallel gripper (J1 yaw, J2/J3/J4 pitch, J5 jaw prismatic).
-    The base is mounted on the rover deck directly behind and above the Gemini335
-    depth camera (camera rear face x=0.1825, top z=0.0175). J2 sits directly above
-    J1. J2->J3, J3->J4, and J4->gripper working centre are all 0.115 m.
-
-    Folded zero pose: with every joint angle at zero the arm lies compactly on the
-    left side of the deck (x=0.13, y in [0, 0.108], z in [0.066, 0.181]). This
-    keeps it behind the Gemini335 lens and below the Mid-360 field of view. The
-    total arm mass is kept far below the rover mass. J1 = -pi/2 swings the folded
-    arm forward for manipulation.
-  -->
+  <!-- Real arm geometry. ROS zero equals servo Home: 90/180/135/135 degrees. -->
   <xacro:property name="arm_base_x" value="0.13"/>
   <xacro:property name="arm_base_z" value="0.056"/>
-  <xacro:property name="arm_j1_to_j2_z" value="0.09"/>
-  <xacro:property name="arm_upper_length" value="0.115"/>
-  <xacro:property name="arm_forearm_length" value="0.115"/>
-  <xacro:property name="arm_tool_length" value="0.115"/>
-  <!-- Zero-pose link directions in the link1/link2/link3 frames. -->
-  <xacro:property name="arm_upper_y" value="0.10782"/>
-  <xacro:property name="arm_upper_z" value="-0.04"/>
-  <xacro:property name="arm_forearm_y" value="-0.10782"/>
-  <xacro:property name="arm_forearm_z" value="-0.04"/>
-  <xacro:property name="arm_tool_z" value="0.115"/>
-  <xacro:property name="arm_link2_pitch" value="${atan2(-arm_upper_z, arm_upper_y)}"/>
-  <xacro:property name="arm_link3_pitch" value="${atan2(-arm_forearm_z, -arm_forearm_y)}"/>
+  <xacro:property name="arm_j1_to_j2_z" value="0.07545"/>
+  <xacro:property name="arm_upper_length" value="0.11391"/>
+  <xacro:property name="arm_forearm_length" value="0.11000"/>
+  <xacro:property name="arm_tool_length" value="0.15601"/>
   <xacro:property name="arm_j1_lower" value="${-pi / 2.0}"/>
-  <xacro:property name="arm_j1_upper" value="${1.0}"/>
+  <xacro:property name="arm_j1_upper" value="${pi}"/>
   <xacro:property name="arm_pitch_lower" value="${-1.5}"/>
-  <xacro:property name="arm_pitch_upper" value="${1.5}"/>
-  <xacro:property name="arm_elbow_lower" value="${-2.0}"/>
-  <xacro:property name="arm_elbow_upper" value="${2.0}"/>
+  <xacro:property name="arm_pitch_upper" value="${pi}"/>
+  <xacro:property name="arm_elbow_lower" value="${-3.0 * pi / 4.0}"/>
+  <xacro:property name="arm_elbow_upper" value="${3.0 * pi / 4.0}"/>
   <xacro:property name="arm_gripper_stroke" value="0.045"/>
   <xacro:property name="arm_finger_half_gap" value="0.012"/>
   <xacro:property name="arm_finger_size" value="0.03 0.006 0.025"/>
@@ -457,19 +445,19 @@
   <!-- J2: shoulder pitch, located at the top of the riser. -->
   <link name="arm_link2">
     <visual>
-      <origin xyz="0 ${arm_upper_y / 2.0} ${arm_upper_z / 2.0}" rpy="0 ${arm_link2_pitch} ${pi / 2.0}"/>
+      <origin xyz="0 0 ${arm_upper_length / 2.0}" rpy="0 0 0"/>
       <geometry>
-        <box size="${arm_upper_length} 0.04 0.04"/>
+        <box size="0.04 0.04 ${arm_upper_length}"/>
       </geometry>
       <material name="chassis_white"/>
     </visual>
     <collision>
-      <origin xyz="0 ${arm_upper_y / 2.0} ${arm_upper_z / 2.0}" rpy="0 ${arm_link2_pitch} ${pi / 2.0}"/>
+      <origin xyz="0 0 ${arm_upper_length / 2.0}" rpy="0 0 0"/>
       <geometry>
-        <box size="${arm_upper_length} 0.04 0.04"/>
+        <box size="0.04 0.04 ${arm_upper_length}"/>
       </geometry>
     </collision>
-    <xacro:box_inertial mass="0.08" x="${arm_upper_length}" y="0.04" z="0.04"/>
+    <xacro:box_inertial mass="0.08" x="0.04" y="0.04" z="${arm_upper_length}"/>
   </link>
   <joint name="arm_joint2" type="revolute">
     <parent link="arm_link1"/>
@@ -487,24 +475,24 @@
   <!-- J3: elbow pitch. -->
   <link name="arm_link3">
     <visual>
-      <origin xyz="0 ${arm_forearm_y / 2.0} ${arm_forearm_z / 2.0}" rpy="0 ${arm_link3_pitch} ${-pi / 2.0}"/>
+      <origin xyz="0 0 ${arm_forearm_length / 2.0}" rpy="0 0 0"/>
       <geometry>
-        <box size="${arm_forearm_length} 0.04 0.04"/>
+        <box size="0.04 0.04 ${arm_forearm_length}"/>
       </geometry>
       <material name="chassis_white"/>
     </visual>
     <collision>
-      <origin xyz="0 ${arm_forearm_y / 2.0} ${arm_forearm_z / 2.0}" rpy="0 ${arm_link3_pitch} ${-pi / 2.0}"/>
+      <origin xyz="0 0 ${arm_forearm_length / 2.0}" rpy="0 0 0"/>
       <geometry>
-        <box size="${arm_forearm_length} 0.04 0.04"/>
+        <box size="0.04 0.04 ${arm_forearm_length}"/>
       </geometry>
     </collision>
-    <xacro:box_inertial mass="0.06" x="${arm_forearm_length}" y="0.04" z="0.04"/>
+    <xacro:box_inertial mass="0.06" x="0.04" y="0.04" z="${arm_forearm_length}"/>
   </link>
   <joint name="arm_joint3" type="revolute">
     <parent link="arm_link2"/>
     <child link="arm_link3"/>
-    <origin xyz="0 ${arm_upper_y} ${arm_upper_z}" rpy="0 0 0"/>
+    <origin xyz="0 0 ${arm_upper_length}" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
     <limit
       lower="${arm_elbow_lower}"
@@ -517,27 +505,27 @@
   <!-- J4: wrist pitch. The palm carries the fixed gripper finger and J5's jaw. -->
   <link name="arm_link4">
     <visual>
-      <origin xyz="0 0 ${arm_tool_z / 2.0}" rpy="0 0 0"/>
+      <origin xyz="0 0 ${arm_tool_length / 2.0}" rpy="0 0 0"/>
       <geometry>
         <box size="0.04 0.04 ${arm_tool_length}"/>
       </geometry>
       <material name="chassis_white"/>
     </visual>
     <visual>
-      <origin xyz="0 ${-arm_finger_half_gap} ${arm_tool_z}" rpy="0 0 0"/>
+      <origin xyz="0 ${-arm_finger_half_gap} ${arm_tool_length}" rpy="0 0 0"/>
       <geometry>
         <box size="${arm_finger_size}"/>
       </geometry>
       <material name="camera_black"/>
     </visual>
     <collision>
-      <origin xyz="0 0 ${arm_tool_z / 2.0}" rpy="0 0 0"/>
+      <origin xyz="0 0 ${arm_tool_length / 2.0}" rpy="0 0 0"/>
       <geometry>
         <box size="0.04 0.04 ${arm_tool_length}"/>
       </geometry>
     </collision>
     <collision>
-      <origin xyz="0 ${-arm_finger_half_gap} ${arm_tool_z}" rpy="0 0 0"/>
+      <origin xyz="0 ${-arm_finger_half_gap} ${arm_tool_length}" rpy="0 0 0"/>
       <geometry>
         <box size="${arm_finger_size}"/>
       </geometry>
@@ -547,7 +535,7 @@
   <joint name="arm_joint4" type="revolute">
     <parent link="arm_link3"/>
     <child link="arm_link4"/>
-    <origin xyz="0 ${arm_forearm_y} ${arm_forearm_z}" rpy="0 0 0"/>
+    <origin xyz="0 0 ${arm_forearm_length}" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
     <limit
       lower="${arm_pitch_lower}"
@@ -578,7 +566,7 @@
   <joint name="arm_joint5" type="prismatic">
     <parent link="arm_link4"/>
     <child link="arm_link5"/>
-    <origin xyz="0 0 ${arm_tool_z}" rpy="0 0 0"/>
+    <origin xyz="0 0 ${arm_tool_length}" rpy="0 0 0"/>
     <axis xyz="0 1 0"/>
     <limit
       lower="0.0"

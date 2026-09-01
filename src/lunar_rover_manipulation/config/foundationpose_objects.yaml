@@ -1,0 +1,19 @@
+# Each FoundationPose object requires a metric mesh and a compatible texture.
+# Pose tracking must not be enabled for a category until its actual instance
+# mesh has been scanned or supplied. Paths are examples relative to repo root.
+objects:
+  wood_block:
+    enabled: false
+    mesh: models/foundationpose/wood_block/model.obj
+    texture: models/foundationpose/wood_block/texture.png
+    diameter_m: 0.0866
+  artificial_object:
+    enabled: false
+    mesh: models/foundationpose/artificial_object/model.obj
+    texture: models/foundationpose/artificial_object/texture.png
+    diameter_m: 0.0866
+  rock_sample:
+    enabled: false
+    mesh: models/foundationpose/rock_sample/model.obj
+    texture: models/foundationpose/rock_sample/texture.png
+    diameter_m: 0.0866

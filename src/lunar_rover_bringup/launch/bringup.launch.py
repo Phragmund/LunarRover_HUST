@@ -66,6 +66,11 @@ def _launch_setup(context):
                                 " ",
                                 str(xacro_file),
                                 " use_sim:=false",
+                                " arm_camera_xyz:='",
+                                LaunchConfiguration("arm_camera_xyz"),
+                                "' arm_camera_rpy:='",
+                                LaunchConfiguration("arm_camera_rpy"),
+                                "'",
                             ]
                         ),
                         value_type=str,
@@ -82,6 +87,7 @@ def _launch_setup(context):
                 "run_camera": LaunchConfiguration("real_run_camera"),
                 "lidar_frame_id": LaunchConfiguration("real_lidar_frame_id"),
                 "lidar_output_topic": LaunchConfiguration("real_lidar_output_topic"),
+                "imu_output_topic": LaunchConfiguration("real_imu_output_topic"),
             },
         ),
     ]
@@ -133,6 +139,15 @@ def generate_launch_description():
                 "real_lidar_output_topic",
                 default_value="/livox/points",
                 description="Output topic for the physical Livox point cloud.",
+            ),
+            DeclareLaunchArgument(
+                "real_imu_output_topic",
+                default_value="/livox/imu",
+                description="Output topic for the physical Livox IMU.",
+            ),
+            DeclareLaunchArgument("arm_camera_xyz", default_value="0.04 0 0.065"),
+            DeclareLaunchArgument(
+                "arm_camera_rpy", default_value="0 -1.57079632679 0"
             ),
             OpaqueFunction(function=_launch_setup),
         ]

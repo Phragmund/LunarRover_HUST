@@ -113,6 +113,7 @@ Gazebo / 实车传感器
 - [`docs/keyboard_teleop_direct.md`](docs/keyboard_teleop_direct.md)：直接读取 `/dev/input` 的键盘接管说明。
 - [`docs/lower_controller_contract.md`](docs/lower_controller_contract.md)：上位机与实车下位机 ROS 接口契约。
 - [`docs/real_chassis_test.md`](docs/real_chassis_test.md)：实车底盘预检、安全使能和启动步骤。
+- [`docs/real_arm_visual_grasping_handoff.md`](docs/real_arm_visual_grasping_handoff.md)：实车机械臂视觉抓取、手眼标定、目标三维定位和 RViz 观察交接。
 - [`docs/simulation_worlds.md`](docs/simulation_worlds.md)：Gazebo 世界清单和 `image_cave` 地图生成说明。
 - [`docs/SLAM_NAVIGATION_GUIDE.md`](docs/SLAM_NAVIGATION_GUIDE.md)：面向比赛任务的 SLAM、导航、采样总体技术路线。
 - [`docs/project_info/`](docs/project_info/)：赛题资料、答疑材料和往届参考。
@@ -427,6 +428,46 @@ ros2 topic echo /manual_control --once
 ```
 
 `/manual_control` 在手机页面连接后应持续发布；未操作摇杆时杆量为 0。
+
+### 实车自主抓取（2026-08-24）
+
+完整实车启动现在默认同时启动 Gemini、MoveIt、持续目标检测、RGB-D 支撑面定位、
+机械臂轨迹接口和键盘监听。首次使用前安装 MoveIt 2：
+
+```bash
+sudo apt-get update
+sudo apt-get install ros-humble-moveit
+```
+
+启动命令保持不变。FAST-LIO 校平完成、机械臂周围清空并确认目标在工作空间内后，按
+一次 `C` 进入抓取模式。状态变化可通过以下话题检查：
+
+```bash
+ros2 topic echo /grasp/status
+ros2 topic echo /grasp/active
+ros2 topic echo /perception/target_observation
+ros2 topic echo /search/target_confirmed
+ros2 topic echo /joint_states
+```
+
+抓取期间系统会取消当前 Nav2 目标，`motion_solver` 和 `chassis_cmd_mux` 同时锁止底盘，
+并停止向 FAST-LIO 转发 `/livox/lidar_raw` 点云；IMU仍按原时间戳连续转发，但抓取期间
+固定为进入抓取前的重力值和零角速度，避免恢复时出现时间断层。已建立的地图和进入抓取
+时的定位结果因此近似冻结。抓取已分为预抓取、粗视觉校正、近端精校正、闭合和撤离，
+支持按支撑面法向区分地面目标与机械臂可达方向内的墙面目标；当前仍不执行存放。
+
+未配置自定义权重时，视觉链路使用高饱和度实例作为联调后备；真实岩石样本必须使用
+自定义实例分割权重。主动摆臂和自动触发抓取默认关闭，常规行驶期间的视觉检测与多帧
+确认保持运行。模型训练、墙面判别、分阶段伺服和 FoundationPose 接口详见
+[target_perception_and_foundationpose.md](docs/target_perception_and_foundationpose.md)。参数位于
+`src/lunar_rover_manipulation/config/grasping.yaml`。Gemini 末端安装初值为
+`xyz="0.04 0 0.065" rpy="0 -1.57079632679 0"`，正式抓取前必须按实车安装结果完成
+手眼外参测量；可通过环境变量 `ARM_CAMERA_XYZ`、`ARM_CAMERA_RPY` 覆盖。暂时不测试
+抓取时可设置：
+
+```bash
+RUN_GRASPING=false RUN_KEYBOARD=false scripts/run_real_lidar_mapping.sh
+```
 
 ### 只重启手机遥控
 

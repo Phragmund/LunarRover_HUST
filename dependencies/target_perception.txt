@@ -1,0 +1,2 @@
+# Kept outside the ROS system Python by scripts/setup_target_perception.sh.
+ultralytics>=8.3,<9

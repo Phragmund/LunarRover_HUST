@@ -31,7 +31,7 @@
     .wrap { max-width:1440px; margin:0 auto; padding:18px; }
     .top-grid { display:grid; grid-template-columns:360px 1fr; gap:14px; align-items:start; }
     .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:14px; }
-    .tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+    .tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
     .page { display:none; }
     .page.active { display:block; }
     .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -60,6 +60,22 @@
     .hidden { display:none; }
     .ik-status { margin:12px 0; border:1px solid var(--line); border-radius:8px; background:#f7fbff; color:#31465b; padding:10px; font-size:13px; }
     canvas { width:100%; height:440px; border:1px solid var(--line); border-radius:8px; background:#0e1624; cursor:grab; }
+    .transport-tabs { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:4px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; margin-bottom:10px; }
+    .transport-tabs button { min-height:34px; }
+    .ros-only-note { display:none; }
+    body.ros-mode .serial-only-note { display:none; }
+    body.ros-mode .ros-only-note { display:block; }
+    .camera-layout { display:grid; grid-template-columns:minmax(360px, 1.6fr) minmax(280px, .8fr); gap:14px; align-items:start; }
+    .camera-frame { position:relative; background:#0e1624; border:1px solid var(--line); border-radius:8px; min-height:360px; display:grid; place-items:center; overflow:hidden; }
+    /* 相机倒装，画面旋转 180° 以便人工观察（识别框随 overlay 一起转） */
+    .camera-frame img { width:100%; height:auto; display:block; image-rendering:auto; transform: rotate(180deg); }
+    .camera-placeholder { color:#94a3b8; padding:30px; text-align:center; line-height:1.7; }
+    .camera-cursor-label { position:absolute; display:none; z-index:4; pointer-events:none; background:rgba(15,23,42,.86); color:#e5e7eb; border:1px solid rgba(148,163,184,.45); border-radius:6px; padding:4px 7px; font:12px/1.2 Consolas,"Cascadia Mono",monospace; box-shadow:0 4px 14px rgba(0,0,0,.25); }
+    .camera-calibration-path { max-width:100%; overflow-wrap:anywhere; font:12px/1.4 Consolas,"Cascadia Mono",monospace; color:#94a3b8; }
+    .metric-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .metric { border:1px solid var(--line); border-radius:8px; background:var(--panel2); padding:10px; min-height:66px; }
+    .metric span { color:var(--muted); font-size:12px; }
+    .metric strong { display:block; margin-top:6px; font:18px/1.2 Consolas,"Cascadia Mono",monospace; word-break:break-word; }
     /* ---- 动作设计（时间轴编辑器）---- */
     .motion-toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
     .motion-edit { display:grid; grid-template-columns:repeat(4,1fr) auto auto; gap:8px; align-items:end; margin-bottom:10px; }
@@ -91,7 +107,7 @@
     .motion-pointer .grab { position:absolute; top:0; left:-6px; width:14px; height:16px; background:#b42318; border-radius:0 0 4px 4px; }
     .motion-pointer .grab::after { content:""; position:absolute; top:5px; left:5px; border-left:4px solid transparent; border-right:4px solid transparent; border-top:6px solid #fff; }
     @media (max-width:980px) { .motion-edit { grid-template-columns:1fr 1fr; } .motion-layout { grid-template-columns:76px 1fr; } }
-    @media (max-width:980px) { .top-grid,.grid2,.grid3,.grid4,.readout { grid-template-columns:1fr; } header{align-items:flex-start;flex-direction:column;} }
+    @media (max-width:980px) { .top-grid,.grid2,.grid3,.grid4,.readout,.camera-layout,.metric-grid { grid-template-columns:1fr; } header{align-items:flex-start;flex-direction:column;} }
   </style>
 </head>
 <body>
@@ -105,6 +121,7 @@
       <span id="m3508Badge" class="badge">M3508 --</span>
       <span id="steerBadge" class="badge">STEER --</span>
       <span id="armBadge" class="badge">ARM --</span>
+      <span id="rosBadge" class="badge bad">ROS 未连接</span>
     </div>
   </header>
 
@@ -113,15 +130,25 @@
       <div>
         <section class="panel">
           <h2>共享串口</h2>
+          <div class="transport-tabs">
+            <button id="serialModeBtn" class="active">串口直连</button>
+            <button id="rosModeBtn">ROS 模式</button>
+          </div>
           <div class="buttons">
             <button id="connectBtn" class="primary">连接 H7 USB</button>
             <button id="disconnectBtn">断开</button>
           </div>
           <div class="buttons">
+            <button id="rosConnectBtn">连接 ROS</button>
+            <button id="rosDisconnectBtn">断开 ROS</button>
+          </div>
+          <label><span>ROS WebSocket</span><input id="rosWsInput" value=""></label>
+          <div class="buttons">
             <button id="armPingBtn">ARM PING</button>
             <button id="allStopBtn" class="danger">全部停止</button>
           </div>
-          <p class="muted">浏览器只连接一次 H7 USB CDC。3508 使用 `$M3508:*`，舵轮使用 `$ANG/$SPD`，机械臂使用 `$ARM:*`。</p>
+          <p class="muted serial-only-note">串口直连模式下，浏览器只连接一次 H7 USB CDC。3508 使用 `$M3508:*`，舵轮使用 `$ANG/$SPD`，机械臂使用 `$ARM:*`。</p>
+          <p class="muted ros-only-note">ROS 模式下，网页通过 WebSocket 把同样的 `$...!` 指令交给 `motion_solver`，串口仍由 ROS 独占。</p>
         </section>
       </div>
 
@@ -130,6 +157,7 @@
           <button id="tabM3508" class="active">3508 底盘</button>
           <button id="tabSteer">舵轮</button>
           <button id="tabArm">机械臂</button>
+          <button id="tabCamera">摄像机</button>
         </div>
 
         <section id="pageM3508" class="page active">
@@ -313,6 +341,7 @@
                     <button id="ikSendBtn" class="primary">发送 IK</button>
                     <button id="ikPreviewBtn">只解算</button>
                     <button id="ikHomeBtn">IK 初始位</button>
+                    <button id="ikSyncBtn">同步当前 IK 位姿</button>
                     <button id="ikKeyboardBtn">键盘控制：开</button>
                   </div>
                 </div>
@@ -355,6 +384,56 @@
             </div>
           </div>
         </section>
+
+        <section id="pageCamera" class="page">
+          <div class="camera-layout">
+            <section class="panel">
+              <h2>识别画面</h2>
+              <div class="camera-frame">
+                <img id="cameraOverlayImg" alt="perception overlay" class="hidden">
+                <div id="cameraCursorLabel" class="camera-cursor-label">x=-- y=--</div>
+                <div id="cameraPlaceholder" class="camera-placeholder">
+                  ROS 模式连接后显示 `/perception/debug/fusion_overlay/compressed`
+                </div>
+              </div>
+              <div class="buttons">
+                <button id="cameraConnectRosBtn" class="primary">连接 ROS</button>
+                <button id="cameraFreezeBtn">暂停画面</button>
+              </div>
+              <div class="buttons">
+                <button id="handeyeStartBtn" class="primary">启动手眼标定</button>
+                <button id="handeyeSampleBtn">采样（p）</button>
+                <button id="handeyeStopBtn" class="danger">退出并保存（q）</button>
+              </div>
+            </section>
+            <section class="panel">
+              <h2>ROS 视觉抓取状态</h2>
+              <div class="metric-grid">
+                <div class="metric"><span>ROS</span><strong id="cameraRosText">未连接</strong></div>
+                <div class="metric"><span>画面</span><strong id="cameraHzText">-- Hz</strong></div>
+                <div class="metric"><span>抓取状态</span><strong id="graspStatusText">ABORT: 未启动，等待开始搜索</strong></div>
+                <div class="metric"><span>感知模式</span><strong id="graspModeText">idle</strong></div>
+                <div class="metric"><span>远距位姿统计</span><strong id="poseAverageStatusText">NO_SAMPLES</strong></div>
+                <div class="metric"><span>工作区判定</span><strong id="workspaceStatusText">NO_OBSERVATION</strong></div>
+                <div class="metric"><span>目标类别</span><strong id="targetClassText">--</strong></div>
+                <div class="metric"><span>目标位置 base_link</span><strong id="targetPosText">--</strong></div>
+                <div class="metric"><span>目标尺寸</span><strong id="targetDimText">--</strong></div>
+                <div class="metric"><span>夹爪 J5</span><strong id="j5Text">--</strong></div>
+                <div class="metric"><span>ROS 指令通路</span><strong id="rosRouteText">--</strong></div>
+                <div class="metric"><span>手眼标定</span><strong id="handeyeStatusText">未启动</strong></div>
+                <div class="metric"><span>标定样本数</span><strong id="handeyeSamplesText">0</strong></div>
+              </div>
+              <div class="camera-calibration-path" id="handeyeOutputText">输出目录：--</div>
+              <div class="buttons">
+                <button id="graspStartBtn">开始搜索</button>
+                <button id="graspStepBtn">执行单步增量</button>
+                <button id="graspAbortBtn" class="danger">中止</button>
+                <button id="graspHomeBtn">回到初始位</button>
+              </div>
+              <p class="muted">状态机（抓取状态）：<b>ABORT</b> 中止/未启动 · <b>WIDE_SEARCH</b> 广域搜索等待 YOLO 确认 · <b>TARGET_LOCKED</b> 已锁定目标 HSV · <b>POSE_AVERAGING</b> HSV+低频 SAM 远距位姿统计（5 个机械臂姿态，每个姿态 15 个样本，累计不滑动） · <b>WORKSPACE_CHECK</b> 工作区判定 · <b>APPROACH_WITH_CHASSIS</b> 未进工作区，等待后续底盘接近控制 · <b>MOVE_TO_GRASP</b> 已进工作区，等待 TF+视觉伺服增量移动。<br>感知模式：<b>wide_search</b> HSV 候选+YOLO 确认 · <b>locked_hsv</b> 锁定后专属 HSV 跟踪 · <b>precise_hsv_sam</b> HSV 引导低频 SAM 精分割 · <b>idle</b> 空闲。</p>
+            </section>
+          </div>
+        </section>
       </div>
     </div>
     <section class="panel">
@@ -370,6 +449,9 @@
 
   <script>
     let port = null, writer = null, reader = null, readAbort = false, repeatTimer = null, activeFrame = "";
+    let transportMode = "serial", rosWs = null, rosConnected = false, cameraFrozen = false;
+    let cameraFrameTimes = [];
+    let autoIkSyncStage = "idle", autoIkSyncRoute = "serial", autoIkSyncTimer = null;
     const encoder = new TextEncoder(), decoder = new TextDecoder();
     const $ = (id) => document.getElementById(id);
 
@@ -380,12 +462,21 @@
       { name:"j4", servo_id:4, min_deg:0, max_deg:270, min_pulse:500, max_pulse:2500, inverted:true },
       { name:"j5", servo_id:5, min_deg:0, max_deg:90, min_pulse:500, max_pulse:2500, inverted:false },
     ];
-    const armState = { selected:"j1", targetAngles:{}, live:{}, mode:"joint", keyboardIk:true, ik:{x:271,y:0,z:-50,pitch:0,grip:45,lastSolution:null,sending:false} };
-    const IK_GEOMETRY = { baseToShoulder:71, upperArm:115, forearm:107, tool:110 };
-    const HOME_ANGLES = { j1:90, j2:180, j3:135, j4:135, j5:45 };
+    const armState = { selected:"j1", targetAngles:{}, live:{}, mode:"joint", keyboardIk:true, ik:{x:0,y:0,z:0,pitch:0,grip:45,lastSolution:null,sending:false} };
+    // Real-arm geometry confirmed on 2026-08-30. The earlier coarse web IK
+    // values are obsolete and intentionally retained only in git history.
+    const IK_GEOMETRY = { j1J2AxisOffset:75.45, upperArm:113.91, forearm:110.00, tool:156.01 };
+    const HOME_ANGLES = { j1:96.754752, j2:201.804458, j3:183.510522, j4:110.293936, j5:45 };
     const IK_LOOP_INTERVAL_MS = 30, IK_LOOP_MOVE_MS = 30, pressedKeys = new Set();
     let ikLoopTimer = null;
     let steerCalAutoCenterPending = false;
+
+    function defaultRosWsUrl() {
+      const proto = location.protocol === "https:" ? "wss://" : "ws://";
+      if (location.protocol === "http:" || location.protocol === "https:") return proto + location.host + "/ros" + location.search;
+      // Keep file:// use compatible with the local ROS console service.
+      return "ws://127.0.0.1:8099/ros";
+    }
 
     function logBoxFor(text) {
       const s = String(text), i = s.indexOf("$");
@@ -402,16 +493,257 @@
       if (el.textContent.length > 12000) el.textContent = el.textContent.slice(-10000);
       el.scrollTop = el.scrollHeight;
     }
+    function serialUnavailableReason() {
+      const host = location.hostname;
+      const isLocal = host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "";
+      if (!window.isSecureContext && !isLocal) {
+        return `当前页面不是 Web Serial 允许的安全上下文。请在本机 Chrome 打开 http://127.0.0.1:8099/ 或直接打开本 HTML 文件；不要用 http://${host || "局域网IP"}:${location.port || "8099"}/ 做串口直连。`;
+      }
+      return "当前浏览器没有暴露 Web Serial。请使用桌面版 Chrome/Edge，并确认地址栏不是普通局域网 http 地址。";
+    }
     function setSerialState(connected) {
       $("serialBadge").textContent = connected ? "串口已连接" : "串口未连接";
       $("serialBadge").className = "badge " + (connected ? "ok" : "bad");
       $("connectBtn").disabled = connected;
       $("disconnectBtn").disabled = !connected;
     }
+    function setRosState(connected) {
+      rosConnected = connected;
+      $("rosBadge").textContent = connected ? "ROS 已连接" : "ROS 未连接";
+      $("rosBadge").className = "badge " + (connected ? "ok" : "bad");
+      $("cameraRosText").textContent = connected ? "已连接" : "未连接";
+      $("rosConnectBtn").disabled = connected;
+      $("rosDisconnectBtn").disabled = !connected;
+      $("cameraConnectRosBtn").disabled = connected;
+    }
+    async function setTransportMode(mode) {
+      const nextMode = mode === "ros" ? "ros" : "serial";
+      if (nextMode === transportMode) {
+        if (nextMode === "ros" && !rosConnected) await connectRos();
+        return;
+      }
+      if (nextMode === "ros" && (port || writer)) {
+        try {
+          await disconnectSerial();
+          log("切换到 ROS 模式：已自动断开 Web Serial");
+        } catch (e) {
+          log(`切换到 ROS 模式前断开串口失败: ${e.message}`);
+        }
+      }
+      transportMode = mode === "ros" ? "ros" : "serial";
+      document.body.classList.toggle("ros-mode", transportMode === "ros");
+      $("serialModeBtn").classList.toggle("active", transportMode === "serial");
+      $("rosModeBtn").classList.toggle("active", transportMode === "ros");
+      $("rosRouteText").textContent = transportMode === "ros" ? "/h7/raw_command -> motion_solver" : "Web Serial -> H7";
+      if (transportMode === "ros" && !rosConnected) await connectRos();
+    }
     async function writeFrame(frame, quiet=false) {
+      if (transportMode === "ros") {
+        sendRos({type:"raw", frame});
+        if (!quiet) log(`ROS TX ${frame}`);
+        return;
+      }
       if (!writer) throw new Error("串口未连接");
       await writer.write(encoder.encode(frame));
       if (!quiet) log(`TX ${frame}`);
+    }
+    function sendRos(message) {
+      if (!rosWs || rosWs.readyState !== WebSocket.OPEN) throw new Error("ROS WebSocket 未连接");
+      rosWs.send(JSON.stringify(message));
+    }
+    async function writeFrameViaRoute(frame, route, quiet=false) {
+      if (route === "ros") {
+        sendRos({type:"raw", frame});
+        if (!quiet) log(`ROS TX ${frame}`);
+        return;
+      }
+      if (!writer) throw new Error("串口未连接");
+      await writer.write(encoder.encode(frame));
+      if (!quiet) log(`TX ${frame}`);
+    }
+    function startAutoIkSync(route) {
+      autoIkSyncRoute = route === "ros" ? "ros" : "serial";
+      autoIkSyncStage = "wait_pong";
+      if (autoIkSyncTimer) clearTimeout(autoIkSyncTimer);
+      autoIkSyncTimer = setTimeout(() => {
+        if (autoIkSyncStage !== "idle") {
+          log("自动 IK 同步超时：未收到完整机械臂反馈");
+          autoIkSyncStage = "idle";
+        }
+      }, 5000);
+      writeFrameViaRoute("$ARM:PING!", autoIkSyncRoute, true)
+        .then(() => log(`${autoIkSyncRoute === "ros" ? "ROS" : "串口"} 已连接，自动 ARM PING`))
+        .catch(e => {
+          autoIkSyncStage = "idle";
+          log(`自动 ARM PING 失败: ${e.message}`);
+        });
+    }
+    function cancelAutoIkSync() {
+      autoIkSyncStage = "idle";
+      if (autoIkSyncTimer) {
+        clearTimeout(autoIkSyncTimer);
+        autoIkSyncTimer = null;
+      }
+    }
+    function handleAutoIkPong(frame) {
+      if (autoIkSyncStage !== "wait_pong" || frame !== "$ARM:OK,PONG!") return;
+      autoIkSyncStage = "wait_joints";
+      log("ARM PING 成功，自动读取关节并同步 IK 位姿");
+      if (tryAutoIkSync()) return;
+      armReadAll(autoIkSyncRoute).catch(e => {
+        autoIkSyncStage = "idle";
+        log(`自动读取机械臂关节失败: ${e.message}`);
+      });
+    }
+    function tryAutoIkSync() {
+      if (autoIkSyncStage !== "wait_joints") return false;
+      if (!currentLiveAngles()) return false;
+      autoIkSyncStage = "idle";
+      if (autoIkSyncTimer) {
+        clearTimeout(autoIkSyncTimer);
+        autoIkSyncTimer = null;
+      }
+      log("机械臂关节反馈已就绪；按 F 或“同步当前 IK 位姿”更新 IK 目标");
+      return true;
+    }
+    async function connectRos() {
+      if (rosWs && rosWs.readyState === WebSocket.OPEN) return;
+      const url = $("rosWsInput").value.trim() || defaultRosWsUrl();
+      $("rosWsInput").value = url;
+      rosWs = new WebSocket(url);
+      rosWs.onopen = () => { setRosState(true); log(`ROS WS connected ${url}`); startAutoIkSync("ros"); };
+      rosWs.onclose = () => { setRosState(false); log("ROS WS disconnected"); };
+      rosWs.onerror = () => { setRosState(false); };
+      rosWs.onmessage = event => handleRosMessage(event.data);
+    }
+    function disconnectRos() {
+      cancelAutoIkSync();
+      if (rosWs) rosWs.close();
+      rosWs = null;
+      setRosState(false);
+    }
+    function handleRosMessage(data) {
+      let msg;
+      try { msg = JSON.parse(data); } catch (e) { return; }
+      if (msg.type === "ros_status") {
+        setRosState(!!msg.connected);
+        if (msg.raw_topic) $("rosRouteText").textContent = `${msg.raw_topic} -> motion_solver`;
+      } else if (msg.type === "h7_frame") {
+        handleH7Frame(String(msg.frame || ""));
+      } else if (msg.type === "camera") {
+        updateCameraImage(msg);
+      } else if (msg.type === "joint_state") {
+        updateArmFromJointState(msg.names || [], msg.positions || []);
+      } else if (msg.type === "grasp_status") {
+        $("graspStatusText").textContent = msg.text || "--";
+      } else if (msg.type === "grasp_mode") {
+        $("graspModeText").textContent = msg.text || "--";
+      } else if (msg.type === "pose_average_status") {
+        $("poseAverageStatusText").textContent = msg.text || "--";
+      } else if (msg.type === "handeye_status") {
+        const states = {stopped:"未启动", starting:"启动中", ready:"等待采样", sampling:"已采样", waiting_for_frame:"等待相机画面", stopping:"正在退出并保存", error:"启动失败"};
+        $("handeyeStatusText").textContent = states[msg.state] || msg.state || "--";
+        $("handeyeSamplesText").textContent = String(msg.samples ?? 0);
+        $("handeyeOutputText").textContent = `输出目录：${msg.output_dir || "--"}`;
+      } else if (msg.type === "workspace_status") {
+        $("workspaceStatusText").textContent = msg.text || "--";
+      } else if (msg.type === "target_observation") {
+        $("targetClassText").textContent = `${msg.class_id || "--"} ${(Number(msg.confidence || 0)).toFixed(2)}`;
+        $("targetPosText").textContent = formatVec(msg.position, "m");
+        $("targetDimText").textContent = formatVec(msg.dimensions, "m");
+      } else if (msg.type === "target_pose") {
+        if ($("targetPosText").textContent === "--") $("targetPosText").textContent = formatVec(msg.position, "m");
+      } else if (msg.type === "console_log") {
+        log(msg.text || "");
+      }
+    }
+    function handleH7Frame(frame) {
+      if (!frame) return;
+      if (frame.startsWith("$M3508:FB,")) parseM3508(frame);
+      if (frame.startsWith("$STD,")) parseSteer(frame);
+      if (frame.includes("$ARM:")) parseArm(frame);
+      for (const m of frame.matchAll(/\$M3508:FB,[^!]*!/g)) parseM3508(m[0]);
+      for (const m of frame.matchAll(/\$ARM:[^!]*!/g)) parseArm(m[0]);
+      for (const m of frame.matchAll(/\$STEER:[^!]*!/g)) {
+        if (m[0].startsWith("$STEER:CALDONE")) handleSteerCalibrationDone();
+      }
+      if (frame.startsWith("$STEER:CALDONE")) handleSteerCalibrationDone();
+      log(`RX ${frame}`);
+    }
+    function formatVec(values, unit) {
+      if (!Array.isArray(values) || values.length < 3) return "--";
+      return values.slice(0, 3).map(v => Number(v).toFixed(3)).join(", ") + (unit ? ` ${unit}` : "");
+    }
+    function updateCameraImage(msg) {
+      if (cameraFrozen) return;
+      const img = $("cameraOverlayImg");
+      img.src = `data:image/jpeg;base64,${msg.data}`;
+      img.classList.remove("hidden");
+      $("cameraPlaceholder").classList.add("hidden");
+      const now = performance.now();
+      cameraFrameTimes.push(now);
+      cameraFrameTimes = cameraFrameTimes.filter(t => now - t <= 3000);
+      if (cameraFrameTimes.length >= 2) {
+        const hz = (cameraFrameTimes.length - 1) * 1000 / (cameraFrameTimes[cameraFrameTimes.length - 1] - cameraFrameTimes[0]);
+        $("cameraHzText").textContent = `${hz.toFixed(1)} Hz`;
+      }
+    }
+    function bindCameraCursor() {
+      const frame = document.querySelector(".camera-frame");
+      const img = $("cameraOverlayImg");
+      const label = $("cameraCursorLabel");
+      if (!frame || !img || !label) return;
+      frame.addEventListener("mousemove", (event) => {
+        if (img.classList.contains("hidden") || !img.naturalWidth || !img.naturalHeight) {
+          label.style.display = "none";
+          return;
+        }
+        const imgRect = img.getBoundingClientRect();
+        if (event.clientX < imgRect.left || event.clientX > imgRect.right || event.clientY < imgRect.top || event.clientY > imgRect.bottom) {
+          label.style.display = "none";
+          return;
+        }
+        const scaleX = img.naturalWidth / imgRect.width;
+        const scaleY = img.naturalHeight / imgRect.height;
+        const unrotatedX = (event.clientX - imgRect.left) * scaleX;
+        const unrotatedY = (event.clientY - imgRect.top) * scaleY;
+        const x = clamp(Math.round(img.naturalWidth - 1 - unrotatedX), 0, img.naturalWidth - 1);
+        const y = clamp(Math.round(img.naturalHeight - 1 - unrotatedY), 0, img.naturalHeight - 1);
+        label.textContent = `x=${x} y=${y}`;
+        const frameRect = frame.getBoundingClientRect();
+        const left = clamp(event.clientX - frameRect.left + 12, 6, Math.max(6, frameRect.width - label.offsetWidth - 6));
+        const top = clamp(event.clientY - frameRect.top + 12, 6, Math.max(6, frameRect.height - label.offsetHeight - 6));
+        label.style.left = `${left}px`;
+        label.style.top = `${top}px`;
+        label.style.display = "block";
+      });
+      frame.addEventListener("mouseleave", () => { label.style.display = "none"; });
+    }
+    function updateArmFromJointState(names, positions) {
+      for (let i = 0; i < names.length; i++) {
+        const index = joints.findIndex(j => j.name === String(names[i]).replace("arm_joint", "j"));
+        if (index < 0) continue;
+        const j = joints[index];
+        let angle;
+        if (index === 4) angle = Number(positions[i]) * 90.0 / 0.045;
+        else {
+          const zero = [90, 180, 135, 135][index];
+          const dir = [1, -1, 1, 1][index];
+          angle = zero + dir * radToDeg(Number(positions[i]));
+        }
+        angle = clamp(angle, j.min_deg, j.max_deg);
+        const pulse = angleToPulse(j, angle);
+        armState.live[j.name] = {angle, pulse};
+        if (j.name === "j5") $("j5Text").textContent = `${angle.toFixed(1)} deg`;
+      }
+      const selected = joint();
+      const live = armState.live[selected.name];
+      if (live) {
+        $("actualAngleText").textContent = `${live.angle.toFixed(1)}°`;
+        $("actualPulseText").textContent = String(live.pulse);
+      }
+      renderJoints();
+      tryAutoIkSync();
     }
     function stopRepeat() { if (repeatTimer) clearInterval(repeatTimer); repeatTimer = null; }
     function formatM3508(cmd, values) { return `$M3508:${cmd},${values.map(v => Number(v).toFixed(4).replace(/\.?0+$/,"")).join(",")}!`; }
@@ -422,16 +754,20 @@
     async function sendM3508Stop() { stopRepeat(); await writeFrame("$M3508:STOP!"); }
 
     async function connectSerial() {
-      if (!("serial" in navigator)) { log("当前浏览器不支持 Web Serial，请使用 Chrome 或 Edge"); return; }
+      if (transportMode !== "serial") {
+        throw new Error("当前处于 ROS 模式；请切回“串口直连”后再连接 H7 USB");
+      }
+      if (!("serial" in navigator)) { log(serialUnavailableReason()); return; }
       try {
         port = await navigator.serial.requestPort();
         await port.open({ baudRate:115200 });
         writer = port.writable.getWriter();
-        setSerialState(true); log("串口已打开"); readLoop();
+        setSerialState(true); log("串口已打开"); readLoop(); startAutoIkSync("serial");
       } catch (e) { log(`连接失败: ${e.message}`); setSerialState(false); }
     }
     async function disconnectSerial() {
       try {
+        cancelAutoIkSync();
         stopRepeat(); readAbort = true;
         if (reader) await reader.cancel().catch(() => {});
         if (writer) { writer.releaseLock(); writer = null; }
@@ -454,8 +790,8 @@
               buffer = buffer.slice(idx + 1);
               if (!frame) continue;
               if (frame.startsWith("$M3508:FB,")) parseM3508(frame);
-              else if (frame.startsWith("$STD,")) parseSteer(frame);
-              else if (frame.startsWith("$ARM:")) parseArm(frame);
+              if (frame.startsWith("$STD,")) parseSteer(frame);
+              if (frame.includes("$ARM:")) parseArm(frame);
               if (frame.startsWith("$STEER:CALDONE")) handleSteerCalibrationDone();
               log(`RX ${frame}`);
             }
@@ -479,7 +815,8 @@
     function parseArm(frame) {
       $("armBadge").textContent = frame.startsWith("$ARM:ERR") ? "ARM ERR" : "ARM OK";
       $("armBadge").className = "badge " + (frame.startsWith("$ARM:ERR") ? "bad" : "ok");
-      const m = frame.match(/^\$ARM:RESP,#(\d{1,3})P(\d{1,4})!/);
+      handleAutoIkPong(frame);
+      const m = frame.match(/\$ARM:RESP,#(\d{1,3})P(\d{1,4})!/);
       if (m) updateArmReadout(Number(m[1]), Number(m[2]));
     }
     function parseSteer(frame) {
@@ -513,7 +850,7 @@
       }, 200);
     }
     function setMainTab(name) {
-      const map = { m3508:["tabM3508","pageM3508"], steer:["tabSteer","pageSteer"], arm:["tabArm","pageArm"] };
+      const map = { m3508:["tabM3508","pageM3508"], steer:["tabSteer","pageSteer"], arm:["tabArm","pageArm"], camera:["tabCamera","pageCamera"] };
       for (const [key, ids] of Object.entries(map)) {
         $(ids[0]).classList.toggle("active", key === name);
         $(ids[1]).classList.toggle("active", key === name);
@@ -571,6 +908,7 @@
         $("actualPulseText").textContent = String(pulse);
       }
       renderJoints();
+      tryAutoIkSync();
     }
     async function armMoveAngle(name=armState.selected, angle=Number($("angleInput").value), time=Number($("armTimeInput").value)) {
       const j = joint(name), pulse = angleToPulse(j, angle);
@@ -582,8 +920,8 @@
       await writeFrame(`$ARM:MOVE,${j.servo_id},${pulse},${Number($("armTimeInput").value)}!`);
       armState.targetAngles[j.name] = angle; armState.live[j.name] = { angle, pulse }; renderJoints();
     }
-    async function armRead(name=armState.selected) { await writeFrame(`$ARM:READ,${joint(name).servo_id}!`); }
-    async function armReadAll() { for (const j of joints) { await armRead(j.name); await new Promise(r=>setTimeout(r,80)); } }
+    async function armRead(name=armState.selected, route=transportMode) { await writeFrameViaRoute(`$ARM:READ,${joint(name).servo_id}!`, route); }
+    async function armReadAll(route=transportMode) { for (const j of joints) { await armRead(j.name, route); await new Promise(r=>setTimeout(r,80)); } }
     async function armRaw(raw) {
       let body = String(raw || "").trim();
       if (!body) throw new Error("ARM RAW is empty");
@@ -631,7 +969,7 @@
       let clamped=false, radius=Math.hypot(x,y);
       if (radius < .5) { radius=.5; clamped=true; }
       const j1 = normalizeDeg(radToDeg(Math.atan2(x,y)));
-      const rRaw = radius - g.baseToShoulder, r = Math.max(0, rRaw);
+      const rRaw = radius - g.j1J2AxisOffset, r = Math.max(0, rRaw);
       if (rRaw < 0) clamped = true;
       let rW = r - g.tool*dir.r, zW = z - g.tool*dir.z;
       const min = Math.abs(g.upperArm-g.forearm), max = g.upperArm+g.forearm, wd = Math.hypot(rW,zW);
@@ -644,7 +982,7 @@
     }
     function armGeometry(a) {
       const g=IK_GEOMETRY, t2=degToRad(a.j2), t3=t2+degToRad(135-a.j3), t4=t3+degToRad(135-a.j4);
-      const j1={r:0,z:0}, j2={r:g.baseToShoulder,z:0};
+      const j1={r:0,z:0}, j2={r:g.j1J2AxisOffset,z:0};
       const j3={r:j2.r+g.upperArm*Math.sin(t2), z:j2.z-g.upperArm*Math.cos(t2)};
       const j4={r:j3.r+g.forearm*Math.sin(t3), z:j3.z-g.forearm*Math.cos(t3)};
       const tip={r:j4.r+g.tool*Math.sin(t4), z:j4.z-g.tool*Math.cos(t4)};
@@ -694,6 +1032,25 @@
       const p = armGeometry(angles), yaw = degToRad(angles.j1);
       const to3 = (v) => ({ x: v.r * Math.sin(yaw), y: v.r * Math.cos(yaw), z: v.z });
       return { base:{x:0,y:0,z:0}, j2:to3(p.j2), j3:to3(p.j3), j4:to3(p.j4), tip:to3(p.tip) };
+    }
+    function currentLiveAngles() {
+      const values = {};
+      for (const j of joints) {
+        const live = armState.live[j.name];
+        if (!live || !Number.isFinite(live.angle)) return null;
+        values[j.name] = live.angle;
+      }
+      return values;
+    }
+    function syncIkFromLive() {
+      const angles = currentLiveAngles();
+      if (!angles) {
+        $("ikStatus").textContent = "当前没有完整关节反馈，无法同步 IK 位姿";
+        return;
+      }
+      pressedKeys.clear();
+      syncIkFromAngles(angles);
+      $("ikStatus").textContent = "已按当前实际机械臂关节同步 IK 位姿";
     }
     function motionPoseAt(t) {
       const angles = {};
@@ -1263,12 +1620,26 @@
     }
 
     function bind() {
+      $("serialModeBtn").onclick = () => setTransportMode("serial").catch(e=>log(e.message));
+      $("rosModeBtn").onclick = () => setTransportMode("ros").catch(e=>log(e.message));
+      $("rosConnectBtn").onclick = () => setTransportMode("ros").catch(e=>log(e.message));
+      $("rosDisconnectBtn").onclick = disconnectRos;
+      $("cameraConnectRosBtn").onclick = () => setTransportMode("ros").catch(e=>log(e.message));
+      $("cameraFreezeBtn").onclick = () => { cameraFrozen = !cameraFrozen; $("cameraFreezeBtn").textContent = cameraFrozen ? "继续画面" : "暂停画面"; };
+      $("handeyeStartBtn").onclick = () => { try { sendRos({type:"handeye_command", command:"start"}); } catch(e) { log(e.message); } };
+      $("handeyeSampleBtn").onclick = () => { try { sendRos({type:"handeye_command", command:"p"}); } catch(e) { log(e.message); } };
+      $("handeyeStopBtn").onclick = () => { try { sendRos({type:"handeye_command", command:"q"}); } catch(e) { log(e.message); } };
+      $("graspStartBtn").onclick = () => { try { sendRos({type:"grasp_command", command:"start_search"}); } catch(e) { log(e.message); } };
+      $("graspStepBtn").onclick = () => { try { sendRos({type:"grasp_command", command:"step_once"}); } catch(e) { log(e.message); } };
+      $("graspAbortBtn").onclick = () => { try { sendRos({type:"grasp_command", command:"abort"}); } catch(e) { log(e.message); } };
+      $("graspHomeBtn").onclick = () => armMoveManyAngles(HOME_ANGLES, Number($("ikTimeInput").value)).catch(e=>log(e.message));
       $("connectBtn").onclick = connectSerial; $("disconnectBtn").onclick = disconnectSerial;
       $("armPingBtn").onclick = () => writeFrame("$ARM:PING!").catch(e=>log(e.message));
       $("allStopBtn").onclick = () => { motionStopPlayback(); sendM3508Stop().catch(e=>log(e.message)); writeFrame("$STOP!").catch(e=>log(e.message)); armAction("stopAll").catch(e=>log(e.message)); };
       $("tabM3508").onclick = () => setMainTab("m3508");
       $("tabSteer").onclick = () => setMainTab("steer");
       $("tabArm").onclick = () => { setMainTab("arm"); solveAndRenderIk(false); };
+      $("tabCamera").onclick = () => setMainTab("camera");
       document.querySelectorAll("[data-speed]").forEach(b => b.onclick = () => { const v=Math.abs(Number($("speedValue").value||0)); const map={forward:[v,v,v,v],backward:[-v,-v,-v,-v],left:[-v,v,-v,v],right:[v,-v,v,-v]}; startRepeat(formatM3508("SPD", map[b.dataset.speed])).catch(e=>log(e.message)); });
       $("m3508StopBtn").onclick = () => sendM3508Stop().catch(e=>log(e.message));
       $("m3508CustomSpeed").onclick = () => startRepeat(formatM3508("SPD",[0,1,2,3].map(i=>Number($(`m${i}`).value||0)))).catch(e=>log(e.message));
@@ -1317,16 +1688,19 @@
         syncIkFromAngles(HOME_ANGLES);
         armMoveManyAngles(HOME_ANGLES, Number($("ikTimeInput").value)).catch(e=>log(e.message));
       };
+      $("ikSyncBtn").onclick = () => syncIkFromLive();
       $("ikKeyboardBtn").onclick = () => { armState.keyboardIk=!armState.keyboardIk; pressedKeys.clear(); $("ikKeyboardBtn").textContent=`键盘控制：${armState.keyboardIk?"开":"关"}`; };
       bindArm3DOrbit($("ikCanvas"), ikView, () => drawIk(armState.ik.lastSolution));
       bindArm3DOrbit($("motionCanvas"), motionView, () => drawMotion3D());
-      window.onkeydown = e => { if (armState.mode === "motion") { motionKeydown(e); return; } if(armState.mode !== "ik" || !armState.keyboardIk) return; const active=document.activeElement; if(active && ["INPUT","SELECT","TEXTAREA"].includes(active.tagName)) return; const key=e.key.toLowerCase(); if(["w","s","a","d"," ","shift","arrowup","arrowdown","arrowleft","arrowright"].includes(key)){ pressedKeys.add(key); e.preventDefault(); } };
+      window.onkeydown = e => { if (armState.mode === "motion") { motionKeydown(e); return; } if(armState.mode !== "ik" || !armState.keyboardIk) return; const active=document.activeElement; if(active && ["INPUT","SELECT","TEXTAREA"].includes(active.tagName)) return; const key=e.key.toLowerCase(); if(key === "f"){ pressedKeys.clear(); syncIkFromLive(); e.preventDefault(); return; } if(["w","s","a","d"," ","shift","arrowup","arrowdown","arrowleft","arrowright"].includes(key)){ pressedKeys.add(key); e.preventDefault(); } };
       window.onkeyup = e => pressedKeys.delete(e.key.toLowerCase());
       ikLoopTimer = setInterval(ikTick, IK_LOOP_INTERVAL_MS);
+      bindCameraCursor();
     }
     function init() {
       for (const j of joints) armState.targetAngles[j.name] = (j.min_deg + j.max_deg) / 2;
-      bind(); renderJoints(); setSelectedJoint("j1"); setSerialState(false); syncIkFromAngles(HOME_ANGLES); log("ready");
+      $("rosWsInput").value = defaultRosWsUrl();
+      bind(); renderJoints(); setSelectedJoint("j1"); setSerialState(false); setRosState(false); setTransportMode("serial").catch(e=>log(e.message)); syncIkFromAngles(HOME_ANGLES); log("ready");
     }
     init();
   </script>

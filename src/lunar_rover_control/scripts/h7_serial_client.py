@@ -26,6 +26,7 @@
 本模块只负责串口收发与协议编解码，不做任何运动学解算。
 """
 
+import re
 import threading
 import time
 
@@ -64,6 +65,13 @@ class H7SerialClient:
         self._enabled = False
         self._enable_pending = False
         self._disable_pending = False
+        self._frame_callbacks = []
+        self._port = port
+        self._baud = baud
+        self._serial_lock = threading.Lock()
+        self._reconnect_interval = 1.0
+        self._last_reconnect_attempt = 0.0
+        self._last_error_log = 0.0
 
         # 目标值（由底盘解算写入，单位见类 docstring）
         self._drive_targets = [0.0] * self.DRIVE_COUNT
@@ -90,6 +98,14 @@ class H7SerialClient:
         else:
             print(message)
 
+    def _log_throttled(self, message):
+        now = time.monotonic()
+        with self._lock:
+            if now - self._last_error_log < self._reconnect_interval:
+                return
+            self._last_error_log = now
+        self._log(message)
+
     # ---------- 对外 API：目标写入 ----------
     def set_drive_speeds(self, rps_list):
         """设置 4 个动力轮输出轴转速（r/s，正=前进），顺序 右后/左后/右前/左前。"""
@@ -112,6 +128,17 @@ class H7SerialClient:
         if isinstance(frame, str):
             frame = frame.encode("ascii")
         self._write(frame)
+
+    def register_frame_callback(self, callback):
+        """Register a lightweight callback invoked for every complete ASCII frame."""
+        with self._lock:
+            if callback not in self._frame_callbacks:
+                self._frame_callbacks.append(callback)
+
+    def unregister_frame_callback(self, callback):
+        with self._lock:
+            if callback in self._frame_callbacks:
+                self._frame_callbacks.remove(callback)
 
     def set_enabled(self, enabled):
         """使能/禁用。使能时发 $M3508:ENABLE,1，禁用时发 ENABLE,0 并停驱动/松舵。"""
@@ -177,21 +204,26 @@ class H7SerialClient:
         if self._stop.is_set():
             return
         for _ in range(2):
-            try:
-                self._write(b"$M3508:ENABLE,0")
-                self._write(b"$M3508:SPD,0,0,0,0!")
-                self._write(b"$STOP!")
-                self._serial.flush()
-            except Exception:  # noqa: BLE001
-                break
+            self._write(b"$M3508:ENABLE,0")
+            self._write(b"$M3508:SPD,0,0,0,0!")
+            self._write(b"$STOP!")
+            with self._serial_lock:
+                if self._serial is not None:
+                    try:
+                        self._serial.flush()
+                    except Exception:  # noqa: BLE001
+                        pass
             time.sleep(0.02)
         self._stop.set()
         if self._thread.is_alive() and threading.current_thread() is not self._thread:
             self._thread.join(timeout=0.5)
-        try:
-            self._serial.close()
-        except Exception:  # noqa: BLE001
-            pass
+        with self._serial_lock:
+            if self._serial is not None:
+                try:
+                    self._serial.close()
+                except Exception:  # noqa: BLE001
+                    pass
+                self._serial = None
 
     # ---------- 后台循环 ----------
     def _loop(self):
@@ -229,13 +261,21 @@ class H7SerialClient:
                         last_steer_send = now
                         self._write(self._format_ang(steer_targets))
             except Exception as exc:  # noqa: BLE001
-                self._error = exc
-                self._log("H7 串口通信异常: %s" % exc)
-                break
+                with self._lock:
+                    self._error = exc
+                self._log_throttled("H7 串口通信异常: %s" % exc)
+                self._reconnect()
+                time.sleep(0.1)
+                continue
             time.sleep(0.005)
 
     def _read_available(self, buf):
-        chunk = self._serial.read(4096)
+        try:
+            chunk = self._read_serial()
+        except Exception as exc:  # noqa: BLE001
+            self._log_throttled("H7 串口读取失败，尝试重连: %s" % exc)
+            self._reconnect()
+            return buf
         if chunk:
             buf += chunk
             # 所有帧都以 '!' 结尾，按 '!' 切分后逐帧解析
@@ -244,15 +284,58 @@ class H7SerialClient:
                 self._parse_frame(frame + b"!")
         return buf
 
+    def _read_serial(self):
+        with self._serial_lock:
+            if self._serial is None:
+                raise RuntimeError("H7 serial not connected")
+            return self._serial.read(4096)
+
+    def _reconnect(self):
+        now = time.monotonic()
+        with self._lock:
+            if now - self._last_reconnect_attempt < self._reconnect_interval:
+                return False
+            self._last_reconnect_attempt = now
+        import serial
+        error = None
+        with self._serial_lock:
+            old = self._serial
+            self._serial = None
+            if old is not None:
+                try:
+                    old.close()
+                except Exception:  # noqa: BLE001
+                    pass
+            try:
+                self._serial = serial.Serial(self._port, self._baud, timeout=0.05)
+                self._serial.reset_input_buffer()
+            except Exception as exc:  # noqa: BLE001
+                self._serial = None
+                error = exc
+        with self._lock:
+            self._error = error
+        if error is None:
+            self._log("H7 串口已重连: %s" % self._port)
+            return True
+        self._log("H7 串口重连失败: %s" % error)
+        return False
+
     def _parse_frame(self, raw):
         try:
             text = raw.decode("ascii", "replace").strip()
         except Exception:  # noqa: BLE001
             return
-        if text.startswith("$M3508:FB,"):
-            self._parse_m3508_fb(text)
-        elif text.startswith("$STD,"):
+        for match in re.findall(r"\$M3508:FB,[^!]*!", text):
+            self._parse_m3508_fb(match)
+        if text.startswith("$STD,"):
             self._parse_std(text)
+        with self._lock:
+            callbacks = list(self._frame_callbacks)
+        for callback in callbacks:
+            try:
+                callback(text)
+            except Exception as exc:  # noqa: BLE001
+                self._log("H7 frame callback failed: %s" % exc)
 
     def _parse_m3508_fb(self, text):
         # $M3508:FB,enabled,mode,onlineMask,a0..a3,s0..s3,g0..g3,f0..f3,t0..t3!
@@ -304,6 +387,21 @@ class H7SerialClient:
 
     def _write(self, data):
         with self._write_lock:
+            try:
+                self._write_serial(data)
+                return
+            except Exception as exc:  # noqa: BLE001
+                self._log_throttled("H7 串口写入失败，尝试重连: %s" % exc)
+                self._reconnect()
+                try:
+                    self._write_serial(data)
+                except Exception as exc2:  # noqa: BLE001
+                    self._log_throttled("H7 串口重连后写入仍失败: %s" % exc2)
+
+    def _write_serial(self, data):
+        with self._serial_lock:
+            if self._serial is None:
+                raise RuntimeError("H7 serial not connected")
             self._serial.write(data)
             self._serial.flush()
 
@@ -319,6 +417,8 @@ class DummyH7Client:
         self._drive_targets = [0.0] * self.DRIVE_COUNT
         self._steer_targets = [0.0] * self.STEER_COUNT
         self._enabled = False
+        self._frame_callbacks = []
+        self._arm_pulses = {joint_id: 1500 for joint_id in range(1, 6)}
 
     def _log(self, message):
         if self._logger is not None:
@@ -337,6 +437,34 @@ class DummyH7Client:
 
     def send_raw(self, frame):
         self._log("[h7] RAW %s" % frame)
+        text = frame.decode("ascii") if isinstance(frame, bytes) else str(frame)
+        if text.startswith("$ARM:READ,"):
+            try:
+                joint_id = int(text.split(",", 1)[1].rstrip("!"))
+                pulse = self._arm_pulses[joint_id]
+                self._emit_frame("$ARM:RESP,#%03dP%04d!" % (joint_id, pulse))
+            except (KeyError, ValueError):
+                pass
+        elif text.startswith("$ARM:MOVE,"):
+            fields = text.rstrip("!").split(",")
+            if len(fields) >= 3:
+                self._arm_pulses[int(fields[1])] = int(fields[2])
+        elif text.startswith("$ARM:MULTI,"):
+            fields = text.rstrip("!").split(",")[1:-1]
+            for index in range(0, len(fields) - 1, 2):
+                self._arm_pulses[int(fields[index])] = int(fields[index + 1])
+
+    def register_frame_callback(self, callback):
+        if callback not in self._frame_callbacks:
+            self._frame_callbacks.append(callback)
+
+    def unregister_frame_callback(self, callback):
+        if callback in self._frame_callbacks:
+            self._frame_callbacks.remove(callback)
+
+    def _emit_frame(self, text):
+        for callback in list(self._frame_callbacks):
+            callback(text)
 
     def set_enabled(self, enabled):
         changed = bool(enabled) != self._enabled

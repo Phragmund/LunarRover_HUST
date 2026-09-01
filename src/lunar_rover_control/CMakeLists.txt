@@ -102,6 +102,7 @@ install(
 install(
   PROGRAMS
     scripts/keyboard_arm_joint_controller.py
+    scripts/keyboard_arm_ik_controller.py
     scripts/m3508_can_api.py
     scripts/steering_motor.py
     scripts/usb_cdc_steering.py
@@ -110,6 +111,7 @@ install(
     scripts/keyboard_h7_direct.py
     scripts/keyboard_controller.py
     scripts/motion_solver.py
+    scripts/ros_web_console_server.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -122,6 +124,12 @@ if(BUILD_TESTING)
     GENERATE_RESULT_FOR_RETURN_CODE_ZERO
     COMMAND /usr/bin/python3
       ${CMAKE_CURRENT_SOURCE_DIR}/test/test_real_chassis_python.py
+  )
+  ament_add_test(
+    test_arm_h7_mapping
+    GENERATE_RESULT_FOR_RETURN_CODE_ZERO
+    COMMAND /usr/bin/python3
+      ${CMAKE_CURRENT_SOURCE_DIR}/test/test_arm_h7_mapping.py
   )
   target_link_libraries(
     test_kinematics
