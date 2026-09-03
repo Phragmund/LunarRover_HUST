@@ -1,26 +1,11 @@
-# LunarRover Ubuntu Upper-Dev Handoff
+# 下位机部署资源
 
-本交付包用于把 2026-08-20 当天在 H7 下位机联调得到的结果，交给后续 Ubuntu 环境下的上位机开发者。
+该目录保留 H7 上位机联调所需的厂商 SDK、网页调试工具与部署参考。它不是 ROS 公共接口的一部分，也不应被上层算法直接依赖。
 
-目录说明：
+底盘 ROS 接口和安全规则以仓库 [`docs/lower_controller_contract.md`](../../../docs/lower_controller_contract.md) 为准。部署时须单独记录固件版本、SDK 来源、设备权限和硬件配置。
 
-- `docs/01_comm_control_guide.md`
-  上下位机通信、端口、协议、控制方式总说明。
-- `docs/02_web_tools_guide.md`
-  Web 调试工具说明，包含 Ubuntu 启动方式。
-- `docs/03_agent_handoff_memory.md`
-  开发过程、关键改动、已知结论、注意事项。
-- `docs/04_action_design_guide.md`
-  机械臂“动作设计”模式、导出动作文件格式与上位机回放教程。
-- `tools/web/`
-  当前可用的网页调试工具。
-- `tools/cli/`
-  串口 CLI 调试脚本。
+- `tools/cli/`：M3508 USB/CAN 命令行诊断工具；
+- `tools/web/`：浏览器串口调试页及启动脚本；
+- `docs/`：厂商工具和串口诊断参考。
 
-推荐阅读顺序：
-
-1. `docs/01_comm_control_guide.md`
-2. `docs/03_agent_handoff_memory.md`
-3. `docs/02_web_tools_guide.md`
-4. `docs/04_action_design_guide.md`（机械臂动作设计）
-
+这些工具仅用于设备部署和诊断，不得在自主导航、任务规划或竞赛演示主链路中充当控制接口。

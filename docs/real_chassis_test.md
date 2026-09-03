@@ -1,7 +1,7 @@
 # 实车底盘链路预检与启动
 
 当前实车手动控制链路以
-[`manual_control_and_motion_solver.md`](manual_control_and_motion_solver.md)
+[`lower_controller_contract.md`](lower_controller_contract.md)
 为准：
 
 ```text

@@ -1,6 +1,6 @@
 # 十分钟采集—返航投放任务调度
 
-`mission_executive_node.py` 是整机任务层；它不绕过 FAST-LIO2、TerrainLayer、Nav2 或视觉抓取状态机，而是以定时器监督它们的交接。节点启动后保持 `READY`，不会自行驱动车体。通过下面命令显式开始一次任务：
+`mission_executive_node.py` 是整机任务层；它不绕过 FAST-LIO2、TerrainLayer、Nav2 或视觉抓取状态机，而是以定时器监督它们的状态转换。节点启动后保持 `READY`，不会自行驱动车体。通过下面命令显式开始一次任务：
 
 ```bash
 ros2 topic pub --once /mission/command std_msgs/msg/String "{data: start}"

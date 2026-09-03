@@ -1,23 +1,17 @@
 # lunar_rover_bringup
 
-集成启动包，负责把模型、仿真/实车传感器、底盘控制和上层算法 launch 组合起来。
+系统级启动组合包，不承载算法实现。`bringup.launch.py` 选择 `sim` 或 `real` 模式并透传基础参数；定位、建图、导航、探索和操作功能分别由对应包启动。
 
-## Launch
+仿真启动示例：
 
-| 文件 | 作用 |
-| --- | --- |
-| `launch/bringup.launch.py` | 基础入口。`mode:=sim` 启动 Gazebo、模型、控制器和可选仿真传感器；`mode:=real` 启动 `robot_state_publisher` 和实车传感器。 |
-| `launch/fast_lio2_exploration_navigation.launch.py` | FAST-LIO2、地形建图、Nav2 和前沿探索的调试 launch。当前推荐日常完整链路仍是根目录脚本 `scripts/restart_gated_mapping_exploration_navigation.sh`。 |
+```bash
+ros2 launch lunar_rover_bringup bringup.launch.py mode:=sim world:=reachable_maze
+```
 
-## 参数边界
+调用方应在传感器、TF 和定位输出就绪后再启动上层模块。参数和接口以 [`../../docs/interface_contract.md`](../../docs/interface_contract.md) 为准。
 
-`bringup.launch.py` 只负责选择仿真/实车模式和传递世界、GUI、传感器噪声、出生位姿等基础参数。定位、建图、导航和探索的具体参数放在对应 ROS 包的 `config/` 下。
+## 目录
 
-仿真模式下，`bringup.launch.py` 会向 `lunar_rover_simulation/launch/simulation.launch.py` 透传两个传感器门控参数：
-
-| 参数 | 默认值 | 说明 |
-| --- | --- | --- |
-| `livox_drivers` | `true` | 是否启动 Mid-360 ROS 点云/IMU 驱动，输出 `/livox/lidar`、`/livox/points`、`/livox/imu`。 |
-| `sensor_bridges` | `true` | 是否桥接 Gazebo 传感器话题到 ROS，包括 `/mid360/raw_points`、`/mid360/raw_imu` 和相机话题。 |
-
-根目录脚本 `scripts/restart_gated_mapping_exploration_navigation.sh` 在默认延迟模式下会先以 `livox_drivers:=false sensor_bridges:=false` 启动基础仿真，等待 Gazebo ground truth 稳定后再单独启动传感器 bridge 和 Mid-360 驱动。
+- `launch/`：基础仿真/实车入口，以及雷达建图和全链路组合入口；
+- `lunar_rover_bringup/`、`resource/`、`setup.py`：ament Python 包安装定义；
+- `package.xml`：运行时依赖声明。

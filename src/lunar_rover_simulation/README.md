@@ -1,54 +1,17 @@
-# Lunar rover simulation
+# lunar_rover_simulation
 
-This package supplies deterministic Gazebo Fortress environments and the
-ROS-Gazebo bridge for the six-wheel rover.
-
-```bash
-ros2 launch lunar_rover_simulation simulation.launch.py
-```
-
-The default test world is `image_cave`. Available worlds include `flat`,
-`steps`, `rocks`, `mixed`, `stairs_maze`, `reachable_maze`, `lava_tube`,
-`image_cave`, and `terrain_preview`. All worlds use
-standard Earth gravity (`9.80665 m/s^2`), local assets only, and deterministic
-seed `360335` by default.
-
-`image_cave` is the main full-system test map. It combines the generated cave
-wall graph with the current triangular pseudo-surface terrain. See
-`../../docs/simulation_worlds.md` for the complete world inventory and map
-contents.
-
-Headless execution is supported without an X server:
+Gazebo Fortress 仿真包，提供世界、模型、ROS-Gazebo bridge、控制器配置和 Mid-360 适配节点。
 
 ```bash
-ros2 launch lunar_rover_simulation simulation.launch.py \
-  gui:=false headless:=true rviz:=false
+ros2 launch lunar_rover_simulation simulation.launch.py world:=reachable_maze
 ```
 
-`simulation.launch.py` starts only the joint-state broadcaster. The integrated
-bringup passes `lunar_rover_control/config/controllers.yaml` through the
-`controller_config` argument and starts the four-steer/six-drive chassis and
-rocker differential controllers from `lunar_rover_control`.
+`sensor_bridges` 与 `livox_drivers` 可分别控制高频传感器 bridge 和 Livox ROS 适配器，以支持分阶段启动。所有世界使用标准地球重力；`/simulation/ground_truth/odometry` 仅可用于验证和标定，不能接入正式算法闭环。
 
-## Bridge and Sensor Gates
+## 目录
 
-The simulation launch separates core simulator state from high-rate sensor
-topics:
-
-| File | Purpose |
-| --- | --- |
-| `config/bridge_base.yaml` | Always-on core bridges such as `/simulation/ground_truth/odometry` and collision state. |
-| `config/bridge_sensors.yaml` | Delayed sensor bridges such as `/mid360/raw_points`, `/mid360/raw_imu`, and camera topics. |
-| `config/bridge.yaml` | Legacy all-in-one bridge list kept for reference and ad hoc debugging. |
-
-`simulation.launch.py` exposes two gates:
-
-| Argument | Default | Effect |
-| --- | --- | --- |
-| `sensor_bridges` | `true` | Starts the Gazebo-to-ROS sensor bridge for Mid-360 and camera topics. |
-| `livox_drivers` | `true` | Starts the Mid-360 ROS adapter nodes that publish `/livox/lidar`, `/livox/points`, and `/livox/imu`. |
-
-The validated full-system startup path uses these gates to start Gazebo and
-ground-truth odometry first, wait for the world to settle, then start the
-sensor bridge and Livox drivers before FAST-LIO2. Use the root script
-`scripts/restart_gated_mapping_exploration_navigation.sh` for that sequence.
+- `worlds/`：平地、台阶、岩石、迷宫和洞穴场景；
+- `models/`：地面、岩石、洞穴墙体、天花板与地形模型；
+- `config/`：基础/传感器 bridge 与控制器参数；
+- `scripts/`：Mid-360 适配器、世界标记与世界生成工具；
+- `launch/`：Gazebo 启动入口。
