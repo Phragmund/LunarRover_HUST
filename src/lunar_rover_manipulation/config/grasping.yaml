@@ -214,7 +214,7 @@ grasp_state_machine:
     # corner average.
     chassis_approach_enabled: true
     chassis_approach_topic: /grasp/chassis_cmd_vel
-    chassis_approach_step_m: 0.10
+    chassis_approach_move_sec: 1.0
     chassis_approach_speed_mps: 0.04
     chassis_approach_settle_sec: 1.0
     chassis_approach_deadband_px: 20.0
@@ -270,14 +270,17 @@ grasp_state_machine:
     tf_direct_pre_gripper_duration_sec: 1.0
     # After J1 is complete, recompute from its new tool point and go this far
     # beyond the base-frame target along the current target direction.
-    tf_direct_overshoot_m: 0.035
+    tf_direct_overshoot_m: 0.000
+    # After the TF target is reached, make a separate vertical IK descent
+    # before closing the gripper. This is not a camera/TF-coordinate offset.
+    tf_direct_vertical_drop_m: 0.040
     increment_sample_log_path: generated/logs/grasp_increment_samples.jsonl
     # Applied only when tf_direct_target_enabled is true.  Positive J1 is
     # rover-left under the calibrated joint convention.
     tf_direct_j1_offset_deg: 5.0
     # Positive means upward in the camera display.  Since the Gemini image is
     # inverted relative to J4, this is applied as a negative raw J4 angle.
-    tf_direct_j4_image_up_offset_deg: 0.0
+    tf_direct_j4_image_up_offset_deg: 10.0
     # Full grasp result path: TF reach -> J5 -> lower-left HSV hold -> J2 lift.
     tf_direct_post_sequence_enabled: true
     tf_direct_post_tf_settle_sec: 1.0
@@ -289,7 +292,7 @@ grasp_state_machine:
     # the lower-left image ROI before lifting with J2.
     grasp_verify_enabled: true
     grasp_verify_roi: [0.0, 0.55, 0.45, 0.45]
-    grasp_verify_min_roi_coverage: 0.01
+    grasp_verify_min_roi_coverage: 0.005
     grasp_verify_required_samples: 3
     grasp_verify_timeout_sec: 2.0
     # Collection-box pose and release are used only after the task executive

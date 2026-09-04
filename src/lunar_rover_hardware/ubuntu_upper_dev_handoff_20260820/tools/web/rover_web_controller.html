@@ -472,7 +472,9 @@
       { name:"j4", servo_id:4, min_deg:0, max_deg:270, min_pulse:500, max_pulse:2500, inverted:true },
       { name:"j5", servo_id:5, min_deg:0, max_deg:90, min_pulse:500, max_pulse:2500, inverted:false },
     ];
-    const armState = { selected:"j1", targetAngles:{}, live:{}, mode:"joint", keyboardIk:true, ik:{x:0,y:0,z:0,pitch:0,grip:45,lastSolution:null,sending:false} };
+    // ROS console sessions start ready for IK keyboard/phone key relays; no
+    // separate visit to the IK tab or enable click is required.
+    const armState = { selected:"j1", targetAngles:{}, live:{}, mode:"ik", keyboardIk:true, ik:{x:0,y:0,z:0,pitch:0,grip:45,lastSolution:null,sending:false} };
     // Real-arm geometry confirmed on 2026-08-30. The earlier coarse web IK
     // values are obsolete and intentionally retained only in git history.
     const IK_GEOMETRY = { j1J2AxisOffset:75.45, upperArm:113.91, forearm:110.00, tool:156.01 };

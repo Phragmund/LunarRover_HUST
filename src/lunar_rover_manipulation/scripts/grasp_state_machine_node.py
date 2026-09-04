@@ -174,8 +174,8 @@ class GraspStateMachine(Node):
         self.chassis_approach_topic = str(
             self.declare_parameter("chassis_approach_topic", "/grasp/chassis_cmd_vel").value
         )
-        self.chassis_approach_step_m = max(
-            0.01, float(self.declare_parameter("chassis_approach_step_m", 0.10).value)
+        self.chassis_approach_move_sec = max(
+            0.1, float(self.declare_parameter("chassis_approach_move_sec", 1.0).value)
         )
         self.chassis_approach_speed_mps = max(
             0.01, float(self.declare_parameter("chassis_approach_speed_mps", 0.04).value)
@@ -312,6 +312,15 @@ class GraspStateMachine(Node):
         self.tf_direct_overshoot_m = max(
             0.0,
             float(self.declare_parameter("tf_direct_overshoot_m", 0.05).value),
+        )
+        # A separate end-effector vertical descent after the TF target reach.
+        # Unlike a perception-coordinate offset, this is solved from the
+        # already reached IK pose with X/Y/pitch preserved.
+        self.tf_direct_vertical_drop_m = max(
+            0.0,
+            float(
+                self.declare_parameter("tf_direct_vertical_drop_m", 0.0).value
+            ),
         )
         self.increment_sample_log_path = Path(
             str(
@@ -630,12 +639,15 @@ class GraspStateMachine(Node):
         self.gripper_command_retry_timers = []
         self.tf_direct_j1_sequence_timer = None
         self.tf_direct_j1_sequence_pending = None
+        self.tf_direct_vertical_drop_timer = None
+        self.tf_direct_vertical_drop_pending = None
         self.tf_direct_pre_sequence_timer = None
         self.tf_direct_pre_sequence_pending = False
         self.tf_direct_post_sequence_timer = None
         self.tf_direct_post_sequence_pending = None
         self.grasp_verify_samples = []
         self.grasp_verify_active = False
+        self.grasp_recovery_timer = None
         self.chassis_approach_phase = "idle"
         self.chassis_approach_release_at = 0.0
         self.chassis_approach_step_count = 0
@@ -1261,6 +1273,66 @@ class GraspStateMachine(Node):
             self.tf_direct_j1_sequence_timer = None
         self.tf_direct_j1_sequence_pending = None
 
+    def _cancel_tf_direct_vertical_drop(self) -> None:
+        if self.tf_direct_vertical_drop_timer is not None:
+            self.tf_direct_vertical_drop_timer.cancel()
+            self.tf_direct_vertical_drop_timer = None
+        self.tf_direct_vertical_drop_pending = None
+
+    def _begin_tf_direct_vertical_drop(self, reached_degrees, duration_sec: float) -> None:
+        if self.tf_direct_vertical_drop_m <= 0.0:
+            self._begin_tf_direct_post_sequence(duration_sec)
+            return
+        self._cancel_tf_direct_vertical_drop()
+        self.tf_direct_vertical_drop_pending = {
+            "reached_degrees": list(reached_degrees),
+            "duration_sec": float(duration_sec),
+            "release_at": time.monotonic()
+            + float(duration_sec)
+            + self.tf_direct_j1_completion_margin_sec,
+        }
+        self.tf_direct_vertical_drop_timer = self.create_timer(
+            0.05, self._complete_tf_direct_vertical_drop
+        )
+
+    def _complete_tf_direct_vertical_drop(self) -> None:
+        pending = self.tf_direct_vertical_drop_pending
+        if pending is None or not self.active or self.state != MOVE_TO_GRASP:
+            self._cancel_tf_direct_vertical_drop()
+            return
+        if time.monotonic() < pending["release_at"]:
+            return
+        reached_tip = self.fk_from_degrees(pending["reached_degrees"])
+        drop_tip = IkTarget(
+            x=reached_tip.x,
+            y=reached_tip.y,
+            z=reached_tip.z - self.tf_direct_vertical_drop_m,
+            pitch_deg=reached_tip.pitch_deg,
+            grip_deg=reached_tip.grip_deg,
+        )
+        solution, branch_sign, clamped = self.solve_ik(drop_tip)
+        if solution is None:
+            self._cancel_tf_direct_vertical_drop()
+            self.set_state(MOVE_TO_GRASP, "末端竖直下探 IK 无解，取消后续夹取")
+            return
+        solution[0] = pending["reached_degrees"][0]
+        if branch_sign is not None:
+            self.last_branch_sign = branch_sign
+        duration_sec = pending["duration_sec"]
+        self._cancel_tf_direct_vertical_drop()
+        self._publish_arm_trajectory(
+            self.degrees_to_ros(solution), duration_sec=duration_sec,
+            repeat_count=self.tf_direct_target_repeat_count,
+            repeat_interval_sec=self.tf_direct_target_repeat_interval_sec,
+        )
+        self._begin_tf_direct_post_sequence(duration_sec)
+        self.set_state(
+            MOVE_TO_GRASP,
+            "TF 到位后末端竖直下探 "
+            f"drop={self.tf_direct_vertical_drop_m:.3f}m "
+            f"duration={duration_sec:.1f}s{' IK_CLAMPED' if clamped else ''}",
+        )
+
     def _cancel_tf_direct_pre_sequence(self) -> None:
         if self.tf_direct_pre_sequence_timer is not None:
             self.tf_direct_pre_sequence_timer.cancel()
@@ -1337,6 +1409,39 @@ class GraspStateMachine(Node):
         self.tf_direct_post_sequence_pending = None
         self.grasp_verify_active = False
         self.grasp_verify_samples.clear()
+
+    def _schedule_grasp_recovery(self, delay_sec, callback) -> None:
+        if self.grasp_recovery_timer is not None:
+            self.grasp_recovery_timer.cancel()
+        def once():
+            if self.grasp_recovery_timer is not None:
+                self.grasp_recovery_timer.cancel()
+                self.grasp_recovery_timer = None
+            callback()
+        self.grasp_recovery_timer = self.create_timer(max(0.05, delay_sec), once)
+
+    def _recover_unconfirmed_grasp(self) -> None:
+        """Run the operator's one-key stow sequence instead of deadlocking."""
+        self._cancel_tf_direct_post_sequence()
+        self._publish_gripper_command(25.0, 1.0, repeat_count=5)
+        self.set_state(MOVE_TO_GRASP, "未抓稳：执行一键存放（J5=25°）")
+        self._schedule_grasp_recovery(1.0, self._recovery_stow)
+
+    def _recovery_stow(self) -> None:
+        self._publish_arm_trajectory(self.degrees_to_ros([90.0, 155.0, 135.0, 0.0]), duration_sec=1.0, repeat_count=5)
+        self.set_state(MOVE_TO_GRASP, "未抓稳：一键存放姿态")
+        self._schedule_grasp_recovery(1.0, self._recovery_release)
+
+    def _recovery_release(self) -> None:
+        self._publish_gripper_command(45.0, 1.0, repeat_count=5)
+        self._publish_arm_trajectory(self.degrees_to_ros([90.0, 155.0, 135.0, 225.0]), duration_sec=1.0, repeat_count=5)
+        self.set_state(MOVE_TO_GRASP, "未抓稳：存放释放并抬 J4")
+        self._schedule_grasp_recovery(2.0, self._recovery_home)
+
+    def _recovery_home(self) -> None:
+        self._publish_arm_trajectory(self.degrees_to_ros([96.754752, 201.804458, 183.510522, 110.293936]), duration_sec=1.0, repeat_count=5)
+        self.set_state(ABORT, "GRASP_UNCONFIRMED：一键存放完成，已回 IK 初始位")
+        self._publish_result("UNCONFIRMED_STOWED")
 
     def _send_post_grasp_j2(self) -> None:
         if not self.current_joints_ready:
@@ -1502,12 +1607,7 @@ class GraspStateMachine(Node):
                 self._send_post_grasp_j2()
                 return
             if now >= pending["release_at"]:
-                self._cancel_tf_direct_post_sequence()
-                self.set_state(
-                    MOVE_TO_GRASP,
-                    "GRASP_UNCONFIRMED：左下角锁定 HSV 未满足抓稳占比，停止回收 J2",
-                )
-                self._publish_result("UNCONFIRMED")
+                self._recover_unconfirmed_grasp()
             else:
                 self.set_state(
                     MOVE_TO_GRASP,
@@ -1597,7 +1697,7 @@ class GraspStateMachine(Node):
             )
         )
         if solution is None:
-            self.set_state(MOVE_TO_GRASP, "J1 完成后 5cm 超前目标 IK 无解，取消后续直达")
+            self.set_state(MOVE_TO_GRASP, "J1 完成后 TF 补偿目标 IK 无解，取消后续直达")
             self._cancel_tf_direct_j1_sequence()
             return
         if branch_sign is not None:
@@ -1622,11 +1722,12 @@ class GraspStateMachine(Node):
             self.gimbal_phase_timer = self.create_timer(
                 self.gimbal_phase_delay_sec, self._complete_gimbal_phase
             )
-        self._begin_tf_direct_post_sequence(duration_sec)
+        self._begin_tf_direct_vertical_drop(solution, duration_sec)
         self.set_state(
             MOVE_TO_GRASP,
             "J1 动作窗口完成，已按新方向重算其余关节直达目标 "
             f"waited={waited_sec:.2f}s overshoot={self.tf_direct_overshoot_m:.3f}m "
+            f"vertical_drop={self.tf_direct_vertical_drop_m:.3f}m "
             f"final=({final_tip[0]:.3f},{final_tip[1]:.3f},{final_tip[2]:.3f}) "
             f"duration={duration_sec:.1f}s{' IK_CLAMPED' if clamped else ''}",
         )
@@ -1893,14 +1994,14 @@ class GraspStateMachine(Node):
         if self.latest_detection_center is None:
             self.set_state(APPROACH_WITH_CHASSIS, "等待锁定 HSV 目标重新进入画面后再靠近")
             return
-        duration = self.chassis_approach_step_m / self.chassis_approach_speed_mps
+        duration = self.chassis_approach_move_sec
         self.chassis_approach_phase = "moving"
         self.chassis_approach_release_at = time.monotonic() + duration
         self.chassis_approach_step_count += 1
         self.set_state(
             APPROACH_WITH_CHASSIS,
-            "底盘步进 %d：前进 %.2fm，保持目标居中"
-            % (self.chassis_approach_step_count, self.chassis_approach_step_m),
+            "底盘步进 %d：前进 %.1fs，保持目标居中"
+            % (self.chassis_approach_step_count, duration),
         )
 
     def _advance_chassis_approach(self) -> None:
@@ -1927,7 +2028,7 @@ class GraspStateMachine(Node):
             self._publish_chassis_approach()
             self.chassis_approach_phase = "settling"
             self.chassis_approach_release_at = now + self.chassis_approach_settle_sec
-            self.set_state(APPROACH_WITH_CHASSIS, "已完成 0.10m 步进，停车等待相机重新判距")
+            self.set_state(APPROACH_WITH_CHASSIS, "已完成 1s 前进，停车等待相机重新判距")
             return
         if self.chassis_approach_phase == "settling" and now >= self.chassis_approach_release_at:
             if self.latest_observation is None or now - self.latest_observation_at > self.observation_max_age_sec:
