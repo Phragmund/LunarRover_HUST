@@ -80,6 +80,10 @@ class RosWebConsoleServer(Node):
         )
         self.max_camera_hz = float(self.declare_parameter("max_camera_hz", 5.0).value)
         self.access_token = str(self.declare_parameter("access_token", "").value)
+        self.full_chain_start_command = str(self.declare_parameter(
+            "full_chain_start_command",
+            "/home/phragmund/LunarRover/scripts/start_full_real_nav2_chain.sh",
+        ).value)
 
         self.loop = None
         self.connections = set()
@@ -96,6 +100,12 @@ class RosWebConsoleServer(Node):
         }
         self.handeye_process = None
         self.handeye_lock = threading.Lock()
+        self.full_chain_process = None
+        self.full_chain_lock = threading.Lock()
+        self.full_chain_status = {
+            "state": "idle",
+            "detail": "未启动完整建图导航链路。",
+        }
         self.last_target_observation = None
         self.last_target_pose = None
 
@@ -211,6 +221,12 @@ class RosWebConsoleServer(Node):
                 self.start_handeye_sampler()
             elif command in {"p", "q"}:
                 self.send_handeye_command(command)
+        elif message.get("type") == "start_full_nav2_chain":
+            requested = message.get("start_mapping", False)
+            start_mapping = requested is True or str(requested).lower() in {
+                "1", "true", "yes", "on"
+            }
+            self.start_full_nav2_chain(start_mapping)
         elif message.get("type") == "ping":
             self.broadcast_threadsafe({"type": "ros_status", "connected": True})
 
@@ -235,6 +251,9 @@ class RosWebConsoleServer(Node):
         await self.send_one(
             websocket,
             {"type": "handeye_status", **self.last_handeye_status},
+        )
+        await self.send_one(
+            websocket, {"type": "full_chain_status", **self.full_chain_status}
         )
         if self.last_target_observation is not None:
             await self.send_one(websocket, self.last_target_observation)
@@ -366,6 +385,68 @@ class RosWebConsoleServer(Node):
         self.broadcast_threadsafe({"type": "handeye_status", **self.last_handeye_status})
         self.broadcast_threadsafe(
             {"type": "console_log", "text": "已启动 ChArUco 手眼采样节点"}
+        )
+
+    def start_full_nav2_chain(self, start_mapping):
+        """Start standby only, or optionally continue into the full Nav2 stack."""
+        with self.full_chain_lock:
+            if self.full_chain_process is not None and self.full_chain_process.poll() is None:
+                self.broadcast_threadsafe(
+                    {"type": "console_log", "text": "完整导航链路已经在启动中"}
+                )
+                return
+            try:
+                self.full_chain_process = subprocess.Popen(
+                    ["bash", self.full_chain_start_command, "true" if start_mapping else "false"],
+                    cwd=str(Path(__file__).resolve().parents[3]),
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+            except OSError as exc:
+                self.full_chain_status = {"state": "failed", "detail": str(exc)}
+                self.broadcast_threadsafe(
+                    {"type": "full_chain_status", **self.full_chain_status}
+                )
+                return
+            self.full_chain_status = {
+                "state": "starting",
+                "detail": (
+                    "正在重启待命服务，并拉起 FAST-LIO / Nav2…"
+                    if start_mapping
+                    else "正在启动雷达、底盘与手机服务；建图将由手机端发起…"
+                ),
+            }
+            process = self.full_chain_process
+        self.broadcast_threadsafe({"type": "full_chain_status", **self.full_chain_status})
+        self.broadcast_threadsafe(
+            {"type": "console_log", "text": "开始完整实车导航链路；请保持车体静止"}
+        )
+        threading.Thread(
+            target=self._watch_full_nav2_chain,
+            args=(process, start_mapping), daemon=True
+        ).start()
+
+    def _watch_full_nav2_chain(self, process, start_mapping):
+        result = process.wait()
+        with self.full_chain_lock:
+            if self.full_chain_process is not process:
+                return
+            self.full_chain_process = None
+            self.full_chain_status = {
+                "state": "ready" if result == 0 else "failed",
+                "detail": (
+                    "完整链路已启动：手机遥控、建图、Nav2、探索和 RViz 均已提交。"
+                    if result == 0 and start_mapping
+                    else "待命链路已启动：请在手机端点击“开始建图导航”。"
+                    if result == 0
+                    else "完整链路启动失败，请查看 /tmp/start_full_real_nav2_chain.log"
+                ),
+            }
+        self.broadcast_threadsafe({"type": "full_chain_status", **self.full_chain_status})
+        self.broadcast_threadsafe(
+            {"type": "console_log", "text": self.full_chain_status["detail"]}
         )
 
     def _watch_handeye_process(self, process):

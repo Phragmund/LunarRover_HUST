@@ -96,14 +96,18 @@ controller_server:
       vx_std: 0.06
       vy_std: 0.20
       wz_std: 0.30
-      vx_max: 0.06
+      # Computer takeover is limited to half of the phone full-stick speed
+      # (0.09375 m/s) for safer real-rover autonomy.
+      vx_max: 0.046875
       vy_max: 0.0
-      wz_max: 0.30
+      wz_max: 0.235
       iteration_count: 1
       temperature: 0.30
       gamma: 0.015
       motion_model: DiffDrive
-      visualize: false
+      # Publish sampled MPPI candidates and the chosen local trajectory on
+      # /trajectories so RViz can make controller decisions inspectable.
+      visualize: true
       critics: [ObstaclesCritic, PathAlignCritic, PathFollowCritic, GoalCritic, GoalAngleCritic, PreferForwardCritic]
       ObstaclesCritic:
         enabled: true
@@ -317,8 +321,8 @@ velocity_smoother:
     smoothing_frequency: 20.0
     scale_velocities: false
     feedback: OPEN_LOOP
-    max_velocity: [0.06, 0.0, 0.30]
-    min_velocity: [-0.08, 0.0, -0.42]
+    max_velocity: [0.046875, 0.0, 0.235]
+    min_velocity: [-0.046875, 0.0, -0.235]
     max_accel: [0.35, 0.0, 0.80]
     max_decel: [-0.45, 0.0, -0.90]
     odom_topic: /localization/lio_odometry

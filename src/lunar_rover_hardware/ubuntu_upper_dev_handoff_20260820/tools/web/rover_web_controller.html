@@ -38,6 +38,8 @@
     .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
     .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
     .buttons { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+    .check { display:flex; align-items:center; gap:7px; margin-top:8px; color:var(--muted); font-size:12px; }
+    .check input { width:auto; min-height:0; margin:0; }
     .log { height:150px; overflow:auto; white-space:pre-wrap; background:#111827; color:#d1fae5; border:1px solid #263445; border-radius:8px; padding:10px; font:12px/1.45 Consolas,"Cascadia Mono",monospace; }
     .log-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
     .log-cell { min-width:0; }
@@ -142,6 +144,12 @@
             <button id="rosConnectBtn">连接 ROS</button>
             <button id="rosDisconnectBtn">断开 ROS</button>
           </div>
+          <div class="buttons">
+            <button id="fullChainBtn" class="primary">🚀 一键启动完整导航链路</button>
+            <button id="phoneConsoleBtn">打开手机遥控</button>
+          </div>
+          <label class="check"><input id="startMappingCheck" type="checkbox">同时启动建图、Nav2、探索与 RViz</label>
+          <p id="fullChainStatus" class="muted">完整导航链路未启动。</p>
           <label><span>ROS WebSocket</span><input id="rosWsInput" value=""></label>
           <div class="buttons">
             <button id="armPingBtn">ARM PING</button>
@@ -426,11 +434,12 @@
               <div class="camera-calibration-path" id="handeyeOutputText">输出目录：--</div>
               <div class="buttons">
                 <button id="graspStartBtn">开始搜索</button>
+                <button id="graspSkipYoloBtn" title="仅联调：直接接受当前最优 HSV 候选">跳过 YOLO 确认</button>
                 <button id="graspStepBtn">执行单步增量</button>
                 <button id="graspAbortBtn" class="danger">中止</button>
                 <button id="graspHomeBtn">回到初始位</button>
               </div>
-              <p class="muted">状态机（抓取状态）：<b>ABORT</b> 中止/未启动 · <b>WIDE_SEARCH</b> 广域搜索等待 YOLO 确认 · <b>TARGET_LOCKED</b> 已锁定目标 HSV · <b>POSE_AVERAGING</b> HSV+低频 SAM 远距位姿统计（5 个机械臂姿态，每个姿态 15 个样本，累计不滑动） · <b>WORKSPACE_CHECK</b> 工作区判定 · <b>APPROACH_WITH_CHASSIS</b> 未进工作区，等待后续底盘接近控制 · <b>MOVE_TO_GRASP</b> 已进工作区，等待 TF+视觉伺服增量移动。<br>感知模式：<b>wide_search</b> HSV 候选+YOLO 确认 · <b>locked_hsv</b> 锁定后专属 HSV 跟踪 · <b>precise_hsv_sam</b> HSV 引导低频 SAM 精分割 · <b>idle</b> 空闲。</p>
+              <p class="muted">状态机（抓取状态）：<b>ABORT</b> 中止/未启动 · <b>WIDE_SEARCH</b> 广域搜索等待 YOLO 确认 · <b>TARGET_LOCKED</b> 已锁定目标 HSV · <b>POSE_AVERAGING</b> HSV+低频 SAM 远距位姿统计（5 个机械臂姿态，每个姿态 15 个样本，累计不滑动） · <b>WORKSPACE_CHECK</b> 工作区判定 · <b>APPROACH_WITH_CHASSIS</b> 未进工作区，等待后续底盘接近控制 · <b>MOVE_TO_GRASP</b> 已进工作区，等待 TF+视觉伺服增量移动。<br>“跳过 YOLO 确认”仅用于联调：在开始搜索且出现当前 HSV 候选后，直接将该候选视为已确认。感知模式：<b>wide_search</b> HSV 候选+YOLO 确认 · <b>locked_hsv</b> 锁定后专属 HSV 跟踪 · <b>precise_hsv_sam</b> HSV 引导低频 SAM 精分割 · <b>idle</b> 空闲。</p>
             </section>
           </div>
         </section>
@@ -515,6 +524,7 @@
       $("rosConnectBtn").disabled = connected;
       $("rosDisconnectBtn").disabled = !connected;
       $("cameraConnectRosBtn").disabled = connected;
+      $("fullChainBtn").disabled = !connected;
     }
     async function setTransportMode(mode) {
       const nextMode = mode === "ros" ? "ros" : "serial";
@@ -645,6 +655,12 @@
         $("handeyeStatusText").textContent = states[msg.state] || msg.state || "--";
         $("handeyeSamplesText").textContent = String(msg.samples ?? 0);
         $("handeyeOutputText").textContent = `输出目录：${msg.output_dir || "--"}`;
+      } else if (msg.type === "full_chain_status") {
+        const labels = {idle:"未启动", starting:"正在启动", ready:"已就绪", failed:"启动失败"};
+        $("fullChainStatus").textContent = `${labels[msg.state] || msg.state || "--"}：${msg.detail || "--"}`;
+        const starting = msg.state === "starting";
+        $("fullChainBtn").disabled = starting || !rosConnected;
+        $("fullChainBtn").textContent = starting ? "⏳ 正在启动完整链路…" : "🚀 一键启动完整导航链路";
       } else if (msg.type === "workspace_status") {
         $("workspaceStatusText").textContent = msg.text || "--";
       } else if (msg.type === "target_observation") {
@@ -1624,12 +1640,23 @@
       $("rosModeBtn").onclick = () => setTransportMode("ros").catch(e=>log(e.message));
       $("rosConnectBtn").onclick = () => setTransportMode("ros").catch(e=>log(e.message));
       $("rosDisconnectBtn").onclick = disconnectRos;
+      $("fullChainBtn").onclick = () => {
+        const startMapping = $("startMappingCheck").checked;
+        const detail = startMapping ? "并启动 FAST-LIO、建图、Nav2、探索和 RViz" : "仅启动雷达、底盘和手机服务；建图需稍后从手机端启动";
+        if (!confirm(`将停止当前导航相关进程，${detail}。请确认车体周围安全并保持静止。继续吗？`)) return;
+        try { sendRos({type:"start_full_nav2_chain", start_mapping:startMapping}); } catch(e) { log(e.message); }
+      };
+      $("phoneConsoleBtn").onclick = () => {
+        const host = location.hostname || "127.0.0.1";
+        window.open(`http://${host}:8000/?token=rover2026`, "_blank");
+      };
       $("cameraConnectRosBtn").onclick = () => setTransportMode("ros").catch(e=>log(e.message));
       $("cameraFreezeBtn").onclick = () => { cameraFrozen = !cameraFrozen; $("cameraFreezeBtn").textContent = cameraFrozen ? "继续画面" : "暂停画面"; };
       $("handeyeStartBtn").onclick = () => { try { sendRos({type:"handeye_command", command:"start"}); } catch(e) { log(e.message); } };
       $("handeyeSampleBtn").onclick = () => { try { sendRos({type:"handeye_command", command:"p"}); } catch(e) { log(e.message); } };
       $("handeyeStopBtn").onclick = () => { try { sendRos({type:"handeye_command", command:"q"}); } catch(e) { log(e.message); } };
       $("graspStartBtn").onclick = () => { try { sendRos({type:"grasp_command", command:"start_search"}); } catch(e) { log(e.message); } };
+      $("graspSkipYoloBtn").onclick = () => { try { sendRos({type:"grasp_command", command:"skip_yolo_confirm"}); } catch(e) { log(e.message); } };
       $("graspStepBtn").onclick = () => { try { sendRos({type:"grasp_command", command:"step_once"}); } catch(e) { log(e.message); } };
       $("graspAbortBtn").onclick = () => { try { sendRos({type:"grasp_command", command:"abort"}); } catch(e) { log(e.message); } };
       $("graspHomeBtn").onclick = () => armMoveManyAngles(HOME_ANGLES, Number($("ikTimeInput").value)).catch(e=>log(e.message));

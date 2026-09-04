@@ -103,6 +103,23 @@ def generate_launch_description():
                 ],
                 output="screen",
             ),
+            # Keep the same forward-only cloud contract as the phone-started
+            # real Nav2 chain.  FAST-LIO consumes /livox/lidar_front190 from
+            # fast_lio2_mid360_real.yaml.
+            Node(
+                package="lunar_rover_localization",
+                executable="rear_sector_cloud_filter.py",
+                name="rear_sector_cloud_filter",
+                parameters=[
+                    {
+                        "input_topic": LaunchConfiguration("lidar_output_topic"),
+                        "output_topic": "/livox/lidar_front190",
+                        "base_frame": "base_link",
+                        "front_half_angle_deg": 95.0,
+                    }
+                ],
+                output="screen",
+            ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(str(real_chassis_launch)),
                 launch_arguments={

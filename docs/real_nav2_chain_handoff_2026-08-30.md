@@ -115,9 +115,9 @@ tail /tmp/frontier.log                   # 期望 Selected goal ...
 ### 6.1 速度（手机 vs Nav2）
 
 - 手机满杆：`motion_solver` 的 `max_speed=1.5 r/s`，线速度 ≈ `1.5×0.0625 ≈ 0.094 m/s`。
-- Nav2（电脑接管）速度 = 手机满杆的 **2/3**：
-  - `vx_max=0.06 m/s`、`wz_max=0.30 rad/s`（`nav2_fast_lio2_params_real.yaml`）。
-  - twist_stamper 钳位 `max_linear_x=0.07`、`max_angular_z=0.35`。
+- Nav2（电脑接管）速度 = 手机满杆的 **1/2**：
+  - `vx_max=0.046875 m/s`、`wz_max=0.235 rad/s`（`nav2_fast_lio2_params_real.yaml`）。
+  - twist_stamper 钳位 `max_linear_x=0.046875`、`max_angular_z=0.235`。
 - `nav_to_manual_mux` 的 `v_max=0.09375` 是「手机满杆基准」，用于把 Nav2 的 m/s 换算成手机油门杆量，**不是限速**，不要改。
 
 ### 6.2 坐标系 / 重力对齐（重要，本次核心修复）

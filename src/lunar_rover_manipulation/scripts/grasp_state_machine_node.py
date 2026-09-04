@@ -24,8 +24,9 @@ It still does NOT command the chassis or the arm. It only:
     placeholder reminder that chassis approach control still needs to be
     implemented.
 
-Locking ALWAYS requires YOLO confirmation: pure HSV proposals never lock, no
-matter how stable they look.
+Locking normally requires YOLO confirmation.  The operator can explicitly send
+``skip_yolo_confirm`` to accept the latest HSV proposal for commissioning; this
+is deliberately a manual, visible override rather than an automatic fallback.
 
 Triggers (either one starts a search):
 
@@ -116,13 +117,18 @@ class GraspStateMachine(Node):
 
         # Unconfirmed HSV proposals keep this class_id prefix until YOLOWorld
         # confirms them. The detector may append "+sam" (hsv_candidate+sam), so
-        # we treat it as a prefix. Locking requires YOLO confirmation; pure HSV
-        # never locks.
+        # we treat it as a prefix.
         self.hsv_class_id = str(
             self.declare_parameter("hsv_class_id", "hsv_candidate").value
         )
         self.lock_confirmation_frames = int(
             self.declare_parameter("lock_confirmation_frames", 3).value
+        )
+        self.skip_yolo_candidate_timeout_sec = max(
+            0.1,
+            float(
+                self.declare_parameter("skip_yolo_candidate_timeout_sec", 1.0).value
+            ),
         )
         self.lock_center_spread_frac = float(
             self.declare_parameter("lock_center_spread_frac", 0.5).value
@@ -535,6 +541,7 @@ class GraspStateMachine(Node):
         self.visual_target_lost = False
         self.latest_detection_center = None
         self.latest_detection_bbox = None
+        self.latest_hsv_candidate = None
         self.camera_info = None
         self.tf_plane_correction_camera = np.zeros(2, dtype=np.float64)
         self.locked_class = None
@@ -577,7 +584,7 @@ class GraspStateMachine(Node):
         self.create_timer(0.2, self.on_timer)
         self.get_logger().info(
             "grasp state machine ready (阶段 A skeleton): "
-            f"lock requires YOLOWorld confirmation, "
+            f"lock requires YOLOWorld confirmation unless manually overridden, "
             f"hsv_class_id={self.hsv_class_id!r}"
         )
 
@@ -1736,6 +1743,8 @@ class GraspStateMachine(Node):
             self.abort("用户中止")
         elif command in ("step_once", "step"):
             self.execute_increment_step()
+        elif command in ("skip_yolo_confirm", "skip_yolo"):
+            self.skip_yolo_confirmation()
         else:
             self.get_logger().warning(f"未知抓取指令: {message.data!r}")
 
@@ -1758,6 +1767,7 @@ class GraspStateMachine(Node):
         self.visual_target_lost = False
         self.latest_detection_center = None
         self.latest_detection_bbox = None
+        self.latest_hsv_candidate = None
         self.tf_plane_correction_camera[:] = 0.0
         self.locked_class = None
         self.locked_confidence = 0.0
@@ -1790,6 +1800,7 @@ class GraspStateMachine(Node):
         self.visual_target_lost = False
         self.latest_detection_center = None
         self.latest_detection_bbox = None
+        self.latest_hsv_candidate = None
         self.tf_plane_correction_camera[:] = 0.0
         self.locked_class = None
         self.locked_confidence = 0.0
@@ -1835,6 +1846,16 @@ class GraspStateMachine(Node):
         # In locked_hsv mode, every detection is already constrained by the
         # remembered HSV profile, so it is safe to treat it as reacquisition.
         self.last_detection_at = time.monotonic()
+        if self.state == WIDE_SEARCH and class_id.startswith(self.hsv_class_id):
+            # The fusion node publishes its best HSV proposal on the regular
+            # detection topic. Keep only this latest proposal; a manual bypass
+            # must never resurrect an old candidate after the target changed.
+            self.latest_hsv_candidate = {
+                "at": self.last_detection_at,
+                "class_id": class_id,
+                "confidence": confidence,
+                "center": center,
+            }
         if self.visual_target_lost and self.state != WIDE_SEARCH:
             self.visual_target_lost = False
             self.publish_mode("precise_hsv_sam")
@@ -1856,6 +1877,30 @@ class GraspStateMachine(Node):
             self._prune_pending()
             if self._try_lock():
                 self.lock_target(class_id, confidence, center)
+
+    def skip_yolo_confirmation(self) -> None:
+        """Manually accept the latest best HSV proposal during commissioning."""
+        if not self.active or self.state != WIDE_SEARCH:
+            self.get_logger().warning("跳过 YOLO 被忽略：请先处于 WIDE_SEARCH")
+            return
+        candidate = self.latest_hsv_candidate
+        if candidate is None:
+            self.get_logger().warning("跳过 YOLO 被忽略：尚无 HSV 候选")
+            self.set_state(WIDE_SEARCH, "等待 HSV 候选后才能跳过 YOLO 确认")
+            return
+        age = time.monotonic() - candidate["at"]
+        if age > self.skip_yolo_candidate_timeout_sec:
+            self.get_logger().warning("跳过 YOLO 被忽略：HSV 候选已过期")
+            self.set_state(WIDE_SEARCH, "HSV 候选已过期，请等待当前最优候选")
+            return
+        self.get_logger().warning(
+            "人工跳过 YOLO 确认：接受当前 HSV 候选，后续仅用于联调"
+        )
+        self.lock_target(
+            "manual_hsv_confirmed",
+            candidate["confidence"],
+            candidate["center"],
+        )
 
     def _is_confirmed(self, class_id: str) -> bool:
         """True only after YOLOWorld confirms the proposal.

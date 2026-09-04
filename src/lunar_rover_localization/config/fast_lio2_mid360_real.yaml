@@ -11,7 +11,9 @@
     map_file_path: ""
 
     common:
-      lid_topic: /livox/lidar
+      # rear_sector_cloud_filter retains only base_link forward ±95° (190°);
+      # the centered rear 170° is excluded before it reaches FAST-LIO.
+      lid_topic: /livox/lidar_front190
       imu_topic: /livox/imu
       time_sync_en: false
       time_offset_lidar_to_imu: 0.0

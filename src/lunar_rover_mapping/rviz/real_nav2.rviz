@@ -70,15 +70,25 @@ Visualization Manager:
       Use Timestamp: false
     - Class: rviz_default_plugins/Path
       Enabled: true
-      Name: Nav2 plan
+      Name: Nav2 global plan (bright green)
       Topic:
         Depth: 5
         Durability Policy: Volatile
         Reliability Policy: Reliable
         Value: /plan
-      Color: 0; 255; 0
+      Color: 0; 255; 40
       Line Style: Lines
-      Line Width: 0.05
+      Line Width: 0.10
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Marker Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Reliability Policy: Reliable
+        Value: /trajectories
+      Name: MPPI candidate trajectories
+      Namespaces:
+        All: true
     - Class: rviz_default_plugins/Path
       Enabled: true
       Name: LIO path
