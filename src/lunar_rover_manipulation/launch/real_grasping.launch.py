@@ -80,6 +80,7 @@ def generate_launch_description():
             DeclareLaunchArgument("active_search", default_value="true"),
             DeclareLaunchArgument("auto_trigger_grasp", default_value="false"),
             DeclareLaunchArgument("periodic_sweep", default_value="false"),
+            DeclareLaunchArgument("mission_executive", default_value="true"),
             DeclareLaunchArgument(
                 "run_foundationpose_bridge", default_value="false"
             ),
@@ -206,6 +207,14 @@ def generate_launch_description():
                 condition=IfCondition(
                     PythonExpression(["'", grasp_backend, "' == 'state_machine'"])
                 ),
+            ),
+            Node(
+                package="lunar_rover_manipulation",
+                executable="mission_executive_node.py",
+                name="mission_executive",
+                parameters=[str(share / "config" / "grasping.yaml")],
+                output="screen",
+                condition=IfCondition(LaunchConfiguration("mission_executive")),
             ),
         ]
     )

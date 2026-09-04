@@ -47,7 +47,7 @@ setsid -f bash -lc 'source /opt/ros/humble/setup.bash && source install/setup.ba
 # /web/manual_control, while motion_solver intentionally accepts only the
 # arbitrated /manual_control topic.  Nav2 inputs simply remain absent until the
 # phone requests mapping/navigation startup.
-setsid -f bash -lc 'source /opt/ros/humble/setup.bash && source install/setup.bash && exec python3 /home/phragmund/LunarRover/src/lunar_rover_navigation/scripts/nav_to_manual_mux.py' </dev/null >/tmp/mux.log 2>&1
+setsid -f bash -lc 'source /opt/ros/humble/setup.bash && source install/setup.bash && exec python3 /home/phragmund/LunarRover/src/lunar_rover_navigation/scripts/nav_to_manual_mux.py --ros-args --params-file /home/phragmund/LunarRover/src/lunar_rover_navigation/config/twist_stamper_real.yaml' </dev/null >/tmp/mux.log 2>&1
 setsid -f bash -lc 'source /opt/ros/humble/setup.bash && source install/setup.bash && exec ros2 run lunar_rover_navigation web_joystick_server.py --ros-args -p port:=8000 -p access_token:=rover2026 -p command_topic:=/web/manual_control -p use_sim_time:=false' </dev/null >/tmp/web.log 2>&1
 setsid -f bash -lc 'source /opt/ros/humble/setup.bash && source install/setup.bash && exec ros2 run lunar_rover_control motion_solver.py --ros-args -p h7_port:=/dev/ttyACM0 -p use_sim_time:=false' </dev/null >/tmp/motion.log 2>&1
 

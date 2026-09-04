@@ -197,6 +197,17 @@ grasp_state_machine:
     pose_average_min_camera_depth_m: 0.20
     pose_average_max_camera_depth_m: 1.20
     pose_average_max_spread_m: 0.05
+    # Reject a full pose batch whenever its 3-D samples spread beyond 5 cm.
+    # This prevents a moving/incorrect depth mask from contaminating the four
+    # corner average.
+    chassis_approach_enabled: true
+    chassis_approach_topic: /grasp/chassis_cmd_vel
+    chassis_approach_step_m: 0.10
+    chassis_approach_speed_mps: 0.04
+    chassis_approach_settle_sec: 1.0
+    chassis_approach_deadband_px: 20.0
+    chassis_approach_steer_gain: 0.0015
+    chassis_approach_max_angular_z: 0.12
     auto_sampling_enabled: true
     auto_sampling_j1_offset_deg: 8.0
     auto_sampling_j4_offset_deg: 8.0
@@ -236,7 +247,10 @@ grasp_state_machine:
     increment_step_m: 0.05
     increment_duration_sec: 1.5
     increment_goal_tolerance_m: 0.025
-    tf_direct_target_enabled: false
+    # Task-executive path: the verified RGB-D/TF target is reached in one
+    # guarded sequence, then the HSV hold check gates gripper closure/lift.
+    # The mission itself still remains idle until an explicit start command.
+    tf_direct_target_enabled: true
     tf_direct_target_duration_sec: 2.0
     # Pure TF-direct pre-stage for repeatable grasp tests.
     tf_direct_pre_gripper_reset_enabled: false
@@ -252,14 +266,27 @@ grasp_state_machine:
     # Positive means upward in the camera display.  Since the Gemini image is
     # inverted relative to J4, this is applied as a negative raw J4 angle.
     tf_direct_j4_image_up_offset_deg: 0.0
-    # Experimental post-reach sequence. Enable only for the current pure
-    # TF-direct grasp test: TF complete -> 1s -> J5 -> 1s -> J2 home.
-    tf_direct_post_sequence_enabled: false
+    # Full grasp result path: TF reach -> J5 -> lower-left HSV hold -> J2 lift.
+    tf_direct_post_sequence_enabled: true
     tf_direct_post_tf_settle_sec: 1.0
     tf_direct_post_gripper_deg: 27.0
     tf_direct_post_gripper_duration_sec: 1.0
     tf_direct_post_j2_deg: 180.0
     tf_direct_post_j2_duration_sec: 1.0
+    # After J5 closes, require the locked HSV target to remain visibly held in
+    # the lower-left image ROI before lifting with J2.
+    grasp_verify_enabled: true
+    grasp_verify_roi: [0.0, 0.55, 0.45, 0.45]
+    grasp_verify_min_roi_coverage: 0.01
+    grasp_verify_required_samples: 3
+    grasp_verify_timeout_sec: 2.0
+    # Collection-box pose and release are used only after the task executive
+    # has returned to its recorded start pose and sends /grasp/command=unload.
+    unload_arm_degrees: [90.0, 150.0, 120.0, 135.0]
+    unload_arm_duration_sec: 2.0
+    unload_release_deg: 0.0
+    unload_release_sec: 1.0
+
     # For a TF-direct reach, J1 moves first.  Current H7 joint states are
     # command-shadowed on TX, so release the other joints only after J1's
     # commanded duration plus this completion margin.
@@ -298,3 +325,14 @@ grasp_state_machine:
     # it to zero at 5 cm, using the current observed camera depth.
     gimbal_gain_reference_depth_m: 0.338
     gimbal_gain_zero_depth_m: 0.05
+
+mission_executive:
+  ros__parameters:
+    mission_duration_sec: 600.0
+    unload_reserve_sec: 120.0
+    return_safety_sec: 20.0
+    # Matches the real Nav2 cap conservatively; ETA = distance / speed + turn.
+    return_speed_mps: 0.035
+    return_turn_allowance_sec: 12.0
+    home_arrival_tolerance_m: 0.20
+    grasp_timeout_sec: 110.0

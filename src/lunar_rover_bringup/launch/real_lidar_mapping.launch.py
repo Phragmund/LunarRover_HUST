@@ -217,6 +217,10 @@ def generate_launch_description():
                     "active_search": LaunchConfiguration("active_search"),
                     "auto_trigger_grasp": LaunchConfiguration("auto_trigger_grasp"),
                     "periodic_sweep": LaunchConfiguration("periodic_sweep"),
+                    # The real-arm flow uses the H7/readback state machine;
+                    # the MoveIt path is retained for offline planning only.
+                    "grasp_backend": "state_machine",
+                    "mission_executive": "true",
                     "run_foundationpose_bridge": LaunchConfiguration(
                         "run_foundationpose_bridge"
                     ),

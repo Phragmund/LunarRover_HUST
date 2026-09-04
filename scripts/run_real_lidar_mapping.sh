@@ -15,7 +15,7 @@ run_chassis="${RUN_REAL_CHASSIS:-true}"
 run_rviz="${RUN_RVIZ:-true}"
 run_grasping="${RUN_GRASPING:-true}"
 detector_backend="${TARGET_DETECTOR_BACKEND:-auto}"
-segmentation_model="${TARGET_SEGMENTATION_MODEL:-}"
+detector_model="${TARGET_DETECTOR_MODEL:-${TARGET_SEGMENTATION_MODEL:-}}"
 active_search="${ACTIVE_TARGET_SEARCH:-true}"
 auto_trigger_grasp="${AUTO_TRIGGER_GRASP:-false}"
 periodic_sweep="${PERIODIC_ARM_SWEEP:-false}"
@@ -60,7 +60,7 @@ exec ros2 launch "$repo_root/src/lunar_rover_bringup/launch/real_lidar_mapping.l
   run_rviz:="$run_rviz" \
   run_grasping:="$run_grasping" \
   detector_backend:="$detector_backend" \
-  segmentation_model:="$segmentation_model" \
+  segmentation_model:="$detector_model" \
   active_search:="$active_search" \
   auto_trigger_grasp:="$auto_trigger_grasp" \
   periodic_sweep:="$periodic_sweep" \

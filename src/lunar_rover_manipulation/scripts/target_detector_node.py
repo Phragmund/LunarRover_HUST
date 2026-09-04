@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Continuously publish the best target instance mask and 2D detection."""
+"""Continuously publish the best target detection and usable localization mask."""
 
 import time
 
@@ -95,7 +95,7 @@ class TargetDetector(Node):
             if self.backend_name == "ultralytics":
                 raise ValueError("model_path is required for the ultralytics backend")
             self.get_logger().warning(
-                "no custom segmentation weights configured; using high-saturation HSV fallback"
+                "no custom detector weights configured; using high-saturation HSV fallback"
             )
             return "hsv"
         try:
@@ -157,7 +157,7 @@ class TargetDetector(Node):
         if not results:
             return None
         result = results[0]
-        if result.boxes is None or result.masks is None:
+        if result.boxes is None:
             return None
         names = result.names
         best = None
@@ -172,13 +172,22 @@ class TargetDetector(Node):
         if best is None:
             return None
         score, index, class_name = best
-        raw_mask = result.masks.data[index].detach().cpu().numpy()
-        mask = cv2.resize(
-            raw_mask,
-            (image.shape[1], image.shape[0]),
-            interpolation=cv2.INTER_NEAREST,
-        )
-        mask = (mask >= 0.5).astype(np.uint8) * 255
+        if result.masks is not None:
+            raw_mask = result.masks.data[index].detach().cpu().numpy()
+            mask = cv2.resize(
+                raw_mask,
+                (image.shape[1], image.shape[0]),
+                interpolation=cv2.INTER_NEAREST,
+            )
+            mask = (mask >= 0.5).astype(np.uint8) * 255
+        else:
+            # A self-trained detection model has no instance mask.  Publish a
+            # box mask so RGB-D localization remains available; segmentation
+            # models transparently replace it with their precise mask.
+            xyxy = result.boxes.xyxy[index].detach().cpu().numpy()
+            x0, y0, x1, y1 = np.rint(xyxy).astype(int)
+            mask = np.zeros(image.shape[:2], dtype=np.uint8)
+            cv2.rectangle(mask, (x0, y0), (x1, y1), 255, thickness=-1)
         self._apply_ignore_rois(mask)
         bbox = self._bbox_from_mask(mask)
         if bbox is None:

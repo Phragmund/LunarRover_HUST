@@ -30,6 +30,7 @@ from rclpy.qos import (
     QoSProfile,
     QoSReliabilityPolicy,
 )
+from std_msgs.msg import Bool
 from tf2_ros import Buffer, TransformException, TransformListener
 
 
@@ -112,6 +113,11 @@ class FrontierExplorer(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.nav_client = ActionClient(self, NavigateToPose, "/navigate_to_pose")
+        self.mission_enabled = True
+        self.active_goal_handle = None
+        self.create_subscription(
+            Bool, "/mission/exploration_enabled", self.on_mission_enabled, 10
+        )
         # Use a helper node (separate executor) for path queries to avoid
         # the executor-conflict problem when spin_until_future_complete is
         # called from within a timer callback.
@@ -169,6 +175,20 @@ class FrontierExplorer(Node):
         from rclpy.executors import MultiThreadedExecutor
         self._executor = MultiThreadedExecutor(num_threads=2)
         self._executor.add_node(self)
+
+    def on_mission_enabled(self, message):
+        enabled = bool(message.data)
+        if enabled == self.mission_enabled:
+            return
+        self.mission_enabled = enabled
+        if not enabled:
+            if self.active_goal_handle is not None:
+                self.active_goal_handle.cancel_goal_async()
+            self.current_goal = None
+            self.state = "IDLE"
+            self.get_logger().info("Frontier exploration paused by mission executive")
+        else:
+            self.get_logger().info("Frontier exploration enabled by mission executive")
 
     # ── grid / TF helpers ───────────────────────────────────────────────
 
@@ -524,10 +544,12 @@ class FrontierExplorer(Node):
             self.consecutive_failures += 1
             self._enter_settle()
             return
+        self.active_goal_handle = handle
         result_future = handle.get_result_async()
         result_future.add_done_callback(self._on_goal_result)
 
     def _on_goal_result(self, future):
+        self.active_goal_handle = None
         if self.state == "RETURNING":
             return
         result = future.result()
@@ -625,6 +647,8 @@ class FrontierExplorer(Node):
     def exploration_tick(self):
         """Called periodically.  Advances the exploration state machine."""
         if not rclpy.ok():
+            return
+        if not self.mission_enabled:
             return
 
         # Prevent re-entrancy: select_goal → path_score can block the executor

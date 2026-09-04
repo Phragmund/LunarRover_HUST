@@ -3,6 +3,7 @@
 
 订阅:
   - /navigation/chassis_cmd_vel  (TwistStamped, 来自 twist_stamper)
+  - /grasp/chassis_cmd_vel       (TwistStamped, 抓取状态机的受限步进接近)
   - /web/manual_control           (ManualControl, 来自 web_joystick_server)
 发布:
   - /manual_control               (ManualControl, 由 motion_solver 消费)
@@ -23,6 +24,7 @@ import rclpy
 from geometry_msgs.msg import TwistStamped
 from lunar_rover_msgs.msg import ManualControl
 from rclpy.node import Node
+from std_msgs.msg import Bool
 
 
 def clamp_int(v):
@@ -38,6 +40,9 @@ class NavToManualMux(Node):
         self.web_topic = self.declare_parameter(
             "web_topic", "/web/manual_control"
         ).value
+        self.grasp_topic = self.declare_parameter(
+            "grasp_topic", "/grasp/chassis_cmd_vel"
+        ).value
         self.output_topic = self.declare_parameter(
             "output_topic", "/manual_control"
         ).value
@@ -51,10 +56,17 @@ class NavToManualMux(Node):
             self.declare_parameter("spin_linear_eps", 0.01).value
         )
         self.max_steer_rad = math.radians(self.max_steer_deg)
+        self.grasp_timeout = float(self.declare_parameter("grasp_timeout", 0.35).value)
+        self.mission_autonomy_topic = self.declare_parameter(
+            "mission_autonomy_topic", "/mission/autonomy_active"
+        ).value
 
         self.auto_mode = False      # 电脑(Nav2)接管状态, 默认关闭
         self.manual_active = False  # 手机当前是否有非零杆量
         self.last_nav = None
+        self.last_grasp = None
+        self.last_grasp_time = None
+        self.mission_autonomy_active = False
 
         self.publisher = self.create_publisher(ManualControl, self.output_topic, 1)
         self.nav_sub = self.create_subscription(
@@ -63,6 +75,13 @@ class NavToManualMux(Node):
         self.web_sub = self.create_subscription(
             ManualControl, self.web_topic, self.on_web, 10
         )
+        self.grasp_sub = self.create_subscription(
+            TwistStamped, self.grasp_topic, self.on_grasp, 10
+        )
+        self.create_subscription(
+            Bool, self.mission_autonomy_topic, self.on_mission_autonomy, 10
+        )
+        self.create_timer(0.1, self.on_timer)
         self.get_logger().info(
             "NavToManualMux: nav %s + web %s -> %s (v_max=%.4f, w_max=%.3f, "
             "wheelbase=%.2f, steer=%.1f deg)"
@@ -96,7 +115,11 @@ class NavToManualMux(Node):
         if self.manual_active:
             # 手机手动接管(两种模式下均有效)
             self.publisher.publish(msg)
-        elif self.auto_mode:
+        elif self.grasp_active():
+            # A zero web frame must not interrupt a running guarded grasp
+            # approach. Any non-zero web input above has already preempted it.
+            return
+        elif self.autonomy_enabled():
             # 电脑接管 + 手机空闲 -> Nav2
             if self.last_nav is not None:
                 self.publisher.publish(self._convert_nav(self.last_nav))
@@ -108,9 +131,39 @@ class NavToManualMux(Node):
 
     def on_nav(self, msg):
         self.last_nav = msg
-        if self.auto_mode and not self.manual_active:
+        if self.autonomy_enabled() and not self.manual_active and not self.grasp_active():
             self.publisher.publish(self._convert_nav(msg))
         # 手动模式或手机接管时忽略 Nav2
+
+    def grasp_active(self):
+        if self.last_grasp_time is None:
+            return False
+        age = (self.get_clock().now() - self.last_grasp_time).nanoseconds * 1e-9
+        return 0.0 <= age <= self.grasp_timeout
+
+    def on_grasp(self, msg):
+        self.last_grasp = msg
+        self.last_grasp_time = self.get_clock().now()
+        if not self.manual_active:
+            self.publisher.publish(self._convert_nav(msg))
+
+    def on_mission_autonomy(self, msg):
+        """Let the task executive enable Nav2 without spoofing web input."""
+        self.mission_autonomy_active = bool(msg.data)
+
+    def autonomy_enabled(self):
+        return self.auto_mode or self.mission_autonomy_active
+
+    def on_timer(self):
+        if self.last_grasp_time is None or self.grasp_active():
+            return
+        self.last_grasp_time = None
+        if self.manual_active:
+            return
+        if self.autonomy_enabled() and self.last_nav is not None:
+            self.publisher.publish(self._convert_nav(self.last_nav))
+        else:
+            self.publisher.publish(ManualControl())
 
 
 def main():

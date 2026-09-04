@@ -48,14 +48,14 @@ from pathlib import Path
 
 import numpy as np
 import rclpy
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import PointStamped, TwistStamped
 from lunar_rover_msgs.msg import TargetObservation
 from rclpy.duration import Duration
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
-from sensor_msgs.msg import CameraInfo, JointState
+from sensor_msgs.msg import CameraInfo, Image, JointState
 from std_msgs.msg import Bool, Empty, Float64MultiArray, String
 from tf2_ros import Buffer, TransformException, TransformListener
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
@@ -168,6 +168,30 @@ class GraspStateMachine(Node):
         )
         self.pose_average_max_spread_m = float(
             self.declare_parameter("pose_average_max_spread_m", 0.05).value
+        )
+        self.chassis_approach_enabled = bool(
+            self.declare_parameter("chassis_approach_enabled", True).value
+        )
+        self.chassis_approach_topic = str(
+            self.declare_parameter("chassis_approach_topic", "/grasp/chassis_cmd_vel").value
+        )
+        self.chassis_approach_step_m = max(
+            0.01, float(self.declare_parameter("chassis_approach_step_m", 0.10).value)
+        )
+        self.chassis_approach_speed_mps = max(
+            0.01, float(self.declare_parameter("chassis_approach_speed_mps", 0.04).value)
+        )
+        self.chassis_approach_settle_sec = max(
+            0.1, float(self.declare_parameter("chassis_approach_settle_sec", 1.0).value)
+        )
+        self.chassis_approach_deadband_px = max(
+            0.0, float(self.declare_parameter("chassis_approach_deadband_px", 20.0).value)
+        )
+        self.chassis_approach_steer_gain = float(
+            self.declare_parameter("chassis_approach_steer_gain", 0.0015).value
+        )
+        self.chassis_approach_max_angular_z = max(
+            0.01, float(self.declare_parameter("chassis_approach_max_angular_z", 0.12).value)
         )
         # Automated four-corner parallax sampling.  The center is frozen at
         # the instant YOLO confirmation locks a target; only J1/J4 move while
@@ -354,6 +378,25 @@ class GraspStateMachine(Node):
                 self.declare_parameter("tf_direct_post_j2_duration_sec", 1.0).value
             ),
         )
+        self.grasp_verify_enabled = bool(
+            self.declare_parameter("grasp_verify_enabled", True).value
+        )
+        self.grasp_verify_roi = [
+            float(value)
+            for value in self.declare_parameter(
+                "grasp_verify_roi", [0.0, 0.55, 0.45, 0.45]
+            ).value
+        ]
+        self.grasp_verify_min_roi_coverage = max(
+            0.0,
+            min(1.0, float(self.declare_parameter("grasp_verify_min_roi_coverage", 0.01).value)),
+        )
+        self.grasp_verify_required_samples = max(
+            1, int(self.declare_parameter("grasp_verify_required_samples", 3).value)
+        )
+        self.grasp_verify_timeout_sec = max(
+            0.1, float(self.declare_parameter("grasp_verify_timeout_sec", 2.0).value)
+        )
         # H7 does not acknowledge a MULTI command at the ROS trajectory
         # boundary.  Repeat only the long, manual TF-direct command so a
         # transient UART/H7 parse loss cannot leave one joint (notably J4) at
@@ -473,6 +516,21 @@ class GraspStateMachine(Node):
                 "tf_target_pixel_topic", "/grasp/tf_target_pixel"
             ).value
         )
+        # Depot release is deliberately a parameterised, low-speed sequence:
+        # deployment teams tune the pose for the physical collection box
+        # without changing the mission executive.
+        self.unload_arm_degrees = list(
+            self.declare_parameter("unload_arm_degrees", [90.0, 150.0, 120.0, 135.0]).value
+        )
+        self.unload_arm_duration_sec = float(
+            self.declare_parameter("unload_arm_duration_sec", 2.0).value
+        )
+        self.unload_release_deg = float(
+            self.declare_parameter("unload_release_deg", 0.0).value
+        )
+        self.unload_release_sec = float(
+            self.declare_parameter("unload_release_sec", 1.0).value
+        )
 
         state_qos = QoSProfile(
             depth=1,
@@ -483,6 +541,7 @@ class GraspStateMachine(Node):
         self.status_publisher = self.create_publisher(
             String, "/grasp/status", state_qos
         )
+        self.result_publisher = self.create_publisher(String, "/grasp/result", state_qos)
         self.mode_publisher = self.create_publisher(
             String, "/perception/grasp_mode", state_qos
         )
@@ -501,12 +560,16 @@ class GraspStateMachine(Node):
         self.tf_target_pixel_publisher = self.create_publisher(
             PointStamped, self.tf_target_pixel_topic, 10
         )
+        self.chassis_approach_publisher = self.create_publisher(
+            TwistStamped, self.chassis_approach_topic, 10
+        )
 
         self.create_subscription(Empty, "/grasp/trigger", self.on_trigger, 10)
         self.create_subscription(String, "/grasp/command", self.on_command, 10)
         self.create_subscription(
             Detection2D, "/perception/target_detection", self.on_detection, 20
         )
+        self.create_subscription(Image, "/perception/target_mask", self.on_target_mask, 20)
         self.create_subscription(
             TargetObservation,
             "/perception/target_observation",
@@ -572,7 +635,14 @@ class GraspStateMachine(Node):
         self.tf_direct_pre_sequence_pending = False
         self.tf_direct_post_sequence_timer = None
         self.tf_direct_post_sequence_pending = None
+        self.grasp_verify_samples = []
+        self.grasp_verify_active = False
+        self.chassis_approach_phase = "idle"
+        self.chassis_approach_release_at = 0.0
+        self.chassis_approach_step_count = 0
         self.last_branch_sign = None
+        self.grasp_finish_timer = None
+        self.unload_timer = None
         self.tf_buffer = Buffer(cache_time=Duration(seconds=10.0))
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
@@ -1264,6 +1334,95 @@ class GraspStateMachine(Node):
             self.tf_direct_post_sequence_timer.cancel()
             self.tf_direct_post_sequence_timer = None
         self.tf_direct_post_sequence_pending = None
+        self.grasp_verify_active = False
+        self.grasp_verify_samples.clear()
+
+    def _send_post_grasp_j2(self) -> None:
+        if not self.current_joints_ready:
+            self.set_state(MOVE_TO_GRASP, "抓稳确认后等待 J2：缺少关节状态")
+            return
+        target_degrees = self.ros_to_degrees(self.current_joint_ros[:4])
+        target_degrees[1] = self.tf_direct_post_j2_deg
+        self._publish_arm_trajectory(
+            self.degrees_to_ros(target_degrees),
+            duration_sec=self.tf_direct_post_j2_duration_sec,
+            repeat_count=self.tf_direct_target_repeat_count,
+            repeat_interval_sec=self.tf_direct_target_repeat_interval_sec,
+        )
+        self._cancel_tf_direct_post_sequence()
+        self.set_state(
+            MOVE_TO_GRASP,
+            "抓稳确认通过：J2 已发送至 %.1fdeg duration=%.1fs"
+            % (self.tf_direct_post_j2_deg, self.tf_direct_post_j2_duration_sec),
+        )
+        # The H7 exposes command-shadowed joint readback rather than an action
+        # result.  After its configured motion window, this is the task-level
+        # completion point consumed by the mission executive.
+        self._schedule_grasp_success(
+            self.tf_direct_post_j2_duration_sec
+            + self.tf_direct_target_repeat_interval_sec * (self.tf_direct_target_repeat_count - 1)
+        )
+
+    def _publish_result(self, value: str) -> None:
+        message = String()
+        message.data = value
+        self.result_publisher.publish(message)
+
+    def _schedule_grasp_success(self, delay_sec: float) -> None:
+        if self.grasp_finish_timer is not None:
+            self.grasp_finish_timer.cancel()
+        self.grasp_finish_timer = self.create_timer(
+            max(0.05, float(delay_sec)), self._finish_grasp_success
+        )
+
+    def _finish_grasp_success(self) -> None:
+        if self.grasp_finish_timer is not None:
+            self.grasp_finish_timer.cancel()
+            self.grasp_finish_timer = None
+        if not self.active:
+            return
+        self.active = False
+        self.publish_active(False)
+        self.publish_mode("idle")
+        self.set_state(ABORT, "GRASP_SUCCESS：已完成回收，等待任务调度继续")
+        self._publish_result("SUCCESS")
+
+    def start_unload(self) -> None:
+        if self.active:
+            self.get_logger().warning("机械臂抓取流程仍在执行，拒绝卸货指令")
+            return
+        if len(self.unload_arm_degrees) != 4:
+            self.get_logger().error("unload_arm_degrees 必须是四个关节角")
+            self._publish_result("FAILED")
+            return
+        self._publish_arm_trajectory(
+            self.degrees_to_ros(self.unload_arm_degrees),
+            duration_sec=self.unload_arm_duration_sec,
+            repeat_count=self.tf_direct_target_repeat_count,
+            repeat_interval_sec=self.tf_direct_target_repeat_interval_sec,
+        )
+        self.set_state("UNLOADING", "已到投放区，机械臂移动至卸货姿态")
+        self._schedule_unload_phase(self.unload_arm_duration_sec, self._open_for_unload)
+
+    def _schedule_unload_phase(self, delay_sec: float, callback) -> None:
+        if self.unload_timer is not None:
+            self.unload_timer.cancel()
+        self.unload_timer = self.create_timer(max(0.05, delay_sec), callback)
+
+    def _open_for_unload(self) -> None:
+        if self.unload_timer is not None:
+            self.unload_timer.cancel()
+            self.unload_timer = None
+        self._publish_gripper_command(self.unload_release_deg, self.unload_release_sec)
+        self.set_state("UNLOADING", "卸货姿态到位，已打开夹爪释放物块")
+        self._schedule_unload_phase(self.unload_release_sec, self._finish_unload)
+
+    def _finish_unload(self) -> None:
+        if self.unload_timer is not None:
+            self.unload_timer.cancel()
+            self.unload_timer = None
+        self.set_state(ABORT, "UNLOAD_COMPLETE：投放完成")
+        self._publish_result("UNLOAD_COMPLETE")
 
     def _begin_tf_direct_post_sequence(self, tf_duration_sec: float) -> None:
         if not self.tf_direct_post_sequence_enabled:
@@ -1322,23 +1481,37 @@ class GraspStateMachine(Node):
             return
 
         if pending["phase"] == "wait_gripper":
-            if not self.current_joints_ready:
-                self.set_state(MOVE_TO_GRASP, "J5 完成后等待 J2：缺少关节状态")
+            if not self.grasp_verify_enabled:
+                self._send_post_grasp_j2()
                 return
-            target_degrees = self.ros_to_degrees(self.current_joint_ros[:4])
-            target_degrees[1] = self.tf_direct_post_j2_deg
-            self._publish_arm_trajectory(
-                self.degrees_to_ros(target_degrees),
-                duration_sec=self.tf_direct_post_j2_duration_sec,
-                repeat_count=self.tf_direct_target_repeat_count,
-                repeat_interval_sec=self.tf_direct_target_repeat_interval_sec,
-            )
-            self._cancel_tf_direct_post_sequence()
+            self.grasp_verify_samples.clear()
+            self.grasp_verify_active = True
+            pending["phase"] = "wait_grasp_verify"
+            pending["release_at"] = now + self.grasp_verify_timeout_sec
             self.set_state(
                 MOVE_TO_GRASP,
-                "J5 等待完成：J2 已发送至 %.1fdeg duration=%.1fs"
-                % (self.tf_direct_post_j2_deg, self.tf_direct_post_j2_duration_sec),
+                "J5 已闭合：等待左下角锁定 HSV 抓稳确认 "
+                f"samples=0/{self.grasp_verify_required_samples}",
             )
+            return
+
+        if pending["phase"] == "wait_grasp_verify":
+            count = len(self.grasp_verify_samples)
+            if count >= self.grasp_verify_required_samples:
+                self._send_post_grasp_j2()
+                return
+            if now >= pending["release_at"]:
+                self._cancel_tf_direct_post_sequence()
+                self.set_state(
+                    MOVE_TO_GRASP,
+                    "GRASP_UNCONFIRMED：左下角锁定 HSV 未满足抓稳占比，停止回收 J2",
+                )
+            else:
+                self.set_state(
+                    MOVE_TO_GRASP,
+                    "等待抓稳确认：左下角锁定 HSV "
+                    f"samples={count}/{self.grasp_verify_required_samples}",
+                )
 
     def _begin_tf_direct_j1_sequence(
         self, target_positions, duration_sec: float, tf_target
@@ -1699,6 +1872,72 @@ class GraspStateMachine(Node):
         message.data = self.current_pose_average_status
         self.pose_average_publisher.publish(message)
 
+    def _publish_chassis_approach(self, linear_x: float = 0.0, angular_z: float = 0.0) -> None:
+        message = TwistStamped()
+        message.header.stamp = self.get_clock().now().to_msg()
+        message.header.frame_id = "base_link"
+        message.twist.linear.x = float(linear_x)
+        message.twist.angular.z = float(angular_z)
+        self.chassis_approach_publisher.publish(message)
+
+    def _stop_chassis_approach(self) -> None:
+        self._publish_chassis_approach()
+        self.chassis_approach_phase = "idle"
+
+    def _begin_chassis_approach(self) -> None:
+        if not self.chassis_approach_enabled:
+            self.set_state(APPROACH_WITH_CHASSIS, "底盘接近已禁用，等待人工靠近")
+            return
+        if self.latest_detection_center is None:
+            self.set_state(APPROACH_WITH_CHASSIS, "等待锁定 HSV 目标重新进入画面后再靠近")
+            return
+        duration = self.chassis_approach_step_m / self.chassis_approach_speed_mps
+        self.chassis_approach_phase = "moving"
+        self.chassis_approach_release_at = time.monotonic() + duration
+        self.chassis_approach_step_count += 1
+        self.set_state(
+            APPROACH_WITH_CHASSIS,
+            "底盘步进 %d：前进 %.2fm，保持目标居中"
+            % (self.chassis_approach_step_count, self.chassis_approach_step_m),
+        )
+
+    def _advance_chassis_approach(self) -> None:
+        if self.chassis_approach_phase == "idle":
+            self._begin_chassis_approach()
+            return
+        now = time.monotonic()
+        if self.chassis_approach_phase == "moving":
+            if self.latest_detection_center is None or now - self.last_detection_at > self.target_timeout_sec:
+                self._stop_chassis_approach()
+                self.set_state(APPROACH_WITH_CHASSIS, "目标视觉丢失，底盘已停止")
+                return
+            pixel_error = float(self.latest_detection_center[0] - self.auto_center_pixel[0])
+            angular_z = 0.0
+            if abs(pixel_error) > self.chassis_approach_deadband_px:
+                angular_z = clamp(
+                    -pixel_error * self.chassis_approach_steer_gain,
+                    -self.chassis_approach_max_angular_z,
+                    self.chassis_approach_max_angular_z,
+                )
+            self._publish_chassis_approach(self.chassis_approach_speed_mps, angular_z)
+            if now < self.chassis_approach_release_at:
+                return
+            self._publish_chassis_approach()
+            self.chassis_approach_phase = "settling"
+            self.chassis_approach_release_at = now + self.chassis_approach_settle_sec
+            self.set_state(APPROACH_WITH_CHASSIS, "已完成 0.10m 步进，停车等待相机重新判距")
+            return
+        if self.chassis_approach_phase == "settling" and now >= self.chassis_approach_release_at:
+            if self.latest_observation is None or now - self.latest_observation_at > self.observation_max_age_sec:
+                self.chassis_approach_phase = "waiting_observation"
+                self.set_state(APPROACH_WITH_CHASSIS, "等待停车后的新 RGB-D 观测")
+                return
+            point = self.latest_observation.pose.position
+            self._update_post_lock_state(
+                np.array([point.x, point.y, point.z], dtype=np.float64),
+                allow_approach=True,
+            )
+
     def set_state(self, state: str, detail: str = "") -> None:
         self.state = state
         self.state_entered = time.monotonic()
@@ -1745,10 +1984,13 @@ class GraspStateMachine(Node):
             self.execute_increment_step()
         elif command in ("skip_yolo_confirm", "skip_yolo"):
             self.skip_yolo_confirmation()
+        elif command in ("unload", "drop", "release"):
+            self.start_unload()
         else:
             self.get_logger().warning(f"未知抓取指令: {message.data!r}")
 
     def start_search(self) -> None:
+        self._stop_chassis_approach()
         self._cancel_arm_trajectory_retries()
         self._cancel_gripper_command_retries()
         self._cancel_tf_direct_pre_sequence()
@@ -1782,11 +2024,18 @@ class GraspStateMachine(Node):
         self.set_state(WIDE_SEARCH, "搜索中，等待 YOLO 确认")
 
     def abort(self, reason: str) -> None:
+        self._stop_chassis_approach()
         self._cancel_arm_trajectory_retries()
         self._cancel_gripper_command_retries()
         self._cancel_tf_direct_pre_sequence()
         self._cancel_tf_direct_j1_sequence()
         self._cancel_tf_direct_post_sequence()
+        if self.grasp_finish_timer is not None:
+            self.grasp_finish_timer.cancel()
+            self.grasp_finish_timer = None
+        if self.unload_timer is not None:
+            self.unload_timer.cancel()
+            self.unload_timer = None
         if self.gimbal_phase_timer is not None:
             self.gimbal_phase_timer.cancel()
             self.gimbal_phase_timer = None
@@ -1822,6 +2071,15 @@ class GraspStateMachine(Node):
         self.latest_observation_at = time.monotonic()
         if self.state == POSE_AVERAGING:
             self._collect_pose_sample(message)
+        elif (
+            self.state == APPROACH_WITH_CHASSIS
+            and self.chassis_approach_phase == "waiting_observation"
+        ):
+            point = message.pose.position
+            self._update_post_lock_state(
+                np.array([point.x, point.y, point.z], dtype=np.float64),
+                allow_approach=True,
+            )
 
     def on_detection(self, message) -> None:
         if not self.active:
@@ -1877,6 +2135,36 @@ class GraspStateMachine(Node):
             self._prune_pending()
             if self._try_lock():
                 self.lock_target(class_id, confidence, center)
+
+    def on_target_mask(self, message) -> None:
+        """Measure locked HSV/SAM mask occupancy in the post-grasp lower-left ROI."""
+        if not self.grasp_verify_active:
+            return
+        image_width, image_height = int(message.width), int(message.height)
+        if image_width <= 0 or image_height <= 0 or len(self.grasp_verify_roi) != 4:
+            return
+        if message.step < image_width or len(message.data) < message.step * image_height:
+            return
+        rx, ry, rw, rh = self.grasp_verify_roi
+        roi_x0 = int(round(max(0.0, min(1.0, rx)) * image_width))
+        roi_y0 = int(round(max(0.0, min(1.0, ry)) * image_height))
+        roi_x1 = int(round(max(0.0, min(1.0, rx + rw)) * image_width))
+        roi_y1 = int(round(max(0.0, min(1.0, ry + rh)) * image_height))
+        roi_area = max(1.0, float((roi_x1 - roi_x0) * (roi_y1 - roi_y0)))
+        raw = np.frombuffer(message.data, dtype=np.uint8).reshape(image_height, message.step)
+        mask = raw[:, :image_width]
+        coverage = float(np.count_nonzero(mask[roi_y0:roi_y1, roi_x0:roi_x1])) / roi_area
+        if coverage < self.grasp_verify_min_roi_coverage:
+            return
+        self.grasp_verify_samples.append((time.monotonic(), coverage))
+        self.publish_pose_average_status(
+            "GRASP_VERIFY lower_left_coverage=%.3f samples=%d/%d"
+            % (
+                coverage,
+                len(self.grasp_verify_samples),
+                self.grasp_verify_required_samples,
+            )
+        )
 
     def skip_yolo_confirmation(self) -> None:
         """Manually accept the latest best HSV proposal during commissioning."""
@@ -2102,6 +2390,19 @@ class GraspStateMachine(Node):
         if len(self.pose_samples) < self.pose_average_samples_per_pose:
             return
 
+        if spread > self.pose_average_max_spread_m:
+            self.pose_samples.clear()
+            self.pose_batch_joint_reference = current_joints.copy()
+            self.pose_batch_last_joint_readback = current_joints.copy()
+            self.pose_batch_stable_since = now
+            self.publish_pose_average_status(
+                "REJECTED_SPREAD "
+                f"pose={len(self.pose_batch_means) + 1}/{self.pose_average_pose_count} "
+                f"spread={spread:.3f}m max={self.pose_average_max_spread_m:.3f}m; "
+                "清空本角样本并重新采集"
+            )
+            return
+
         batch_mean = np.mean(points, axis=0)
         batch_depth = float(np.mean([sample["depth"] for sample in self.pose_samples]))
         self.pose_batch_means.append(batch_mean)
@@ -2172,8 +2473,9 @@ class GraspStateMachine(Node):
             failures.append(f"dist>{self.workspace_radius_m:.3f}")
         return (len(failures) == 0), failures, distance
 
-    def _update_post_lock_state(self) -> None:
-        point = self._latest_point()
+    def _update_post_lock_state(self, point=None, allow_approach=False) -> None:
+        if point is None:
+            point = self._latest_point()
         if point is None:
             self.publish_workspace_status("NO_OBSERVATION")
             return
@@ -2185,6 +2487,7 @@ class GraspStateMachine(Node):
             f" dist={distance:.3f}"
         )
         if in_workspace:
+            self._stop_chassis_approach()
             self.publish_workspace_status(f"IN_WORKSPACE {point_text}{center_text}")
             self.publish_mode("precise_hsv_sam")
             if self.state != MOVE_TO_GRASP:
@@ -2215,6 +2518,8 @@ class GraspStateMachine(Node):
                 f"位置=({point[0]:.3f},{point[1]:.3f},{point[2]:.3f}) "
                 f"dist={distance:.3f} 约束={detail}",
             )
+        if allow_approach or self.chassis_approach_phase == "idle":
+            self._begin_chassis_approach()
 
     # ---- heartbeat ------------------------------------------------------
 
@@ -2232,6 +2537,8 @@ class GraspStateMachine(Node):
             MOVE_TO_GRASP,
         ):
             now = time.monotonic()
+            if self.state == APPROACH_WITH_CHASSIS:
+                self._advance_chassis_approach()
             if self.state == POSE_AVERAGING and self.auto_center_active:
                 self._advance_auto_centering()
             if self.state == POSE_AVERAGING and self.auto_sampling_start_pending:

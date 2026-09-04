@@ -31,3 +31,8 @@ chassis_cmd_mux:
     keyboard_timeout: 0.5
     web_timeout: 0.5
     status_period: 1.0
+
+nav_to_manual_mux:
+  ros__parameters:
+    grasp_topic: /grasp/chassis_cmd_vel
+    grasp_timeout: 0.35

@@ -1,4 +1,9 @@
-# Ultralytics segmentation dataset layout. Change path before training.
+# Ultralytics detection dataset layout. Change path before training.
+#
+# labels/<split>/<image-stem>.txt must use one line per box:
+#   <class_id> <x_center> <y_center> <width> <height>
+# where coordinates are normalized to [0, 1].  Use --task segment only when
+# each label line instead contains a valid Ultralytics polygon annotation.
 path: datasets/lunar_targets
 train: images/train
 val: images/val
