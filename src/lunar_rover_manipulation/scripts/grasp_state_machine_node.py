@@ -1906,10 +1906,11 @@ class GraspStateMachine(Node):
             solution[0] = clamp(
                 solution[0] + self.tf_direct_j1_offset_deg, 0.0, 270.0
             )
-        if self.tf_direct_target_enabled and self.tf_direct_j4_image_up_offset_deg:
-            solution[3] = clamp(
-                solution[3] - self.tf_direct_j4_image_up_offset_deg, 0.0, 270.0
-            )
+        # J4 image-up compensation is deliberately deferred to
+        # _complete_tf_direct_j1_sequence().  The TF-direct path first moves
+        # J1, then re-solves the remaining joints from the reached pose.  If
+        # it is applied here as well, the final re-solve applies it a second
+        # time (for example +10 degrees incorrectly becoming +20 degrees).
         positions = self.degrees_to_ros(solution)
         duration = (
             self.tf_direct_target_duration_sec

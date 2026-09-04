@@ -85,7 +85,7 @@ def generate_launch_description():
             DeclareLaunchArgument("auto_trigger_grasp", default_value="false"),
             DeclareLaunchArgument("periodic_sweep", default_value="false"),
             DeclareLaunchArgument("pose_average_pose_count", default_value="4"),
-            DeclareLaunchArgument("pose_average_samples_per_pose", default_value="10"),
+            DeclareLaunchArgument("pose_average_samples_per_pose", default_value="5"),
             DeclareLaunchArgument("mission_executive", default_value="true"),
             DeclareLaunchArgument(
                 "run_foundationpose_bridge", default_value="false"

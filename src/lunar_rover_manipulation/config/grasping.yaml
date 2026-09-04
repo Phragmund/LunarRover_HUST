@@ -202,7 +202,7 @@ grasp_state_machine:
     # four J1/J4 square corners around the recognized pose, then each settled
     # corner contributes one batch.
     pose_average_pose_count: 4
-    pose_average_samples_per_pose: 10
+    pose_average_samples_per_pose: 5
     pose_average_pose_change_deg: 8.0
     pose_average_settle_sec: 0.8
     pose_average_joint_stable_deg: 0.6

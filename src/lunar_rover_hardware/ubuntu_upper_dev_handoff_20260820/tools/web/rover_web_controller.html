@@ -339,11 +339,11 @@
                     <label><span>Z</span><input id="ikZInput" type="number" value="-50" step="5"></label>
                     <label><span>Pitch</span><input id="ikPitchInput" type="number" value="0" step="2"></label>
                     <label><span>键盘速度 mm/s</span><input id="ikStepInput" type="number" value="60" min="1"></label>
-                    <label><span>姿态速度 deg/s</span><input id="ikPitchStepInput" type="number" value="30" min="1"></label>
+                    <label><span>J4 速度 deg/s</span><input id="ikPitchStepInput" type="number" value="30" min="1"></label>
                     <label><span>夹爪 deg</span><input id="ikGripInput" type="number" value="45" min="0" max="90"></label>
                     <label><span>发送时间 ms</span><input id="ikTimeInput" type="number" value="400" min="0" max="9999"></label>
                   </div>
-                  <div id="ikStatus" class="ik-status">W/S 前后，A/D 左右，Space/Shift 升降，方向键上下调姿态，左右调夹爪。</div>
+                  <div id="ikStatus" class="ik-status">W/S 前后，A/D 左右，Space/Shift 升降，方向键上下直控 J4，左右调夹爪。</div>
                   <canvas id="ikCanvas" width="720" height="440"></canvas>
                   <div class="grid4" style="margin-top:10px;">
                     <button id="ikSendBtn" class="primary">发送 IK</button>
@@ -1243,14 +1243,35 @@
       armState.ik.x+=dx; armState.ik.y+=dy; armState.ik.z+=dz; armState.ik.pitch=normalizeDeg(armState.ik.pitch+dp); armState.ik.grip=clamp(armState.ik.grip+dg,0,90);
       updateIkText(); solveAndRenderIk(send, moveTime);
     }
+    function currentIkJointAngles() {
+      const previous = armState.ik.lastSolution?.angles || {};
+      const result = {};
+      for (const jointDef of joints) {
+        result[jointDef.name] = clamp(
+          armState.targetAngles[jointDef.name] ?? armState.live[jointDef.name]?.angle ?? previous[jointDef.name] ?? HOME_ANGLES[jointDef.name],
+          jointDef.min_deg, jointDef.max_deg
+        );
+      }
+      return result;
+    }
+    function moveJ4DirectBy(deltaDeg, moveTime) {
+      if (!deltaDeg) return;
+      const angles = currentIkJointAngles();
+      angles.j4 = clamp(angles.j4 + deltaDeg, joints.find(j=>j.name === "j4").min_deg, joints.find(j=>j.name === "j4").max_deg);
+      // Do not call solveIk here: ↑/↓ are joint commands and must not move
+      // J1–J3 to preserve an end-effector pitch pose.
+      syncIkFromAngles(angles);
+      armMoveAngle("j4", angles.j4, moveTime).catch(e => $("ikStatus").textContent = e.message);
+    }
     function ikTick() {
       if (!pressedKeys.size || armState.mode !== "ik" || !armState.keyboardIk) return;
       const dt=IK_LOOP_INTERVAL_MS/1000, xyz=Number($("ikStepInput").value), ps=Number($("ikPitchStepInput").value), gs=20;
-      let dx=0,dy=0,dz=0,dp=0,dg=0;
+      let dx=0,dy=0,dz=0,dj4=0,dg=0;
       if(pressedKeys.has("w"))dx++; if(pressedKeys.has("s"))dx--; if(pressedKeys.has("a"))dy--; if(pressedKeys.has("d"))dy++;
-      if(pressedKeys.has(" "))dz++; if(pressedKeys.has("shift"))dz--; if(pressedKeys.has("arrowup"))dp++; if(pressedKeys.has("arrowdown"))dp--;
+      if(pressedKeys.has(" "))dz++; if(pressedKeys.has("shift"))dz--; if(pressedKeys.has("arrowup"))dj4++; if(pressedKeys.has("arrowdown"))dj4--;
       if(pressedKeys.has("arrowleft"))dg++; if(pressedKeys.has("arrowright"))dg--;
-      moveIkBy(xyz*dt*dx, xyz*dt*dy, xyz*dt*dz, ps*dt*dp, gs*dt*dg, true, IK_LOOP_MOVE_MS);
+      if (dx || dy || dz || dg) moveIkBy(xyz*dt*dx, xyz*dt*dy, xyz*dt*dz, 0, gs*dt*dg, true, IK_LOOP_MOVE_MS);
+      if (dj4) moveJ4DirectBy(ps*dt*dj4, IK_LOOP_MOVE_MS);
     }
     function waitMs(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
     async function runStorageSequence() {
