@@ -172,6 +172,15 @@ class TerrainMapper(Node):
             1, int(self.declare_parameter("slope_baseline_cells", 1).value)
         )
         self.slope_weight = float(self.declare_parameter("slope_weight", 1.0).value)
+        # Optional ceiling for the ACCUMULATED step+roughness+slope cost.  The hard
+        # step branch (height_range >= lethal_step_height) still returns 100, so a
+        # cell can only read exactly LETHAL for a real step/relief; low isolated
+        # objects (e.g. 5 cm cave blocks) are kept below the lethal=100 threshold
+        # even when their step+roughness+slope would otherwise sum past it.  Default
+        # 100 preserves the historical behaviour when the param is unset.
+        self.soft_cost_cap = min(
+            100, int(self.declare_parameter("soft_cost_cap", 100).value)
+        )
         self.ceiling_filter_enabled = bool(
             self.declare_parameter("ceiling_filter_enabled", True).value
         )
@@ -625,7 +634,9 @@ class TerrainMapper(Node):
         # Sum accumulated risks instead of taking only the worst factor.
         # A cell with moderate step, roughness, AND slope is riskier than any
         # single factor — the combined cost better reflects real traversability.
-        return min(100, step_cost + roughness_cost + slope_cost)
+        # soft_cost_cap (>=1) keeps this accumulation below the LETHAL=100 level
+        # unless the hard step branch above already returned 100.
+        return min(max(1, self.soft_cost_cap), step_cost + roughness_cost + slope_cost)
 
     def publish_grid(self):
         now = self.get_clock().now().to_msg()

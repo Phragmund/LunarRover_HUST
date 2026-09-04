@@ -154,15 +154,19 @@ void TerrainLayer::updateCosts(
         continue;
       }
       const unsigned char terrain_cost = terrainCostToCostmap(grid->data[index]);
-      if (terrain_cost == nav2_costmap_2d::NO_INFORMATION) {
-        continue;
-      }
       const unsigned char old_cost = master_grid.getCost(i, j);
-      const unsigned char new_cost =
-        (old_cost == nav2_costmap_2d::NO_INFORMATION)
-        ? terrain_cost
-        : std::max(old_cost, terrain_cost);
-      master_grid.setCost(i, j, new_cost);
+      if (old_cost == terrain_cost) {
+        continue;  // no change -> skip the write (keeps the big global costmap fast)
+      }
+      // The latest traversability message is the authoritative statement of what the
+      // radar currently sees: write it straight through (not max).  A monotonic
+      // max(old, new) made a costmap cell stick at LETHAL forever once it was ever red,
+      // so the costmap could never recover a floor the radar was now seeing as flat
+      // ("雷达能看到地面但 costmap 仍标红").  Writing the new value both ways lets a
+      // cell flip lethal<->free live as the radar's classification changes; a message-
+      // unknown cell resets to NO_INFORMATION (global unknown_cost 255) / free (local
+      // unknown_cost 0) so a no-longer sensed cell is forgotten instead of staying red.
+      master_grid.setCost(i, j, terrain_cost);
     }
   }
   current_ = true;
