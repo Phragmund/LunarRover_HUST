@@ -2,13 +2,14 @@ target_detector:
   ros__parameters:
     image_topic: /camera/color/image_raw/compressed
     image_is_compressed: true
-    # auto uses custom Ultralytics weights when model_path exists; otherwise it
-    # falls back to saturated-color segmentation for initial commissioning.
-    backend: auto
-    model_path: ""
+    # The default confirmation model is the locally trained checkpoint.
+    # Launch arguments may override this path for commissioning only.
+    backend: ultralytics
+    model_path: weights/best.pt
     device: "0"
     confidence_threshold: 0.45
-    allowed_classes: [wood_block, artificial_object, rock_sample]
+    # Must match the deployed self-trained weights/best.pt class map.
+    allowed_classes: [wood_block, artificial_object]
     max_inference_hz: 8.0
     min_area_pixels: 300
     min_saturation: 105
@@ -55,7 +56,8 @@ target_fusion_detector:
     open_vocab_min_iou: 0.10
     open_vocab_imgsz: 320
     open_vocab_max_candidates: 6
-    # After YOLOWorld confirms a target, locked_hsv and precise_hsv_sam only
+    # The optional fusion backend uses YOLOWorld only when explicitly enabled;
+    # its locked_hsv and precise_hsv_sam modes only
     # accept HSV candidates close to that target's median HSV profile.
     lock_hsv_hue_tolerance: 10.0
     lock_hsv_saturation_tolerance: 55.0
@@ -173,7 +175,7 @@ grasp_coordinator:
 
 grasp_state_machine:
   ros__parameters:
-    # Unconfirmed HSV proposals keep this class_id prefix until YOLOWorld
+    # Unconfirmed HSV proposals keep this class_id prefix until the configured YOLO
     # confirms them. Locking requires YOLO confirmation; pure HSV never locks.
     hsv_class_id: hsv_candidate
     lock_confirmation_frames: 3

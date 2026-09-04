@@ -41,8 +41,10 @@ def generate_launch_description():
             DeclareLaunchArgument("run_terrain_mapping", default_value="true"),
             DeclareLaunchArgument("run_costmap", default_value="true"),
             DeclareLaunchArgument("run_grasping", default_value="true"),
-            DeclareLaunchArgument("detector_backend", default_value="auto"),
-            DeclareLaunchArgument("segmentation_model", default_value=""),
+            DeclareLaunchArgument("detector_backend", default_value="ultralytics"),
+            DeclareLaunchArgument(
+                "segmentation_model", default_value=str(repo_root / "weights" / "best.pt")
+            ),
             DeclareLaunchArgument("active_search", default_value="true"),
             DeclareLaunchArgument("auto_trigger_grasp", default_value="false"),
             DeclareLaunchArgument("periodic_sweep", default_value="false"),

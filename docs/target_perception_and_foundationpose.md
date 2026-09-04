@@ -1,20 +1,20 @@
 # 实车目标搜索、墙面抓取与 FoundationPose 接入
 
-更新时间：2026-08-24
+更新时间：2026-09-04
 
 ## 当前链路
 
 ```text
 Gemini 335 RGB
-  -> target_detector (HSV 调试后备 / 自定义 YOLO 实例分割)
+  -> target_detector（默认：自训练 Ultralytics detect 权重 weights/best.pt）
   -> /perception/target_mask + /perception/target_detection
 Gemini 335 registered depth + mask
   -> target_localizer (目标点云、支撑面拟合、墙面/地面分类)
   -> /perception/target_observation
   -> active_search (多帧确认、地图内去重、可选机械臂离散扫描)
-C 键 / 可选自动触发
-  -> grasp_coordinator
-  -> 导航取消、底盘与雷达锁定、预抓取、粗伺服、近端精伺服、闭环末段抓取
+任务调度 / C 键触发
+  -> grasp_state_machine + mission_executive
+  -> 暂停探索、底盘与雷达锁定、0.1m 视觉步进、抓稳确认、返航投放
 ```
 
 视觉检测在常规行驶时持续运行，但下面两个会导致机械动作的参数默认关闭：
@@ -24,29 +24,31 @@ C 键 / 可选自动触发
 
 未经实车标定不要打开周期摆臂。按 `C` 触发仍是默认抓取入口。
 
-## 三类目标与检测策略
+## 默认部署目标与检测策略
 
-统一类别名为 `wood_block`、`artificial_object`、`rock_sample`，目标物理包络不超过
-`50 x 50 x 50 mm`。高饱和纯色方木块和人造多面体可以先用 HSV 后备链路联调；
-岩石样本与洞穴背景近似，必须用真实相机数据训练自定义实例分割模型。通用 COCO 权重
-只能作为迁移学习初值，不能直接可靠识别这三类目标。
+默认自训练权重 `weights/best.pt` 的部署类别为 `wood_block` 与
+`artificial_object`，目标物理包络不超过 `50 x 50 x 50 mm`。它是实机确认的唯一默认
+模型；HSV 仅用于显式调试后备，不可替代 YOLO 自动确认。`rock_sample` 保留为数据集
+模板类别，尚未包含在该部署权重中。通用 COCO 或 YOLO-World 权重只能作为迁移学习/实验
+工具，不能替代自训练模型作为正式确认器。
 
-数据集采用 Ultralytics segmentation 格式，配置位于
+数据集采用 Ultralytics detect 格式（需要实例分割时才使用 polygon 标签），配置位于
 `src/lunar_rover_manipulation/config/target_dataset.yaml`。建议至少覆盖：不同距离与像素尺寸、
 墙面/地面、遮挡、机械臂入镜、强弱光、运动模糊、真实岩壁难负样本。验证集必须按采集
 场景划分，不能把同一段视频的相邻帧随机拆进训练集和验证集。
 
-## 三阶段候选融合链路
+## 默认链路与可选融合实验
 
-实车 NUC 默认使用轻量稳定模式：
+实车 NUC 默认使用自训练检测模型：
 
 ```text
-HSV 多连通域候选
+weights/best.pt（Ultralytics detect）
   -> /perception/debug/fusion_overlay/compressed
   -> /perception/target_mask + /perception/target_detection
 ```
 
-当安装了可选模型依赖后，可以逐级打开：
+HSV + YOLO-World + SAM 是可选 fusion 实验链，默认关闭；当明确选择
+`detector_mode:=fusion` 并安装模型依赖后，才可以逐级打开：
 
 ```text
 HSV 多候选框
@@ -91,12 +93,10 @@ scripts/train_target_segmentation.py --data /absolute/path/target_dataset.yaml \
   --export-onnx
 ```
 
-部署训练权重：
+默认部署权重（`weights/best.pt` 已按启动脚本自动传入）：
 
 ```bash
 source .deps/target_perception_venv/bin/activate
-TARGET_DETECTOR_BACKEND=ultralytics \
-TARGET_SEGMENTATION_MODEL=/absolute/path/best.pt \
 scripts/run_real_lidar_mapping.sh
 ```
 
@@ -143,9 +143,10 @@ RUN_FOUNDATIONPOSE_BRIDGE=true scripts/run_real_lidar_mapping.sh
 
 ## 第三方许可证
 
-本仓库没有提交 Ultralytics、FoundationPose 源码或权重，只提供可选安装/获取脚本和 ROS
-接口。Ultralytics 当前采用 AGPL-3.0 与商业授权双轨；FoundationPose 使用 NVIDIA Source
-Code License。对外发布产品或服务前应单独核对所选版本、权重和部署方式的许可证义务。
+本仓库随初赛源码提交自训练部署权重 `weights/best.pt`，但不提交 Ultralytics 或
+FoundationPose 源码，也不提交 FoundationPose 权重。Ultralytics 当前采用 AGPL-3.0 与商业
+授权双轨；FoundationPose 使用 NVIDIA Source Code License。对外发布产品或服务前应单独
+核对所选版本、权重和部署方式的许可证义务。
 
 官方参考：
 

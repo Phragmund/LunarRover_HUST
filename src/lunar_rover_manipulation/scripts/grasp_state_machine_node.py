@@ -12,9 +12,8 @@ It still does NOT command the chassis or the arm. It only:
 
   - publishes the current state on /grasp/status,
   - publishes /grasp/active and /perception/grasp_mode,
-  - watches /perception/target_detection for a YOLOWorld-confirmed candidate
-    (class_id left the hsv_candidate placeholder, i.e. the red-text
-    "open_vocab" overlay in the fusion view) that stays put for a few frames,
+  - watches /perception/target_detection for a YOLO-confirmed candidate
+    (class_id left the hsv_candidate placeholder) that stays put for a few frames,
     then locks onto it,
   - after HSV lock, switches to the low-frequency HSV+SAM perception mode and
     averages target pose samples only while the camera depth is in the reliable
@@ -115,7 +114,7 @@ class GraspStateMachine(Node):
     def __init__(self):
         super().__init__("grasp_state_machine")
 
-        # Unconfirmed HSV proposals keep this class_id prefix until YOLOWorld
+        # Unconfirmed HSV proposals keep this class_id prefix until YOLO
         # confirms them. The detector may append "+sam" (hsv_candidate+sam), so
         # we treat it as a prefix.
         self.hsv_class_id = str(
@@ -654,7 +653,7 @@ class GraspStateMachine(Node):
         self.create_timer(0.2, self.on_timer)
         self.get_logger().info(
             "grasp state machine ready (阶段 A skeleton): "
-            f"lock requires YOLOWorld confirmation unless manually overridden, "
+            f"lock requires YOLO confirmation unless manually overridden, "
             f"hsv_class_id={self.hsv_class_id!r}"
         )
 
@@ -1506,6 +1505,7 @@ class GraspStateMachine(Node):
                     MOVE_TO_GRASP,
                     "GRASP_UNCONFIRMED：左下角锁定 HSV 未满足抓稳占比，停止回收 J2",
                 )
+                self._publish_result("UNCONFIRMED")
             else:
                 self.set_state(
                     MOVE_TO_GRASP,
@@ -2021,9 +2021,10 @@ class GraspStateMachine(Node):
         self.publish_workspace_status("NO_OBSERVATION")
         self.publish_pose_average_status("NO_SAMPLES")
         self.publish_mode("wide_search")
-        self.set_state(WIDE_SEARCH, "搜索中，等待 YOLO 确认")
+        self.set_state(WIDE_SEARCH, "搜索中，等待自训练 YOLO 确认")
 
     def abort(self, reason: str) -> None:
+        was_active = self.active
         self._stop_chassis_approach()
         self._cancel_arm_trajectory_retries()
         self._cancel_gripper_command_retries()
@@ -2061,6 +2062,8 @@ class GraspStateMachine(Node):
         self.publish_workspace_status("NO_OBSERVATION")
         self.publish_pose_average_status("NO_SAMPLES")
         self.set_state(ABORT, reason)
+        if was_active:
+            self._publish_result("ABORTED")
 
     # ---- perception -----------------------------------------------------
 
@@ -2191,12 +2194,13 @@ class GraspStateMachine(Node):
         )
 
     def _is_confirmed(self, class_id: str) -> bool:
-        """True only after YOLOWorld confirms the proposal.
+        """True only after the configured YOLO model confirms the proposal.
 
-        The fusion detector keeps class_id == hsv_class_id (or
-        "hsv_candidate+sam") for unconfirmed HSV proposals and only replaces
-        it with a real YOLO label once open-vocabulary confirmation passes.
-        Pure HSV is not trustworthy and must never lock the state machine.
+        The default detector replaces the HSV placeholder with a label from the
+        self-trained ``weights/best.pt`` model.  The optional fusion backend
+        may instead retain ``hsv_candidate`` (or ``hsv_candidate+sam``) until
+        its explicitly enabled confirmation stage succeeds. Pure HSV is not
+        trustworthy and must never lock the state machine.
         """
         if not class_id:
             return False

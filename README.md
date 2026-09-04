@@ -38,7 +38,7 @@ source /opt/ros/humble/setup.bash
 source install/setup.bash
 ```
 
-第三方依赖来源在 `dependencies/*.repos`；视觉模型与 FoundationPose 不随仓库分发。
+第三方依赖来源在 `dependencies/*.repos`；FoundationPose 与其权重不随仓库分发。实机默认确认器为随仓库交付的自训练 Ultralytics 检测权重 `weights/best.pt`；部署前须按 [`docs/yolo_training_reproducibility.md`](docs/yolo_training_reproducibility.md) 完成验收。
 
 ## 提交前验证
 

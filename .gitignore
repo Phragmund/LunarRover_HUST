@@ -20,9 +20,13 @@ local_backups/
 # Local inference/runtime assets. Obtain weights through the documented setup
 # scripts instead of committing multi-GB environments or model checkpoints.
 .venv_yolo/
-weights/
+# The reviewed deployment checkpoint is deliberately versioned. Other local
+# experiments and replacement checkpoints remain untracked.
+weights/*
 generated/
 *.pt
+!weights/best.pt
+!weights/README.md
 rover_web_console_windows.zip
 
 # Vendor H7 IDE exports contain large prebuilt CMSIS libraries and tool output.

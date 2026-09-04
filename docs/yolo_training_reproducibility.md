@@ -10,8 +10,9 @@ datasets/lunar_targets/
 ```
 
 标签采用 YOLO 框格式：`class x_center y_center width height`，坐标归一化到 `[0, 1]`。
-类别和编号必须与 `src/lunar_rover_manipulation/config/target_dataset.yaml` 一致：
-`wood_block`、`artificial_object`、`rock_sample`。
+当前部署权重的类别顺序为 `wood_block`、`artificial_object`。`target_dataset.yaml`
+保留 `rock_sample` 作为后续专项训练的模板类别；未重新训练并验收包含该类别的权重前，
+不得把它加入默认部署类别白名单。
 
 ## 环境与训练
 
@@ -34,9 +35,14 @@ scripts/setup_target_perception.sh
 ```
 
 当前已验收的 `weights/best.pt` 覆盖 `wood_block` 与 `artificial_object`；`rock_sample`
-保留在统一数据集类别表中，待专项训练权重交付后再纳入部署验收。通过后以
-`TARGET_DETECTOR_MODEL=/absolute/path/best.pt` 启动实车建图/抓取入口。旧变量
-`TARGET_SEGMENTATION_MODEL` 仍兼容，但新配置请使用前者。
+保留在统一数据集类别表中，待专项训练权重交付后再纳入部署验收。实机主入口默认从
+`weights/best.pt` 加载此权重；仅在替换权重时设置
+`TARGET_DETECTOR_MODEL=/absolute/path/best.pt`。旧变量 `TARGET_SEGMENTATION_MODEL`
+仍兼容，但新配置请使用前者。
+
+本次初赛审验将 `weights/best.pt` 随源码提交；其 SHA-256、类别和加载方式见
+[`weights/README.md`](../weights/README.md)。训练图片与标签受数据来源限制不随仓库发布，
+但数据格式、训练命令、依赖安装脚本及验收命令均已提供。
 
 检测模型没有像素级 mask 时，`target_detector_node.py` 会发布检测框的矩形 mask，以维持
 RGB-D 定位；分割模型会自动发布其精确 mask。

@@ -4,7 +4,9 @@
 
 ## 命令输入
 
-`/chassis/cmd_vel` 的类型为 `geometry_msgs/msg/TwistStamped`，坐标系为 `base_footprint`：`linear.x > 0` 前进，`angular.z > 0` 左转。未使用的 Twist 字段必须为零。
+仿真/标准 ROS 底盘入口 `/chassis/cmd_vel` 的类型为 `geometry_msgs/msg/TwistStamped`，坐标系为 `base_footprint`：`linear.x > 0` 前进，`angular.z > 0` 左转。未使用的 Twist 字段必须为零。
+
+实机 H7 链路的最终上位机输入是 `/manual_control`（`lunar_rover_msgs/msg/ManualControl`），由 `nav_to_manual_mux` 把受限的 `/navigation/chassis_cmd_vel` 映射为杆量，再由 `motion_solver` 发送串口命令。二者是不同部署路径，不可同时作为同一底盘的最终输入。
 
 - 上位机建议以 20 Hz 发布；
 - 下位机在 250 ms 未收到新命令时必须输出零速度；

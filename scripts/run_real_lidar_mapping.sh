@@ -14,8 +14,11 @@ fi
 run_chassis="${RUN_REAL_CHASSIS:-true}"
 run_rviz="${RUN_RVIZ:-true}"
 run_grasping="${RUN_GRASPING:-true}"
-detector_backend="${TARGET_DETECTOR_BACKEND:-auto}"
-detector_model="${TARGET_DETECTOR_MODEL:-${TARGET_SEGMENTATION_MODEL:-}}"
+# The locally reproducible self-trained checkpoint is the production
+# confirmation model.  Operators may still override either variable for a
+# commissioning model, but an empty model path must be explicit.
+detector_backend="${TARGET_DETECTOR_BACKEND:-ultralytics}"
+detector_model="${TARGET_DETECTOR_MODEL:-${TARGET_SEGMENTATION_MODEL:-$repo_root/weights/best.pt}}"
 active_search="${ACTIVE_TARGET_SEARCH:-true}"
 auto_trigger_grasp="${AUTO_TRIGGER_GRASP:-false}"
 periodic_sweep="${PERIODIC_ARM_SWEEP:-false}"

@@ -20,13 +20,16 @@
 | `/localization/composite_odometry` | `nav_msgs/msg/Odometry` | mapping | 局部里程计，`frame_id=odom`。 |
 | `/localization/cloud_registered` | `sensor_msgs/msg/PointCloud2` | localization | 建图用注册点云。 |
 | `/terrain/traversability` | `nav_msgs/msg/OccupancyGrid` | mapping | 地形图；未知值为 `-1`，墙体为 `100`。 |
-| `/cmd_vel` | `geometry_msgs/msg/Twist` | Nav2 | 仅为导航内部输出，不直连底盘。 |
-| `/chassis/cmd_vel` | `geometry_msgs/msg/TwistStamped` | navigation/control | 底盘唯一 ROS 速度入口。 |
+| `/cmd_vel` | `geometry_msgs/msg/Twist` | Nav2（仿真/默认配置） | 导航内部输出，不直连底盘。 |
+| `/cmd_vel_nav` | `geometry_msgs/msg/Twist` | Nav2（实机配置） | 实机 Nav2 输出；经 `twist_stamper_node` 转换。 |
+| `/navigation/chassis_cmd_vel` | `geometry_msgs/msg/TwistStamped` | navigation | 带时间戳、限幅和近场安全检查的导航速度。 |
+| `/chassis/cmd_vel` | `geometry_msgs/msg/TwistStamped` | chassis_cmd_mux | 仿真/标准 ROS 底盘速度入口。 |
+| `/manual_control` | `lunar_rover_msgs/msg/ManualControl` | nav_to_manual_mux / 人工控制 | 实机 H7 `motion_solver` 的最终上位机控制入口。 |
 | `/chassis/state` | `lunar_rover_msgs/msg/ChassisState` | hardware/control | 底盘安全与故障状态。 |
 
 ## 控制权与安全
 
-导航速度依次经过 `twist_stamper_node` 和 `chassis_cmd_mux_node`，再到 `/chassis/cmd_vel`。人工接管发布到其专用输入，由 mux 在输入新鲜时切换；任何节点不得直接同时向最终底盘话题发布。下位机必须实施 250 ms 命令超时、急停、故障锁止和独立限幅；完整要求见 [`lower_controller_contract.md`](lower_controller_contract.md)。
+仿真/标准 ROS 链为 `Nav2 /cmd_vel -> twist_stamper_node -> /navigation/chassis_cmd_vel -> chassis_cmd_mux_node -> /chassis/cmd_vel`。实机链为 `Nav2 /cmd_vel_nav -> twist_stamper_node -> /navigation/chassis_cmd_vel -> nav_to_manual_mux -> /manual_control -> motion_solver/H7`；网页或键盘的非零人工输入可抢占自治输出。任何节点不得绕过所属链路的仲裁器直接同时向最终控制话题发布。下位机必须实施 250 ms 命令超时、急停、故障锁止和独立限幅；完整要求见 [`lower_controller_contract.md`](lower_controller_contract.md)。
 
 ## 操作接口
 
@@ -34,9 +37,15 @@
 | --- | --- | --- |
 | `/camera/color/image_raw` | `sensor_msgs/msg/Image` | 原始彩色图。 |
 | `/camera/depth/image_raw` | `sensor_msgs/msg/Image` | 原始深度图。 |
-| `TargetObservation` | `lunar_rover_msgs/msg/TargetObservation` | `pose` 必须标注可解析的 frame；`pose_is_precise=false` 时禁止自动抓取。 |
+| `TargetObservation` | `lunar_rover_msgs/msg/TargetObservation` | `pose` 必须标注可解析 frame。`pose_is_precise=true` 表示 FoundationPose 等精确结果并优先使用；普通 RGB-D 位姿可在 YOLO/HSV 锁定、时间戳、置信度、位姿离散度和工作区门限均满足时进入几何抓取。 |
 | `/arm_controller/joint_trajectory` | `trajectory_msgs/msg/JointTrajectory` | 控制 `arm_joint1` 至 `arm_joint4`。 |
 | `/gripper_controller/commands` | `std_msgs/msg/Float64MultiArray` | 控制 `arm_joint5`。 |
+| `/search/target_confirmed` | `lunar_rover_msgs/msg/TargetObservation` | 由默认自训练 YOLO `weights/best.pt` 确认，并经连续观测、空间离散度和去重检查后的候选目标；任务层据此暂停探索并交接抓取。 |
+| `/grasp/result` | `std_msgs/msg/String` | 抓取结果：`SUCCESS`、`UNCONFIRMED`、`FAILED`、`ABORTED` 或 `UNLOAD_COMPLETE`；只有 `SUCCESS` 可增加任务物块计数。 |
+| `/mission/command` | `std_msgs/msg/String` | 任务显式控制：`start`、`return_home`、`abort`；节点启动时保持 `READY`，不得自行行驶。 |
+| `/mission/state`、`/mission/status` | `std_msgs/msg/String` | 任务阶段和可读状态。 |
+| `/mission/autonomy_active`、`/mission/exploration_enabled` | `std_msgs/msg/Bool` | 分别授予 Nav2 控制权、启停前沿探索。 |
+| `/mission/collected_count` | `std_msgs/msg/UInt32` | 已成功抓取并计数的物块数量。 |
 
 机械臂节点只提交动作目标，不可绕过控制器直接写串口。目标检测、位姿估计和抓取规划均需在执行前验证 TF、时间戳、置信度、工作空间和碰撞约束。
 

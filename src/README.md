@@ -16,4 +16,4 @@
 | `lunar_rover_manipulation` | 目标观测、定位、机械臂抓取与任务执行。 |
 | `lunar_rover_bringup` | 仿真与实车系统级启动组合。 |
 
-主数据流为：`/livox/* -> localization -> mapping -> navigation -> /chassis/cmd_vel`；操作支路为：`/camera/* -> manipulation -> arm_controller/gripper_controller`。接口类型、frame 与控制权规则以 [`../docs/interface_contract.md`](../docs/interface_contract.md) 为准。
+主数据流按部署区分：仿真/标准 ROS 使用 `/livox/* -> localization -> mapping -> navigation -> /chassis/cmd_vel`；实机使用 `/livox/* -> localization -> mapping -> navigation -> /manual_control -> motion_solver/H7`。操作支路为 `/camera/* -> manipulation -> arm_controller/gripper_controller`，任务层通过 mission executive 协调搜索、抓取、返航与投放。接口类型、frame 与控制权规则以 [`../docs/interface_contract.md`](../docs/interface_contract.md) 为准。

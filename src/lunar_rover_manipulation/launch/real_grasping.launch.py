@@ -8,6 +8,7 @@ Notes:
     so the temporary real-arm hand-eye TF is the only active camera/tool chain.
 """
 
+import os
 from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
@@ -22,6 +23,7 @@ from moveit_configs_utils import MoveItConfigsBuilder
 
 def generate_launch_description():
     share = Path(get_package_share_directory("lunar_rover_manipulation"))
+    repo_root = Path(os.environ.get("LUNAR_ROVER_ROOT", Path.cwd()))
     description_share = Path(get_package_share_directory("lunar_rover_description"))
     xacro_file = description_share / "urdf" / "lunar_rover.urdf.xacro"
     camera_xyz = LaunchConfiguration("arm_camera_xyz")
@@ -68,13 +70,15 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "arm_camera_rpy", default_value="0 -1.57079632679 0"
             ),
-            DeclareLaunchArgument("detector_backend", default_value="auto"),
+            DeclareLaunchArgument("detector_backend", default_value="ultralytics"),
             DeclareLaunchArgument(
                 "detector_mode",
                 default_value="legacy",
                 description="legacy uses target_detector_node.py; fusion uses HSV proposals with optional open-vocabulary and SAM stages.",
             ),
-            DeclareLaunchArgument("segmentation_model", default_value=""),
+            DeclareLaunchArgument(
+                "segmentation_model", default_value=str(repo_root / "weights" / "best.pt")
+            ),
             DeclareLaunchArgument("open_vocab_enabled", default_value="false"),
             DeclareLaunchArgument("sam_enabled", default_value="false"),
             DeclareLaunchArgument("active_search", default_value="true"),
