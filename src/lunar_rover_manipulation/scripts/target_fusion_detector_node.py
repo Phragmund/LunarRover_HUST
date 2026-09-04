@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""HSV proposal, optional open-vocabulary confirmation, optional SAM masking."""
+"""HSV proposal, self-trained YOLO confirmation, and optional SAM masking."""
 
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -167,6 +167,35 @@ class TargetFusionDetector(Node):
         self.open_vocab_max_candidates = int(
             self.declare_parameter("open_vocab_max_candidates", 1).value
         )
+        # The production wide-search path is deliberately two-stage: HSV
+        # supplies fast, colour/shape-localised proposals, then the locally
+        # trained detector confirms that the same image region is a permitted
+        # target class.  Keep the old open-vocabulary model available only for
+        # experiments; it is never the default confirmation model.
+        self.yolo_confirm_enabled = bool(
+            self.declare_parameter("yolo_confirm_enabled", True).value
+        )
+        self.yolo_confirm_model = str(
+            self.declare_parameter("yolo_confirm_model", "weights/best.pt").value
+        )
+        self.yolo_confirm_device = str(
+            self.declare_parameter("yolo_confirm_device", "0").value
+        )
+        self.yolo_confirm_confidence = float(
+            self.declare_parameter("yolo_confirm_confidence", 0.45).value
+        )
+        self.yolo_confirm_min_iou = float(
+            self.declare_parameter("yolo_confirm_min_iou", 0.10).value
+        )
+        self.yolo_confirm_imgsz = int(
+            self.declare_parameter("yolo_confirm_imgsz", 640).value
+        )
+        self.yolo_confirm_classes = {
+            str(value)
+            for value in self.declare_parameter(
+                "yolo_confirm_classes", ["wood_block", "artificial_object"]
+            ).value
+        }
 
         self.sam_enabled = bool(self.declare_parameter("sam_enabled", False).value)
         self.sam_model = str(self.declare_parameter("sam_model", "sam2_t.pt").value)
@@ -261,11 +290,18 @@ class TargetFusionDetector(Node):
         self.last_selected_bbox = None
         self.last_selected_class_id = ""
         self.lock_hsv_profile = None
+        self.yolo_confirm = self._load_yolo_confirm()
         self.open_vocab = self._load_open_vocab()
         self.sam = self._load_sam()
         self.get_logger().info(
-            "fusion detector ready: image=%s, open_vocab=%s, sam=%s, mode=%s"
-            % (self.image_topic, bool(self.open_vocab), bool(self.sam), self.grasp_mode)
+            "fusion detector ready: image=%s, best_pt=%s, open_vocab=%s, sam=%s, mode=%s"
+            % (
+                self.image_topic,
+                bool(self.yolo_confirm),
+                bool(self.open_vocab),
+                bool(self.sam),
+                self.grasp_mode,
+            )
         )
 
     def on_camera_info(self, message):
@@ -301,6 +337,25 @@ class TargetFusionDetector(Node):
         except Exception as exc:  # noqa: BLE001
             self.get_logger().warning(
                 f"open-vocabulary model unavailable, using HSV only: {exc}"
+            )
+            return None
+
+    def _load_yolo_confirm(self):
+        if not self.yolo_confirm_enabled:
+            return None
+        if not self.yolo_confirm_model:
+            self.get_logger().warning(
+                "self-trained YOLO confirmation disabled: yolo_confirm_model is empty"
+            )
+            return None
+        try:
+            from ultralytics import YOLO
+
+            return YOLO(self.yolo_confirm_model)
+        except Exception as exc:  # noqa: BLE001
+            self.get_logger().warning(
+                "self-trained YOLO confirmation unavailable; wide search will "
+                f"remain HSV-only until restored: {exc}"
             )
             return None
 
@@ -457,6 +512,71 @@ class TargetFusionDetector(Node):
                 confirmed.append(proposal)
         confirmed.sort(key=lambda proposal: proposal.score, reverse=True)
         return confirmed if confirmed else proposals
+
+    def _confirm_with_yolo(self, image, proposals):
+        """Confirm HSV proposals only when ``best.pt`` overlaps the proposal.
+
+        The detector runs once on the whole RGB frame.  This preserves YOLO's
+        normal receptive field while ensuring that its label belongs to the
+        HSV candidate currently considered by the grasp state machine.
+        """
+        if self.yolo_confirm is None or not proposals:
+            return []
+        try:
+            results = self.yolo_confirm.predict(
+                source=image,
+                conf=self.yolo_confirm_confidence,
+                imgsz=self.yolo_confirm_imgsz,
+                device=self.yolo_confirm_device,
+                verbose=False,
+            )
+        except Exception as exc:  # noqa: BLE001
+            self.get_logger().warning(f"self-trained YOLO inference failed: {exc}")
+            return []
+        result = results[0] if results else None
+        if result is None or result.boxes is None:
+            return []
+
+        names = result.names
+        yolo_boxes = []
+        for box in result.boxes:
+            class_index = int(box.cls.item())
+            label = str(names[class_index])
+            if self.yolo_confirm_classes and label not in self.yolo_confirm_classes:
+                continue
+            x1, y1, x2, y2 = [float(value) for value in box.xyxy[0].tolist()]
+            yolo_boxes.append(
+                (
+                    float(box.conf.item()),
+                    label,
+                    (
+                        int(round(x1)),
+                        int(round(y1)),
+                        max(1, int(round(x2 - x1))),
+                        max(1, int(round(y2 - y1))),
+                    ),
+                )
+            )
+
+        confirmed = []
+        for proposal in proposals:
+            best = None
+            for confidence, label, yolo_bbox in yolo_boxes:
+                overlap = self._iou(proposal.bbox, yolo_bbox)
+                if overlap < self.yolo_confirm_min_iou:
+                    continue
+                score = confidence * (1.0 + overlap)
+                if best is None or score > best[0]:
+                    best = (score, confidence, label)
+            if best is None:
+                continue
+            _, confidence, label = best
+            proposal.score = 0.5 * proposal.score + 0.5 * confidence
+            proposal.class_id = label
+            proposal.stage = "best_pt_confirmed"
+            confirmed.append(proposal)
+        confirmed.sort(key=lambda proposal: proposal.score, reverse=True)
+        return confirmed
 
     def _run_sam_refinement(self, image, source_bbox, source_mask):
         """Run SAM away from the RGB callback so HSV output stays real-time."""
@@ -627,9 +747,17 @@ class TargetFusionDetector(Node):
         if mode in ("idle", ""):
             return None
         if mode == "wide_search":
-            confirmed = self._confirm_with_open_vocab(image, proposals)
+            # No YOLO match intentionally leaves the proposal labelled
+            # ``hsv_candidate``.  The state machine will not lock it, but the
+            # operator may explicitly use skip_yolo_confirm for commissioning.
+            confirmed = self._confirm_with_yolo(image, proposals)
+            if not confirmed and self.yolo_confirm is None:
+                confirmed = self._confirm_with_open_vocab(image, proposals)
             selected = confirmed[0] if confirmed else (proposals[0] if proposals else None)
-            if selected is not None and selected.stage == "open_vocab":
+            if selected is not None and selected.stage in (
+                "best_pt_confirmed",
+                "open_vocab",
+            ):
                 self._remember_locked_hsv(image, selected)
             return selected, confirmed
 

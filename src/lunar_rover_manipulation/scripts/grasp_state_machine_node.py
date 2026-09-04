@@ -1158,9 +1158,10 @@ class GraspStateMachine(Node):
         if now - self.auto_center_started_at >= self.auto_center_timeout_sec:
             self.auto_center_active = False
             self.publish_pose_average_status(
-                "AUTO_CENTER_TIMEOUT：目标未居中，已停止自动采样；请中止后重试"
+                "AUTO_CENTER_TIMEOUT：目标未居中，直接开始四角采样"
             )
-            self.set_state(POSE_AVERAGING, "预采样视觉居中超时，未启动四角采样")
+            self.get_logger().warning("预采样视觉居中超时，按当前位置开始自动四角采样")
+            self._start_auto_sampling()
             return
         if correction is None:
             self.publish_pose_average_status(f"AUTO_CENTER_WAITING {status}")
@@ -1170,9 +1171,10 @@ class GraspStateMachine(Node):
         if self.auto_center_steps >= self.auto_center_max_steps:
             self.auto_center_active = False
             self.publish_pose_average_status(
-                "AUTO_CENTER_MAX_STEPS：目标未居中，已停止自动采样；请中止后重试"
+                "AUTO_CENTER_MAX_STEPS：目标未居中，直接开始四角采样"
             )
-            self.set_state(POSE_AVERAGING, "预采样视觉居中达到最大步数，未启动四角采样")
+            self.get_logger().warning("预采样视觉居中达到最大步数，按当前位置开始自动四角采样")
+            self._start_auto_sampling()
             return
         if not self.current_joints_ready:
             self.publish_pose_average_status("AUTO_CENTER_WAITING_JOINTS")

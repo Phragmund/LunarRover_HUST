@@ -6,7 +6,8 @@
 
 ```text
 Gemini 335 RGB
-  -> target_detector（默认：自训练 Ultralytics detect 权重 weights/best.pt）
+  -> HSV 多候选提议
+  -> 自训练 Ultralytics `weights/best.pt` 对同一区域确认
   -> /perception/target_mask + /perception/target_detection
 Gemini 335 registered depth + mask
   -> target_localizer (目标点云、支撑面拟合、墙面/地面分类)
@@ -27,8 +28,9 @@ Gemini 335 registered depth + mask
 ## 默认部署目标与检测策略
 
 默认自训练权重 `weights/best.pt` 的部署类别为 `wood_block` 与
-`artificial_object`，目标物理包络不超过 `50 x 50 x 50 mm`。它是实机确认的唯一默认
-模型；HSV 仅用于显式调试后备，不可替代 YOLO 自动确认。`rock_sample` 保留为数据集
+`artificial_object`，目标物理包络不超过 `50 x 50 x 50 mm`。默认广域搜索先产生 HSV
+候选，再要求 `best.pt` 检测框与候选框的 IoU 不低于 `0.10`，才视为自动确认；HSV 本身
+不可替代 YOLO 自动确认。`rock_sample` 保留为数据集
 模板类别，尚未包含在该部署权重中。通用 COCO 或 YOLO-World 权重只能作为迁移学习/实验
 工具，不能替代自训练模型作为正式确认器。
 
@@ -39,35 +41,40 @@ Gemini 335 registered depth + mask
 
 ## 默认链路与可选融合实验
 
-实车 NUC 默认使用自训练检测模型：
+实车 NUC 默认使用 HSV 提议与自训练模型确认的融合链路：
 
 ```text
-weights/best.pt（Ultralytics detect）
+HSV 多候选
+  -> weights/best.pt（Ultralytics detect，候选框空间一致性确认）
   -> /perception/debug/fusion_overlay/compressed
   -> /perception/target_mask + /perception/target_detection
 ```
 
-HSV + YOLO-World + SAM 是可选 fusion 实验链，默认关闭；当明确选择
-`detector_mode:=fusion` 并安装模型依赖后，才可以逐级打开：
+YOLO-World 是可选的开放词汇实验确认器，默认关闭。SAM/SAM2 则在目标已经由
+`best.pt` 确认并锁定后，才按低频率细化 HSV mask：
 
 ```text
 HSV 多候选框
-  -> YOLO-World / 开放词汇检测确认 colored cube、small block 等提示词
-  -> SAM/SAM2 在确认框内精细分割
+  -> best.pt 确认 wood_block / artificial_object
+  -> 锁定 HSV 目标
+  -> SAM/SAM2 在锁定候选内精细分割（可选）
   -> 深度图定位
 ```
 
 这条链路的实现节点是 `target_fusion_detector_node.py`。HSV 阶段负责快速找高饱和候选；
-开放词汇阶段只做语义确认，不直接输出最终 mask；SAM 阶段只做像素级抠图，不负责判断
-类别。任一可选模型加载失败时，节点会自动退回 HSV 结果，避免实车启动失败。
+`best.pt` 只做语义确认，不直接替换 HSV mask；SAM 阶段只做像素级抠图，不负责判断类别。
+若 `best.pt` 加载或推理失败，节点只会保留 `hsv_candidate`，状态机不会自动锁定；操作者
+可在 `WIDE_SEARCH` 状态使用“跳过 YOLO 确认”进行显式联调确认。
 
-只启用 HSV 多候选融合节点：
+默认启动即为正式融合链路：
 
 ```bash
-ros2 launch lunar_rover_manipulation real_grasping.launch.py detector_mode:=fusion
+ros2 launch lunar_rover_manipulation real_grasping.launch.py \
+  detector_mode:=fusion \
+  segmentation_model:=/absolute/path/to/weights/best.pt
 ```
 
-启用开放词汇确认和 SAM 精分割前，先安装 CPU 推理环境：
+启用可选 YOLO-World 实验确认或 SAM 精分割前，先安装推理环境：
 
 ```bash
 scripts/setup_target_perception.sh

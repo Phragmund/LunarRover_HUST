@@ -73,8 +73,8 @@ def generate_launch_description():
             DeclareLaunchArgument("detector_backend", default_value="ultralytics"),
             DeclareLaunchArgument(
                 "detector_mode",
-                default_value="legacy",
-                description="legacy uses target_detector_node.py; fusion uses HSV proposals with optional open-vocabulary and SAM stages.",
+                default_value="fusion",
+                description="fusion is the production HSV-proposal + self-trained best.pt confirmation path; legacy directly runs target_detector_node.py.",
             ),
             DeclareLaunchArgument(
                 "segmentation_model", default_value=str(repo_root / "weights" / "best.pt")
@@ -84,6 +84,8 @@ def generate_launch_description():
             DeclareLaunchArgument("active_search", default_value="true"),
             DeclareLaunchArgument("auto_trigger_grasp", default_value="false"),
             DeclareLaunchArgument("periodic_sweep", default_value="false"),
+            DeclareLaunchArgument("pose_average_pose_count", default_value="4"),
+            DeclareLaunchArgument("pose_average_samples_per_pose", default_value="10"),
             DeclareLaunchArgument("mission_executive", default_value="true"),
             DeclareLaunchArgument(
                 "run_foundationpose_bridge", default_value="false"
@@ -130,6 +132,9 @@ def generate_launch_description():
                 parameters=[
                     str(share / "config" / "grasping.yaml"),
                     {
+                        "yolo_confirm_model": ParameterValue(
+                            segmentation_model, value_type=str
+                        ),
                         "open_vocab_enabled": ParameterValue(
                             LaunchConfiguration("open_vocab_enabled"),
                             value_type=bool,
@@ -206,7 +211,19 @@ def generate_launch_description():
                 package="lunar_rover_manipulation",
                 executable="grasp_state_machine_node.py",
                 name="grasp_state_machine",
-                parameters=[str(share / "config" / "grasping.yaml")],
+                parameters=[
+                    str(share / "config" / "grasping.yaml"),
+                    {
+                        "pose_average_pose_count": ParameterValue(
+                            LaunchConfiguration("pose_average_pose_count"),
+                            value_type=int,
+                        ),
+                        "pose_average_samples_per_pose": ParameterValue(
+                            LaunchConfiguration("pose_average_samples_per_pose"),
+                            value_type=int,
+                        ),
+                    },
+                ],
                 output="screen",
                 condition=IfCondition(
                     PythonExpression(["'", grasp_backend, "' == 'state_machine'"])

@@ -145,11 +145,11 @@
             <button id="rosDisconnectBtn">断开 ROS</button>
           </div>
           <div class="buttons">
-            <button id="fullChainBtn" class="primary">🚀 一键启动完整导航链路</button>
+            <button id="fullChainBtn" class="primary">🚀 一键启动完整链路</button>
             <button id="phoneConsoleBtn">打开手机遥控</button>
           </div>
           <label class="check"><input id="startMappingCheck" type="checkbox">同时启动建图、Nav2、探索与 RViz</label>
-          <p id="fullChainStatus" class="muted">完整导航链路未启动。</p>
+          <p id="fullChainStatus" class="muted">完整链路未启动。</p>
           <label><span>ROS WebSocket</span><input id="rosWsInput" value=""></label>
           <div class="buttons">
             <button id="armPingBtn">ARM PING</button>
@@ -350,6 +350,7 @@
                     <button id="ikPreviewBtn">只解算</button>
                     <button id="ikHomeBtn">IK 初始位</button>
                     <button id="ikSyncBtn">同步当前 IK 位姿</button>
+                    <button id="ikSetHomeBtn">设置当前位置为 IK 初始位</button>
                     <button id="ikKeyboardBtn">键盘控制：开</button>
                   </div>
                 </div>
@@ -476,8 +477,10 @@
     // values are obsolete and intentionally retained only in git history.
     const IK_GEOMETRY = { j1J2AxisOffset:75.45, upperArm:113.91, forearm:110.00, tool:156.01 };
     const HOME_ANGLES = { j1:96.754752, j2:201.804458, j3:183.510522, j4:110.293936, j5:45 };
+    const IK_HOME_STORAGE_KEY = "lunar_rover.ik_home_angles.v1";
     const IK_LOOP_INTERVAL_MS = 30, IK_LOOP_MOVE_MS = 30, pressedKeys = new Set();
     let ikLoopTimer = null;
+    let storageSequenceRunning = false;
     let steerCalAutoCenterPending = false;
 
     function defaultRosWsUrl() {
@@ -640,6 +643,8 @@
         if (msg.raw_topic) $("rosRouteText").textContent = `${msg.raw_topic} -> motion_solver`;
       } else if (msg.type === "h7_frame") {
         handleH7Frame(String(msg.frame || ""));
+      } else if (msg.type === "virtual_key") {
+        handleIkKey(String(msg.key || ""), msg.pressed === true);
       } else if (msg.type === "camera") {
         updateCameraImage(msg);
       } else if (msg.type === "joint_state") {
@@ -660,7 +665,7 @@
         $("fullChainStatus").textContent = `${labels[msg.state] || msg.state || "--"}：${msg.detail || "--"}`;
         const starting = msg.state === "starting";
         $("fullChainBtn").disabled = starting || !rosConnected;
-        $("fullChainBtn").textContent = starting ? "⏳ 正在启动完整链路…" : "🚀 一键启动完整导航链路";
+        $("fullChainBtn").textContent = starting ? "⏳ 正在启动完整链路…" : "🚀 一键启动完整链路";
       } else if (msg.type === "workspace_status") {
         $("workspaceStatusText").textContent = msg.text || "--";
       } else if (msg.type === "target_observation") {
@@ -1068,6 +1073,39 @@
       syncIkFromAngles(angles);
       $("ikStatus").textContent = "已按当前实际机械臂关节同步 IK 位姿";
     }
+    function setCurrentAsIkHome() {
+      const angles = currentLiveAngles();
+      if (!angles) {
+        $("ikStatus").textContent = "当前没有完整关节反馈，无法设置 IK 初始位";
+        return;
+      }
+      Object.assign(HOME_ANGLES, angles);
+      try {
+        localStorage.setItem(IK_HOME_STORAGE_KEY, JSON.stringify(HOME_ANGLES));
+      } catch (e) {
+        $("ikStatus").textContent = "IK 初始位已更新，但浏览器无法持久保存";
+        log(`保存 IK 初始位失败: ${e.message}`);
+        return;
+      }
+      pressedKeys.clear();
+      syncIkFromAngles(HOME_ANGLES);
+      $("ikStatus").textContent = "已将当前实际机械臂关节保存为 IK 初始位";
+      log("IK 初始位已持久保存为当前关节反馈");
+    }
+    function loadStoredIkHome() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(IK_HOME_STORAGE_KEY) || "null");
+        if (!stored || typeof stored !== "object") return;
+        for (const j of joints) {
+          const value = Number(stored[j.name]);
+          if (!Number.isFinite(value) || value < j.min_deg || value > j.max_deg) return;
+        }
+        Object.assign(HOME_ANGLES, stored);
+        log("已恢复持久保存的 IK 初始位");
+      } catch (e) {
+        log(`读取持久 IK 初始位失败: ${e.message}`);
+      }
+    }
     function motionPoseAt(t) {
       const angles = {};
       for (const j of joints) {
@@ -1211,6 +1249,52 @@
       if(pressedKeys.has(" "))dz++; if(pressedKeys.has("shift"))dz--; if(pressedKeys.has("arrowup"))dp++; if(pressedKeys.has("arrowdown"))dp--;
       if(pressedKeys.has("arrowleft"))dg++; if(pressedKeys.has("arrowright"))dg--;
       moveIkBy(xyz*dt*dx, xyz*dt*dy, xyz*dt*dz, ps*dt*dp, gs*dt*dg, true, IK_LOOP_MOVE_MS);
+    }
+    function waitMs(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+    async function runStorageSequence() {
+      if (storageSequenceRunning) { log("一键存放正在执行，忽略重复 E"); return; }
+      storageSequenceRunning = true;
+      pressedKeys.clear();
+      const moveTime = Number($("ikTimeInput").value);
+      try {
+        log("一键存放：夹爪 25°（5 次）");
+        for (let i=0; i<5; i++) { await armMoveManyAngles({j5:25}, moveTime); await waitMs(100); }
+        await waitMs(1000);
+        log("一键存放：执行存放姿态（5 次）");
+        const stow = {j1:90, j2:155, j3:135, j4:0};
+        for (let i=0; i<5; i++) { await armMoveManyAngles(stow, moveTime); await waitMs(100); }
+        await waitMs(1000);
+        log("一键存放：夹爪 45°（5 次）");
+        for (let i=0; i<5; i++) { await armMoveManyAngles({j5:45}, moveTime); await waitMs(100); }
+        log("一键存放：J4 225°（5 次）");
+        for (let i=0; i<5; i++) { await armMoveManyAngles({j4:225}, moveTime); await waitMs(100); }
+        await waitMs(1000);
+        syncIkFromAngles(HOME_ANGLES);
+        log("一键存放：恢复 IK 初始位（5 次）");
+        for (let i=0; i<5; i++) { await armMoveManyAngles(HOME_ANGLES, moveTime); await waitMs(100); }
+        log("一键存放完成：已恢复 IK 初始位");
+      } catch (e) {
+        log(`一键存放失败: ${e.message}`);
+      } finally {
+        storageSequenceRunning = false;
+      }
+    }
+    // Both physical keys and phone-relayed keys enter here.  Keep this as the
+    // single authority for the console's keyboard IK semantics.
+    function handleIkKey(key, pressed) {
+      if (armState.mode !== "ik" || !armState.keyboardIk) return false;
+      if (key === "f" && pressed) { pressedKeys.clear(); syncIkFromLive(); return true; }
+      if (key === "r" && pressed) {
+        pressedKeys.clear(); syncIkFromAngles(HOME_ANGLES);
+        armMoveManyAngles(HOME_ANGLES, Number($("ikTimeInput").value)).catch(e=>log(e.message));
+        return true;
+      }
+      if (key === "e" && pressed) { runStorageSequence(); return true; }
+      if (["w","s","a","d"," ","shift","arrowup","arrowdown","arrowleft","arrowright"].includes(key)) {
+        if (pressed) pressedKeys.add(key); else pressedKeys.delete(key);
+        return true;
+      }
+      return false;
     }
 
 
@@ -1642,7 +1726,7 @@
       $("rosDisconnectBtn").onclick = disconnectRos;
       $("fullChainBtn").onclick = () => {
         const startMapping = $("startMappingCheck").checked;
-        const detail = startMapping ? "并启动 FAST-LIO、建图、Nav2、探索和 RViz" : "仅启动雷达、底盘和手机服务；建图需稍后从手机端启动";
+        const detail = startMapping ? "启动视觉抓取，并启动 FAST-LIO、建图、Nav2、探索和 RViz" : "启动雷达、底盘、手机服务与视觉抓取；建图需稍后从手机端启动";
         if (!confirm(`将停止当前导航相关进程，${detail}。请确认车体周围安全并保持静止。继续吗？`)) return;
         try { sendRos({type:"start_full_nav2_chain", start_mapping:startMapping}); } catch(e) { log(e.message); }
       };
@@ -1716,16 +1800,18 @@
         armMoveManyAngles(HOME_ANGLES, Number($("ikTimeInput").value)).catch(e=>log(e.message));
       };
       $("ikSyncBtn").onclick = () => syncIkFromLive();
+      $("ikSetHomeBtn").onclick = () => setCurrentAsIkHome();
       $("ikKeyboardBtn").onclick = () => { armState.keyboardIk=!armState.keyboardIk; pressedKeys.clear(); $("ikKeyboardBtn").textContent=`键盘控制：${armState.keyboardIk?"开":"关"}`; };
       bindArm3DOrbit($("ikCanvas"), ikView, () => drawIk(armState.ik.lastSolution));
       bindArm3DOrbit($("motionCanvas"), motionView, () => drawMotion3D());
-      window.onkeydown = e => { if (armState.mode === "motion") { motionKeydown(e); return; } if(armState.mode !== "ik" || !armState.keyboardIk) return; const active=document.activeElement; if(active && ["INPUT","SELECT","TEXTAREA"].includes(active.tagName)) return; const key=e.key.toLowerCase(); if(key === "f"){ pressedKeys.clear(); syncIkFromLive(); e.preventDefault(); return; } if(["w","s","a","d"," ","shift","arrowup","arrowdown","arrowleft","arrowright"].includes(key)){ pressedKeys.add(key); e.preventDefault(); } };
-      window.onkeyup = e => pressedKeys.delete(e.key.toLowerCase());
+      window.onkeydown = e => { if (armState.mode === "motion") { motionKeydown(e); return; } const active=document.activeElement; if(active && ["INPUT","SELECT","TEXTAREA"].includes(active.tagName)) return; if (handleIkKey(e.key.toLowerCase(), true)) e.preventDefault(); };
+      window.onkeyup = e => { if (handleIkKey(e.key.toLowerCase(), false)) e.preventDefault(); };
       ikLoopTimer = setInterval(ikTick, IK_LOOP_INTERVAL_MS);
       bindCameraCursor();
     }
     function init() {
       for (const j of joints) armState.targetAngles[j.name] = (j.min_deg + j.max_deg) / 2;
+      loadStoredIkHome();
       $("rosWsInput").value = defaultRosWsUrl();
       bind(); renderJoints(); setSelectedJoint("j1"); setSerialState(false); setRosState(false); setTransportMode("serial").catch(e=>log(e.message)); syncIkFromAngles(HOME_ANGLES); log("ready");
     }

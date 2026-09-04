@@ -104,7 +104,7 @@ class RosWebConsoleServer(Node):
         self.full_chain_lock = threading.Lock()
         self.full_chain_status = {
             "state": "idle",
-            "detail": "未启动完整建图导航链路。",
+            "detail": "未启动完整链路。",
         }
         self.last_target_observation = None
         self.last_target_pose = None
@@ -205,6 +205,19 @@ class RosWebConsoleServer(Node):
             command.data = frame
             self.raw_publisher.publish(command)
             self.broadcast_threadsafe({"type": "console_log", "text": f"ROS TX {frame}"})
+        elif message.get("type") == "virtual_key":
+            # A phone is only a keyboard proxy.  The browser that owns the
+            # unified-console IK state consumes this event and emits its usual
+            # command frames; this bridge never synthesizes an ARM frame.
+            key = str(message.get("key", "")).lower()
+            pressed = message.get("pressed") is True
+            if key in {
+                "w", "s", "a", "d", " ", "shift", "arrowup", "arrowdown",
+                "arrowleft", "arrowright", "r", "f", "e",
+            }:
+                self.broadcast_threadsafe(
+                    {"type": "virtual_key", "key": key, "pressed": pressed}
+                )
         elif message.get("type") == "grasp_command":
             command_text = str(message.get("command", "")).strip()
             if not command_text:
@@ -392,7 +405,7 @@ class RosWebConsoleServer(Node):
         with self.full_chain_lock:
             if self.full_chain_process is not None and self.full_chain_process.poll() is None:
                 self.broadcast_threadsafe(
-                    {"type": "console_log", "text": "完整导航链路已经在启动中"}
+                    {"type": "console_log", "text": "完整链路已经在启动中"}
                 )
                 return
             try:
@@ -413,15 +426,15 @@ class RosWebConsoleServer(Node):
             self.full_chain_status = {
                 "state": "starting",
                 "detail": (
-                    "正在重启待命服务，并拉起 FAST-LIO / Nav2…"
+                    "正在重启待命服务，并拉起视觉抓取、FAST-LIO / Nav2…"
                     if start_mapping
-                    else "正在启动雷达、底盘与手机服务；建图将由手机端发起…"
+                    else "正在启动雷达、底盘、手机服务与视觉抓取；建图将由手机端发起…"
                 ),
             }
             process = self.full_chain_process
         self.broadcast_threadsafe({"type": "full_chain_status", **self.full_chain_status})
         self.broadcast_threadsafe(
-            {"type": "console_log", "text": "开始完整实车导航链路；请保持车体静止"}
+            {"type": "console_log", "text": "开始完整实车链路（导航 + 视觉抓取）；请保持车体静止"}
         )
         threading.Thread(
             target=self._watch_full_nav2_chain,
@@ -437,9 +450,9 @@ class RosWebConsoleServer(Node):
             self.full_chain_status = {
                 "state": "ready" if result == 0 else "failed",
                 "detail": (
-                    "完整链路已启动：手机遥控、建图、Nav2、探索和 RViz 均已提交。"
+                    "完整链路已启动：视觉抓取、手机遥控、建图、Nav2、探索和 RViz 均已提交。"
                     if result == 0 and start_mapping
-                    else "待命链路已启动：请在手机端点击“开始建图导航”。"
+                    else "待命与视觉抓取链路已启动：请在手机端点击“开始建图导航”。"
                     if result == 0
                     else "完整链路启动失败，请查看 /tmp/start_full_real_nav2_chain.log"
                 ),

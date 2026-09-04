@@ -40,6 +40,15 @@ target_fusion_detector:
     min_value: 55
     max_area_fraction: 0.35
     max_candidates: 6
+    # Production confirmation: a HSV proposal must spatially agree with a
+    # permitted class produced by this local, self-trained checkpoint.
+    yolo_confirm_enabled: true
+    yolo_confirm_model: weights/best.pt
+    yolo_confirm_device: "0"
+    yolo_confirm_confidence: 0.45
+    yolo_confirm_min_iou: 0.10
+    yolo_confirm_imgsz: 640
+    yolo_confirm_classes: [wood_block, artificial_object]
     # SAM prompt: enlarge the locked HSV seed by only 10%, not 35%, to avoid
     # selecting the surrounding ground/background as the mask.
     crop_expand_ratio: 0.10
@@ -56,7 +65,8 @@ target_fusion_detector:
     open_vocab_min_iou: 0.10
     open_vocab_imgsz: 320
     open_vocab_max_candidates: 6
-    # The optional fusion backend uses YOLOWorld only when explicitly enabled;
+    # YOLO-World remains optional and is only used for experiments when the
+    # self-trained model is intentionally disabled/unavailable. Its
     # its locked_hsv and precise_hsv_sam modes only
     # accept HSV candidates close to that target's median HSV profile.
     lock_hsv_hue_tolerance: 10.0
@@ -264,7 +274,7 @@ grasp_state_machine:
     increment_sample_log_path: generated/logs/grasp_increment_samples.jsonl
     # Applied only when tf_direct_target_enabled is true.  Positive J1 is
     # rover-left under the calibrated joint convention.
-    tf_direct_j1_offset_deg: 0.0
+    tf_direct_j1_offset_deg: 5.0
     # Positive means upward in the camera display.  Since the Gemini image is
     # inverted relative to J4, this is applied as a negative raw J4 angle.
     tf_direct_j4_image_up_offset_deg: 0.0

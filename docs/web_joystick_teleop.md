@@ -1,9 +1,9 @@
 # 手机网页摇杆遥控 (Web Joystick Teleop)
 
-本文档说明如何用手机或笔记本浏览器遥控月球车底盘。该功能与键盘控制器处于同一
-层级：手机发布到独立的 `/web/chassis_cmd_vel`，实体键盘发布到
-`/keyboard/chassis_cmd_vel`。`chassis_cmd_mux_node` 按“手机 > 键盘 > 导航”
-仲裁，两个手动源的默认超时均为 0.5 秒，避免并发发布者交错写同一话题。
+本文档说明如何用手机或笔记本浏览器遥控月球车。实机默认发布
+`lunar_rover_msgs/msg/ManualControl` 到 `/web/manual_control`，再由
+`nav_to_manual_mux` 统一仲裁并交给 `motion_solver`；仿真/旧链路可用参数改为
+`/web/chassis_cmd_vel` 与 `chassis_cmd_mux_node`。
 
 ## 控制模型（与键盘控制器不同）
 
@@ -56,6 +56,17 @@
 `WEB_JOYSTICK_TOKEN` 固定令牌。
 
 手机连上车机热点（或与车机同一 WiFi），浏览器打开该地址即可看到摇杆页面。
+
+同一服务还提供同级页面：
+
+- `/monitor`：建图、代价图与规划监控；
+- `/arm`：机械臂键盘代理。它把触摸按住/松开转换为统一控制台的虚拟按键：
+  W/S 前后、A/D 左右、Space/Shift 升降、方向键调 Pitch/夹爪，F 同步，R 回 HOME，E 一键存放。
+
+机械臂页不会计算 IK，也不会发布 `$ARM:*` 或 `/h7/raw_command`。它通过统一控制台
+（默认端口 8099）的 WebSocket 转发按键状态，由已打开的统一控制台 IK 键盘处理器
+生成原有控制指令。使用前须在统一控制台选择 IK 模式、打开“键盘控制”并保持该页面
+连接；离开手机页面、切后台或点击“松开全部虚拟按键”会释放全部已按按键。
 
 ### 用 launch 一键启动（mux + 网页服务）
 
