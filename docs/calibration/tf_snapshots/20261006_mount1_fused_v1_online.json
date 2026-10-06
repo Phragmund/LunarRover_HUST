@@ -1,0 +1,34 @@
+{
+  "captured_at": "2026-10-06T18:42:11+08:00",
+  "calibration_id": "20261006_mount1_fused_v1_park",
+  "calibration_config": "src/lunar_rover_manipulation/config/handeye_calibrations.json",
+  "static": {
+    "handeye_tool_frame -> camera_color_optical_frame": {
+      "parent": "handeye_tool_frame",
+      "child": "camera_color_optical_frame",
+      "translation_xyz_m": [
+        -0.041300930793331,
+        -0.033105358015466,
+        0.023544996820221
+      ],
+      "quaternion_xyzw": [
+        0.528225626749242,
+        0.528829341248085,
+        0.451758700488351,
+        0.487063950229908
+      ],
+      "rpy_deg_xyz": [
+        96.74495136942197,
+        2.171248767858557,
+        88.13580708965193
+      ]
+    }
+  },
+  "verification": {
+    "registry_load": true,
+    "active_calibration_topic": true,
+    "tf2_echo_handeye_tool_to_camera": true,
+    "camera_frame_observed_during_snapshot": false,
+    "camera_frame_note": "The Gemini driver was repeatedly restarted by the existing watchdog but no RGB frame was observed; this is a hardware/stream availability issue separate from the deployed hand-eye TF."
+  }
+}

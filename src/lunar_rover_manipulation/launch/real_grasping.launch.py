@@ -84,7 +84,11 @@ def generate_launch_description():
             DeclareLaunchArgument("active_search", default_value="true"),
             DeclareLaunchArgument("auto_trigger_grasp", default_value="false"),
             DeclareLaunchArgument("periodic_sweep", default_value="false"),
-            DeclareLaunchArgument("pose_average_pose_count", default_value="4"),
+            DeclareLaunchArgument(
+                "pose_average_pose_count",
+                default_value="1",
+                description="Current grasp gate uses one centered mask-distance pose; legacy four-corner sampling is bypassed.",
+            ),
             DeclareLaunchArgument("pose_average_samples_per_pose", default_value="5"),
             DeclareLaunchArgument("mission_executive", default_value="true"),
             DeclareLaunchArgument(

@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Preview the initial hand-eye calibration result in RViz.
+"""Publish the selected versioned hand-eye calibration and real-arm FK.
 
-This temporary utility publishes:
+This utility publishes:
 
   base_link -> arm_base_link
   arm_base_link -> handeye_tool_frame
   handeye_tool_frame -> camera_color_optical_frame
 
 The FK model matches the current ROS IK keyboard controller geometry.
+Versioned parameters are loaded from config/handeye_calibrations.json.
+No generated calibration files are required at runtime.
 
 Geometry note (real arm, confirmed 2026-08-30):
   - J1 is a vertical yaw axis.
@@ -27,6 +29,10 @@ from geometry_msgs.msg import TransformStamped
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from tf2_ros import StaticTransformBroadcaster, TransformBroadcaster
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from std_msgs.msg import String
+
+from handeye_calibration_registry import DEFAULT_CONFIG, load_registry, quaternion_to_matrix
 
 
 def rotation_matrix_to_quaternion(matrix):
@@ -99,26 +105,43 @@ def make_transform(parent, child, translation, rotation_matrix, stamp):
 class HandeyeTfPreview(Node):
     def __init__(self):
         super().__init__("handeye_tf_preview")
-        self.zero_degrees = [90.0, 180.0, 135.0, 135.0, 0.0]
-        self.ros_directions = [1.0, -1.0, 1.0, 1.0, 1.0]
-        self.j1_j2_axis_offset = 0.07545
-        self.upper_arm = 0.11391
-        self.forearm = 0.11000
-        self.tool = 0.15601
-        self.arm_base_xyz = (0.13, 0.0, 0.056)
-        # Updated from the 2026-08-31 ChArUco session.
-        self.tool_t_camera = (-0.03559743396701177, -0.04235515197231568, 0.034338323438433536)
-        self.tool_rpy_camera = tuple(math.radians(v) for v in (98.60628626259471, 1.728528391568674, 87.84692388366312))
-        self.board_translation = (0.568216245161778, 0.17172235141982198, 0.22930751482102782)
-        self.board_rotation = self.load_board_rotation()
+        config_path = self.declare_parameter("calibration_config", str(DEFAULT_CONFIG)).value
+        requested_id = self.declare_parameter("calibration_id", "").value
+        self.registry, self.calibration_id, self.profile = load_registry(config_path, requested_id)
+        geometry = self.registry["kinematics"]
+        self.zero_degrees = geometry["zero_degrees"]
+        self.ros_directions = geometry["ros_directions"]
+        self.j1_j2_axis_offset = geometry["j1_j2_axis_offset_m"]
+        self.upper_arm = geometry["upper_arm_m"]
+        self.forearm = geometry["forearm_m"]
+        self.tool = geometry["tool_m"]
+        base_tf = self.registry["base_T_arm"]
+        self.arm_base_xyz = base_tf["translation_xyz_m"]
+        self.arm_base_rotation = quaternion_to_matrix(base_tf["quaternion_xyzw"])
+        camera_tf = self.profile["tool_T_camera"]
+        self.tool_t_camera = camera_tf["translation_xyz_m"]
+        self.tool_rotation_camera = quaternion_to_matrix(camera_tf["quaternion_xyzw"])
+        board_tf = self.profile["base_T_board_display"]
+        self.board_translation = board_tf["translation_xyz_m"]
+        self.board_rotation = quaternion_to_matrix(board_tf["quaternion_xyzw"])
         self.current_ros = None
 
         self.static_broadcaster = StaticTransformBroadcaster(self)
         self.broadcaster = TransformBroadcaster(self)
+        status_qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                                durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self.calibration_publisher = self.create_publisher(
+            String, "/handeye/active_calibration", status_qos
+        )
         self.create_subscription(JointState, "/joint_states", self.on_joint_state, 10)
         self.create_timer(0.05, self.publish_dynamic)
         self.publish_static()
-        self.get_logger().info("hand-eye TF preview is publishing temporary frames for RViz")
+        self.calibration_publisher.publish(String(data=json.dumps({
+            "calibration_id": self.calibration_id,
+            "calibration_config": config_path,
+            "tool_T_camera": self.profile["tool_T_camera"],
+        })))
+        self.get_logger().info(f"hand-eye TF active calibration: {self.calibration_id}")
 
     def on_joint_state(self, message):
         values = {}
@@ -170,7 +193,7 @@ class HandeyeTfPreview(Node):
     def publish_static(self):
         stamp = self.get_clock().now().to_msg()
         base_tf = make_transform(
-            "base_link", "arm_base_link", self.arm_base_xyz, np.eye(3), stamp
+            "base_link", "arm_base_link", self.arm_base_xyz, self.arm_base_rotation, stamp
         )
         board_tf = make_transform(
             "base_link",
@@ -183,86 +206,15 @@ class HandeyeTfPreview(Node):
             "handeye_tool_frame",
             "camera_color_optical_frame",
             self.tool_t_camera,
-            rpy_to_matrix(*self.tool_rpy_camera),
+            self.tool_rotation_camera,
             stamp,
         )
-        camera_alias_tf = make_transform(
-            "camera_color_optical_frame",
-            "gemini335_color_optical_frame",
-            (0.0, 0.0, 0.0),
-            np.eye(3),
-            stamp,
-        )
-        depth_alias_tf = make_transform(
-            "camera_color_optical_frame",
-            "camera_depth_optical_frame",
-            (0.0, 0.0, 0.0),
-            np.eye(3),
-            stamp,
-        )
-        gemini_depth_alias_tf = make_transform(
-            "camera_depth_optical_frame",
-            "gemini335_depth_optical_frame",
-            (0.0, 0.0, 0.0),
-            np.eye(3),
-            stamp,
-        )
-        self.static_broadcaster.sendTransform(
-            [base_tf, board_tf, camera_tf, camera_alias_tf, depth_alias_tf, gemini_depth_alias_tf]
-        )
-
-    def load_board_rotation(self):
-        path = "generated/calibration/handeye_samples/20260831_223240/handeye_initial_solution.json"
-        try:
-            with open(path, "r", encoding="utf-8") as handle:
-                report = json.load(handle)
-        except OSError:
-            return np.eye(3)
-        for solution in report.get("solutions", []):
-            if solution.get("label") == "filtered_plus_residual_trim":
-                matrix = solution.get("tool_T_camera", {}).get("matrix_4x4")
-                if matrix:
-                    tool_t_camera = np.asarray(matrix, dtype=float)
-                    break
-        else:
-            return np.eye(3)
-
-        rows = []
-        sample_path = "generated/calibration/handeye_samples/20260831_223240/samples.jsonl"
-        try:
-            with open(sample_path, "r", encoding="utf-8") as handle:
-                rows = [json.loads(line) for line in handle if line.strip()]
-        except OSError:
-            return np.eye(3)
-
-        robust_indices = set(
-            next(
-                solution.get("sample_indices", [])
-                for solution in report.get("solutions", [])
-                if solution.get("label") == "filtered_plus_residual_trim"
-            )
-        )
-        rotations = []
-        for row in rows:
-            if int(row.get("index", -1)) not in robust_indices:
-                continue
-            base_t_tool = self.fk_matrix(row["joint_state"]["positions"])
-            camera_t_board = np.eye(4)
-            camera_t_board[:3, :3] = rotation_vector_to_matrix(
-                row["camera_T_board"]["rotation_vector"]
-            )
-            camera_t_board[:3, 3] = row["camera_T_board"]["translation_xyz_m"]
-            base_t_board = base_t_tool @ tool_t_camera @ camera_t_board
-            rotations.append(base_t_board[:3, :3])
-        if not rotations:
-            return np.eye(3)
-        mean_matrix = sum(rotations) / float(len(rotations))
-        u, _, vt = np.linalg.svd(mean_matrix)
-        rotation = u @ vt
-        if np.linalg.det(rotation) < 0:
-            u[:, -1] *= -1.0
-            rotation = u @ vt
-        return rotation
+        aliases = [
+            make_transform(alias["parent"], alias["child"],
+                           (0.0, 0.0, 0.0), np.eye(3), stamp)
+            for alias in self.registry["camera_aliases"]
+        ]
+        self.static_broadcaster.sendTransform([base_tf, board_tf, camera_tf, *aliases])
 
     def fk_matrix(self, positions):
         translation, rotation = self.fk_tool(positions)

@@ -165,11 +165,11 @@ grasp_coordinator:
     precise_preference_sec: 0.75
     pregrasp_height_m: 0.08
     fine_standoff_m: 0.04
-    grasp_z_offset_m: 0.015
+    grasp_z_offset_m: 0.000
     lift_height_m: 0.12
     wall_pregrasp_standoff_m: 0.08
     wall_fine_standoff_m: 0.04
-    wall_grasp_offset_m: 0.005
+    wall_grasp_offset_m: 0.000
     wall_retreat_m: 0.10
     max_wall_yaw_mismatch_deg: 35.0
     gripper_open_m: 0.040
@@ -182,6 +182,8 @@ grasp_coordinator:
     upper_arm_m: 0.11391
     forearm_m: 0.11000
     tool_m: 0.15601
+    # New-mount baseline: no empirical J2 trim; use the raw IK solution.
+    ik_j2_compensation_deg: 0.0
 
 grasp_state_machine:
   ros__parameters:
@@ -198,10 +200,9 @@ grasp_state_machine:
     tf_target_pixel_topic: /grasp/tf_target_pixel
     # Only use target pose samples while the target is far enough for reliable
     # Gemini 335L depth. Close-range servo should use image feedback instead.
-    # Cumulative fixed batches. YOLO lock automatically moves the arm through
-    # four J1/J4 square corners around the recognized pose, then each settled
-    # corner contributes one batch.
-    pose_average_pose_count: 4
+    # Current grasp gate: one centered mask/RGB-D distance pose, five samples.
+    # The legacy four-corner parallax routine remains in code but is bypassed.
+    pose_average_pose_count: 1
     pose_average_samples_per_pose: 5
     pose_average_pose_change_deg: 8.0
     pose_average_settle_sec: 0.8
@@ -210,8 +211,7 @@ grasp_state_machine:
     pose_average_max_camera_depth_m: 1.20
     pose_average_max_spread_m: 0.05
     # Reject a full pose batch whenever its 3-D samples spread beyond 5 cm.
-    # This prevents a moving/incorrect depth mask from contaminating the four
-    # corner average.
+    # This prevents a moving/incorrect mask from contaminating the distance gate.
     chassis_approach_enabled: true
     chassis_approach_topic: /grasp/chassis_cmd_vel
     chassis_approach_move_sec: 1.0
@@ -220,7 +220,9 @@ grasp_state_machine:
     chassis_approach_deadband_px: 20.0
     chassis_approach_steer_gain: 0.0015
     chassis_approach_max_angular_z: 0.12
-    auto_sampling_enabled: true
+    # Temporarily bypass YOLO-confirmed four-corner sampling.  The state
+    # machine now centers the mask, samples distance, and checks TF+IK reach.
+    auto_sampling_enabled: false
     auto_sampling_j1_offset_deg: 8.0
     auto_sampling_j4_offset_deg: 8.0
     auto_sampling_motion_duration_sec: 1.0
@@ -234,10 +236,12 @@ grasp_state_machine:
     auto_center_motion_margin_sec: 0.15
     auto_center_max_steps: 12
     auto_center_timeout_sec: 15.0
-    # When all four samples pass workspace checking, trigger the existing
-    # direct-TF grasp sequence exactly once.
+    # When the TF+IK reachability check passes, trigger the existing direct-TF
+    # grasp sequence exactly once.
     auto_execute_increment_enabled: true
     tf_timeout_sec: 0.12
+    arm_base_frame: arm_base_link
+    tf_reachability_tolerance_m: 0.025
     workspace_center_x_m: 0.13
     workspace_center_y_m: 0.0
     workspace_center_z_m: 0.056
@@ -273,14 +277,14 @@ grasp_state_machine:
     tf_direct_overshoot_m: 0.000
     # After the TF target is reached, make a separate vertical IK descent
     # before closing the gripper. This is not a camera/TF-coordinate offset.
-    tf_direct_vertical_drop_m: 0.040
+    tf_direct_vertical_drop_m: 0.000
     increment_sample_log_path: generated/logs/grasp_increment_samples.jsonl
     # Applied only when tf_direct_target_enabled is true.  Positive J1 is
     # rover-left under the calibrated joint convention.
-    tf_direct_j1_offset_deg: 5.0
+    tf_direct_j1_offset_deg: 0.0
     # Positive means upward in the camera display.  Since the Gemini image is
     # inverted relative to J4, this is applied as a negative raw J4 angle.
-    tf_direct_j4_image_up_offset_deg: 10.0
+    tf_direct_j4_image_up_offset_deg: 0.0
     # Full grasp result path: TF reach -> J5 -> lower-left HSV hold -> J2 lift.
     tf_direct_post_sequence_enabled: true
     tf_direct_post_tf_settle_sec: 1.0
@@ -323,8 +327,8 @@ grasp_state_machine:
     visual_servo_depth_weight: 0.70
     visual_servo_max_pixel_error: 600.0
     visual_servo_max_age_sec: 0.8
-    tf_plane_correction_gain: 0.12
-    tf_plane_correction_limit: 0.75
+    tf_plane_correction_gain: 0.0
+    tf_plane_correction_limit: 0.0
     # Experimental alternative: TF supplies the 5 cm approach step, while
     # image x/y error adds only small J1/J4 angle corrections.
     gimbal_servo_enabled: false

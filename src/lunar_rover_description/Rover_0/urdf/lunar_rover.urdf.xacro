@@ -8,6 +8,8 @@
     default="gz_ros2_control/GazeboSimSystem"/>
   <xacro:arg name="arm_camera_xyz" default="0.04 0 0.065"/>
   <xacro:arg name="arm_camera_rpy" default="0 -1.57079632679 0"/>
+  <!-- Real hand-eye publisher owns camera optical frames when enabled. -->
+  <xacro:arg name="external_camera_tf" default="false"/>
 
   <!-- Compact rover envelope: 0.54 m long x 0.40 m wide including wheels. -->
   <xacro:property name="track" value="0.345"/>
@@ -349,6 +351,7 @@
     <origin xyz="$(arg arm_camera_xyz)" rpy="$(arg arm_camera_rpy)"/>
   </joint>
 
+  <xacro:unless value="$(arg external_camera_tf)">
   <link name="gemini335_color_optical_frame"/>
   <joint name="gemini335_color_optical_joint" type="fixed">
     <parent link="gemini335_link"/>
@@ -374,6 +377,7 @@
     <child link="camera_depth_optical_frame"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
+  </xacro:unless>
 
   <!-- Real arm geometry. ROS zero equals servo Home: 90/180/135/135 degrees. -->
   <xacro:property name="arm_base_x" value="0.13"/>

@@ -27,7 +27,7 @@ from std_msgs.msg import Empty, String
 try:
     import uvicorn
     from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-    from fastapi.responses import HTMLResponse, PlainTextResponse
+    from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 except ImportError as exc:  # pragma: no cover
     sys.stderr.write(
         "ros_web_console_server 缺少 Web 依赖：pip3 install --user fastapi 'uvicorn[standard]'\n"
@@ -67,6 +67,7 @@ class RosWebConsoleServer(Node):
         self.console_path = Path(
             str(self.declare_parameter("console_path", default_console_path()).value)
         )
+        self.repo_root = Path(__file__).resolve().parents[3]
         self.raw_topic = str(
             self.declare_parameter("raw_command_topic", "/h7/raw_command").value
         )
@@ -97,6 +98,15 @@ class RosWebConsoleServer(Node):
             "state": "stopped",
             "samples": 0,
             "output_dir": "",
+            "archive_path": "",
+            "download_ready": False,
+            "marker_count": 0,
+            "charuco_corners": 0,
+            "pose_ok": False,
+            "joint_stable": False,
+            "pose_stable": False,
+            "auto_ready": False,
+            "reason": "",
         }
         self.handeye_process = None
         self.handeye_lock = threading.Lock()
@@ -119,6 +129,12 @@ class RosWebConsoleServer(Node):
         )
         camera_qos = QoSProfile(depth=5, reliability=ReliabilityPolicy.BEST_EFFORT)
         self.create_subscription(CompressedImage, self.camera_topic, self.on_camera, camera_qos)
+        self.create_subscription(
+            CompressedImage,
+            "/handeye/calibration_overlay/compressed",
+            self.on_handeye_overlay,
+            camera_qos,
+        )
         self.create_subscription(String, self.raw_feedback_topic, self.on_h7_frame, 50)
         self.create_subscription(JointState, "/joint_states", self.on_joint_state, 10)
         state_qos = QoSProfile(
@@ -160,6 +176,27 @@ class RosWebConsoleServer(Node):
                     status_code=500,
                 )
             return HTMLResponse(html)
+
+        @self.app.get("/handeye/download")
+        async def handeye_download():
+            archive_path = str(self.last_handeye_status.get("archive_path", ""))
+            if not archive_path:
+                return PlainTextResponse("当前没有可下载的手眼标定归档。", status_code=404)
+            candidate = Path(archive_path)
+            if not candidate.is_absolute():
+                candidate = self.repo_root / candidate
+            try:
+                resolved = candidate.resolve()
+                resolved.relative_to(self.repo_root.resolve())
+            except (OSError, ValueError):
+                return PlainTextResponse("标定归档路径无效。", status_code=404)
+            if not resolved.is_file() or resolved.suffix.lower() != ".zip":
+                return PlainTextResponse("标定归档尚未生成。", status_code=404)
+            return FileResponse(
+                str(resolved),
+                media_type="application/zip",
+                filename=resolved.name,
+            )
 
         @self.app.websocket("/ros")
         async def websocket_endpoint(websocket: WebSocket):
@@ -232,7 +269,7 @@ class RosWebConsoleServer(Node):
             command = str(message.get("command", "")).strip().lower()
             if command == "start":
                 self.start_handeye_sampler()
-            elif command in {"p", "q"}:
+            elif command == "q":
                 self.send_handeye_command(command)
         elif message.get("type") == "start_full_nav2_chain":
             requested = message.get("start_mapping", False)
@@ -312,6 +349,20 @@ class RosWebConsoleServer(Node):
             }
         )
 
+    def on_handeye_overlay(self, message: CompressedImage):
+        """Forward the calibration overlay without opening a local GUI window."""
+        self.broadcast_threadsafe(
+            {
+                "type": "handeye_camera",
+                "format": message.format or "jpeg",
+                "stamp": {
+                    "sec": int(message.header.stamp.sec),
+                    "nanosec": int(message.header.stamp.nanosec),
+                },
+                "data": base64.b64encode(bytes(message.data)).decode("ascii"),
+            }
+        )
+
     def on_h7_frame(self, message: String):
         self.broadcast_threadsafe({"type": "h7_frame", "frame": message.data})
 
@@ -355,6 +406,15 @@ class RosWebConsoleServer(Node):
             "state": str(status.get("state", "unknown")),
             "samples": int(status.get("samples", 0)),
             "output_dir": str(status.get("output_dir", "")),
+            "archive_path": str(status.get("archive_path", "")),
+            "download_ready": bool(status.get("download_ready", False)),
+            "marker_count": int(status.get("marker_count", 0)),
+            "charuco_corners": int(status.get("charuco_corners", 0)),
+            "pose_ok": bool(status.get("pose_ok", False)),
+            "joint_stable": bool(status.get("joint_stable", False)),
+            "pose_stable": bool(status.get("pose_stable", False)),
+            "auto_ready": bool(status.get("auto_ready", False)),
+            "reason": str(status.get("reason", "")),
         }
         self.broadcast_threadsafe({"type": "handeye_status", **self.last_handeye_status})
 
@@ -382,11 +442,16 @@ class RosWebConsoleServer(Node):
                     daemon=True,
                 ).start()
             except OSError as exc:
-                self.last_handeye_status = {
-                    "state": "error",
-                    "samples": 0,
-                    "output_dir": "",
-                }
+                self.last_handeye_status.update(
+                    {
+                        "state": "error",
+                        "samples": 0,
+                        "output_dir": "",
+                        "archive_path": "",
+                        "download_ready": False,
+                        "reason": str(exc),
+                    }
+                )
                 self.broadcast_threadsafe(
                     {"type": "handeye_status", **self.last_handeye_status}
                 )
@@ -394,7 +459,22 @@ class RosWebConsoleServer(Node):
                     {"type": "console_log", "text": f"启动 ChArUco 采样节点失败: {exc}"}
                 )
                 return
-        self.last_handeye_status["state"] = "starting"
+        self.last_handeye_status.update(
+            {
+                "state": "starting",
+                "samples": 0,
+                "output_dir": "",
+                "archive_path": "",
+                "download_ready": False,
+                "marker_count": 0,
+                "charuco_corners": 0,
+                "pose_ok": False,
+                "joint_stable": False,
+                "pose_stable": False,
+                "auto_ready": False,
+                "reason": "正在启动自动标定",
+            }
+        )
         self.broadcast_threadsafe({"type": "handeye_status", **self.last_handeye_status})
         self.broadcast_threadsafe(
             {"type": "console_log", "text": "已启动 ChArUco 手眼采样节点"}

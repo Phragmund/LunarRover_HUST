@@ -1,0 +1,11 @@
+{
+  "session_dir": "generated/calibration/handeye_samples/20261006_173800",
+  "samples": 87,
+  "automatic_sampling": true,
+  "min_charuco_corners": 35,
+  "stable_sec": 0.8,
+  "joint_stable_deg": 0.6,
+  "pose_stable_translation_m": 0.004,
+  "pose_stable_rotation_deg": 1.5,
+  "generated_at": "2026-10-06T17:43:25"
+}

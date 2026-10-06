@@ -17,6 +17,7 @@
     button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
     button.danger { color:var(--danger); background:#fff7f6; border-color:#f1b8b2; }
     button.good { color:var(--ok); background:#effaf5; border-color:#a8dac3; }
+    a.button { display:inline-flex; align-items:center; justify-content:center; min-height:36px; border:1px solid var(--line); border-radius:6px; background:#effaf5; color:var(--ok); text-decoration:none; padding:7px 10px; }
     button.active { background:var(--blue); border-color:var(--blue); color:#fff; }
     button:disabled { opacity:.5; cursor:not-allowed; }
     input,select { width:100%; min-height:36px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--text); padding:7px 9px; }
@@ -69,9 +70,10 @@
     body.ros-mode .ros-only-note { display:block; }
     .camera-layout { display:grid; grid-template-columns:minmax(360px, 1.6fr) minmax(280px, .8fr); gap:14px; align-items:start; }
     .camera-frame { position:relative; background:#0e1624; border:1px solid var(--line); border-radius:8px; min-height:360px; display:grid; place-items:center; overflow:hidden; }
-    /* 相机倒装，画面旋转 180° 以便人工观察（识别框随 overlay 一起转） */
+    /* 相机倒装，保留 180° 显示修正；标定节点会预补偿叠加文字方向 */
     .camera-frame img { width:100%; height:auto; display:block; image-rendering:auto; transform: rotate(180deg); }
     .camera-placeholder { color:#94a3b8; padding:30px; text-align:center; line-height:1.7; }
+    .camera-calibration-badge { position:absolute; left:10px; bottom:10px; z-index:5; padding:6px 9px; border-radius:6px; background:rgba(15,118,110,.92); color:#fff; font-size:12px; box-shadow:0 3px 12px rgba(0,0,0,.25); }
     .camera-cursor-label { position:absolute; display:none; z-index:4; pointer-events:none; background:rgba(15,23,42,.86); color:#e5e7eb; border:1px solid rgba(148,163,184,.45); border-radius:6px; padding:4px 7px; font:12px/1.2 Consolas,"Cascadia Mono",monospace; box-shadow:0 4px 14px rgba(0,0,0,.25); }
     .camera-calibration-path { max-width:100%; overflow-wrap:anywhere; font:12px/1.4 Consolas,"Cascadia Mono",monospace; color:#94a3b8; }
     .metric-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -401,6 +403,7 @@
               <div class="camera-frame">
                 <img id="cameraOverlayImg" alt="perception overlay" class="hidden">
                 <div id="cameraCursorLabel" class="camera-cursor-label">x=-- y=--</div>
+                <div id="cameraCalibrationBadge" class="camera-calibration-badge hidden">手眼标定标注画面</div>
                 <div id="cameraPlaceholder" class="camera-placeholder">
                   ROS 模式连接后显示 `/perception/debug/fusion_overlay/compressed`
                 </div>
@@ -410,9 +413,9 @@
                 <button id="cameraFreezeBtn">暂停画面</button>
               </div>
               <div class="buttons">
-                <button id="handeyeStartBtn" class="primary">启动手眼标定</button>
-                <button id="handeyeSampleBtn">采样（p）</button>
-                <button id="handeyeStopBtn" class="danger">退出并保存（q）</button>
+                <button id="handeyeStartBtn" class="primary">启动自动标定</button>
+                <button id="handeyeStopBtn" class="danger">结束标定并保存</button>
+                <a id="handeyeDownloadBtn" class="button hidden" href="/handeye/download" download>下载标定归档</a>
               </div>
             </section>
             <section class="panel">
@@ -431,8 +434,11 @@
                 <div class="metric"><span>ROS 指令通路</span><strong id="rosRouteText">--</strong></div>
                 <div class="metric"><span>手眼标定</span><strong id="handeyeStatusText">未启动</strong></div>
                 <div class="metric"><span>标定样本数</span><strong id="handeyeSamplesText">0</strong></div>
+                <div class="metric"><span>标定板识别</span><strong id="handeyeDetectionText">--</strong></div>
+                <div class="metric"><span>机械臂稳定性</span><strong id="handeyeStabilityText">--</strong></div>
               </div>
               <div class="camera-calibration-path" id="handeyeOutputText">输出目录：--</div>
+              <div class="camera-calibration-path" id="handeyeReasonText">自动采样条件：等待启动</div>
               <div class="buttons">
                 <button id="graspStartBtn">开始搜索</button>
                 <button id="graspSkipYoloBtn" title="仅联调：直接接受当前最优 HSV 候选">跳过 YOLO 确认</button>
@@ -440,7 +446,7 @@
                 <button id="graspAbortBtn" class="danger">中止</button>
                 <button id="graspHomeBtn">回到初始位</button>
               </div>
-              <p class="muted">状态机（抓取状态）：<b>ABORT</b> 中止/未启动 · <b>WIDE_SEARCH</b> 广域搜索等待 YOLO 确认 · <b>TARGET_LOCKED</b> 已锁定目标 HSV · <b>POSE_AVERAGING</b> HSV+低频 SAM 远距位姿统计（5 个机械臂姿态，每个姿态 15 个样本，累计不滑动） · <b>WORKSPACE_CHECK</b> 工作区判定 · <b>APPROACH_WITH_CHASSIS</b> 未进工作区，等待后续底盘接近控制 · <b>MOVE_TO_GRASP</b> 已进工作区，等待 TF+视觉伺服增量移动。<br>“跳过 YOLO 确认”仅用于联调：在开始搜索且出现当前 HSV 候选后，直接将该候选视为已确认。感知模式：<b>wide_search</b> HSV 候选+YOLO 确认 · <b>locked_hsv</b> 锁定后专属 HSV 跟踪 · <b>precise_hsv_sam</b> HSV 引导低频 SAM 精分割 · <b>idle</b> 空闲。</p>
+              <p class="muted">手眼标定：启动后标定节点直接向本页面发送带 ChArUco 角点、坐标轴和识别状态的画面，不再弹出本地窗口。保持整块标定板可见并移动机械臂到新的姿态；当角点不少于 35 个、机械臂和板位姿连续稳定约 0.8 秒且姿态相对上次有变化时自动保存一组。完成后点击“结束标定并保存”，页面提供 ZIP 下载。<br>状态机（抓取状态）：<b>ABORT</b> 中止/未启动 · <b>WIDE_SEARCH</b> 广域搜索等待 YOLO 确认 · <b>TARGET_LOCKED</b> 已锁定目标 HSV · <b>POSE_AVERAGING</b> HSV+低频 SAM 远距位姿统计 · <b>WORKSPACE_CHECK</b> 工作区判定 · <b>APPROACH_WITH_CHASSIS</b> 底盘接近 · <b>MOVE_TO_GRASP</b> TF+视觉伺服抓取。</p>
             </section>
           </div>
         </section>
@@ -459,7 +465,7 @@
 
   <script>
     let port = null, writer = null, reader = null, readAbort = false, repeatTimer = null, activeFrame = "";
-    let transportMode = "serial", rosWs = null, rosConnected = false, cameraFrozen = false;
+    let transportMode = "serial", rosWs = null, rosConnected = false, cameraFrozen = false, calibrationOverlayActive = false;
     let cameraFrameTimes = [];
     let autoIkSyncStage = "idle", autoIkSyncRoute = "serial", autoIkSyncTimer = null;
     const encoder = new TextEncoder(), decoder = new TextDecoder();
@@ -648,7 +654,9 @@
       } else if (msg.type === "virtual_key") {
         handleIkKey(String(msg.key || ""), msg.pressed === true);
       } else if (msg.type === "camera") {
-        updateCameraImage(msg);
+        updateCameraImage(msg, "perception");
+      } else if (msg.type === "handeye_camera") {
+        updateCameraImage(msg, "handeye");
       } else if (msg.type === "joint_state") {
         updateArmFromJointState(msg.names || [], msg.positions || []);
       } else if (msg.type === "grasp_status") {
@@ -658,10 +666,20 @@
       } else if (msg.type === "pose_average_status") {
         $("poseAverageStatusText").textContent = msg.text || "--";
       } else if (msg.type === "handeye_status") {
-        const states = {stopped:"未启动", starting:"启动中", ready:"等待采样", sampling:"已采样", waiting_for_frame:"等待相机画面", stopping:"正在退出并保存", error:"启动失败"};
+        const states = {stopped:"未启动", starting:"启动中", ready:"等待稳定", stabilizing:"机械臂稳定中", sampling:"已自动采样", waiting_for_frame:"等待相机画面", stopping:"正在保存归档", error:"启动失败"};
+        calibrationOverlayActive = ["starting", "ready", "stabilizing", "sampling", "waiting_for_frame", "stopping"].includes(msg.state);
         $("handeyeStatusText").textContent = states[msg.state] || msg.state || "--";
         $("handeyeSamplesText").textContent = String(msg.samples ?? 0);
-        $("handeyeOutputText").textContent = `输出目录：${msg.output_dir || "--"}`;
+        $("handeyeOutputText").textContent = msg.download_ready
+          ? `采样目录：${msg.output_dir || "--"} · 归档已生成`
+          : `采样目录：${msg.output_dir || "--"}`;
+        $("handeyeDetectionText").textContent = msg.pose_ok
+          ? `${msg.charuco_corners ?? 0} 角点 / ${msg.marker_count ?? 0} 标记`
+          : `未完成 (${msg.charuco_corners ?? 0} 角点)`;
+        $("handeyeStabilityText").textContent = `${msg.joint_stable ? "关节稳定" : "关节运动中"} · ${msg.pose_stable ? "板位稳定" : "板位变化"}`;
+        $("handeyeReasonText").textContent = `自动采样条件：${msg.reason || "等待状态"}`;
+        $("handeyeDownloadBtn").classList.toggle("hidden", !msg.download_ready);
+        $("cameraCalibrationBadge").classList.toggle("hidden", !calibrationOverlayActive);
       } else if (msg.type === "full_chain_status") {
         const labels = {idle:"未启动", starting:"正在启动", ready:"已就绪", failed:"启动失败"};
         $("fullChainStatus").textContent = `${labels[msg.state] || msg.state || "--"}：${msg.detail || "--"}`;
@@ -697,12 +715,14 @@
       if (!Array.isArray(values) || values.length < 3) return "--";
       return values.slice(0, 3).map(v => Number(v).toFixed(3)).join(", ") + (unit ? ` ${unit}` : "");
     }
-    function updateCameraImage(msg) {
+    function updateCameraImage(msg, source="perception") {
+      if (source === "perception" && calibrationOverlayActive) return;
       if (cameraFrozen) return;
       const img = $("cameraOverlayImg");
       img.src = `data:image/jpeg;base64,${msg.data}`;
       img.classList.remove("hidden");
       $("cameraPlaceholder").classList.add("hidden");
+      $("cameraCalibrationBadge").classList.toggle("hidden", source !== "handeye" || !calibrationOverlayActive);
       const now = performance.now();
       cameraFrameTimes.push(now);
       cameraFrameTimes = cameraFrameTimes.filter(t => now - t <= 3000);
@@ -1760,7 +1780,6 @@
       $("cameraConnectRosBtn").onclick = () => setTransportMode("ros").catch(e=>log(e.message));
       $("cameraFreezeBtn").onclick = () => { cameraFrozen = !cameraFrozen; $("cameraFreezeBtn").textContent = cameraFrozen ? "继续画面" : "暂停画面"; };
       $("handeyeStartBtn").onclick = () => { try { sendRos({type:"handeye_command", command:"start"}); } catch(e) { log(e.message); } };
-      $("handeyeSampleBtn").onclick = () => { try { sendRos({type:"handeye_command", command:"p"}); } catch(e) { log(e.message); } };
       $("handeyeStopBtn").onclick = () => { try { sendRos({type:"handeye_command", command:"q"}); } catch(e) { log(e.message); } };
       $("graspStartBtn").onclick = () => { try { sendRos({type:"grasp_command", command:"start_search"}); } catch(e) { log(e.message); } };
       $("graspSkipYoloBtn").onclick = () => { try { sendRos({type:"grasp_command", command:"skip_yolo_confirm"}); } catch(e) { log(e.message); } };

@@ -1,0 +1,486 @@
+{
+  "captured_at_utc": "2026-09-30T05:36:10.757132+00:00",
+  "static": {
+    "base_link -> arm_base_link": {
+      "parent": "base_link",
+      "child": "arm_base_link",
+      "translation_xyz_m": [
+        0.13,
+        0,
+        0.056
+      ],
+      "quaternion_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "stamp_sec": 1790743282.6251383
+    },
+    "base_link -> charuco_board_frame": {
+      "parent": "base_link",
+      "child": "charuco_board_frame",
+      "translation_xyz_m": [
+        0.568216245161778,
+        0.17172235141982198,
+        0.22930751482102782
+      ],
+      "quaternion_xyzw": [
+        -0.4778059687559646,
+        0.5412978393913709,
+        0.4948222533257868,
+        -0.48357940703156377
+      ],
+      "stamp_sec": 1790743461.1857002
+    },
+    "handeye_tool_frame -> camera_color_optical_frame": {
+      "parent": "handeye_tool_frame",
+      "child": "camera_color_optical_frame",
+      "translation_xyz_m": [
+        -0.03559743396701177,
+        -0.04235515197231568,
+        0.034338323438433536
+      ],
+      "quaternion_xyzw": [
+        0.5392000692917981,
+        0.5329644933235356,
+        0.4440413096916233,
+        0.4775347625246304
+      ],
+      "stamp_sec": 1790743461.1857002
+    },
+    "camera_color_optical_frame -> gemini335_color_optical_frame": {
+      "parent": "camera_color_optical_frame",
+      "child": "gemini335_color_optical_frame",
+      "translation_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "quaternion_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "stamp_sec": 1790743461.1857002
+    },
+    "camera_color_optical_frame -> camera_depth_optical_frame": {
+      "parent": "camera_color_optical_frame",
+      "child": "camera_depth_optical_frame",
+      "translation_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "quaternion_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "stamp_sec": 1790743461.1857002
+    },
+    "camera_depth_optical_frame -> gemini335_depth_optical_frame": {
+      "parent": "camera_depth_optical_frame",
+      "child": "gemini335_depth_optical_frame",
+      "translation_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "quaternion_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "stamp_sec": 1790743461.1857002
+    },
+    "gemini335_color_optical_frame -> camera_color_optical_frame": {
+      "parent": "gemini335_color_optical_frame",
+      "child": "camera_color_optical_frame",
+      "translation_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "quaternion_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "stamp_sec": 1790743282.6251383
+    },
+    "gemini335_depth_optical_frame -> camera_depth_optical_frame": {
+      "parent": "gemini335_depth_optical_frame",
+      "child": "camera_depth_optical_frame",
+      "translation_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "quaternion_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "stamp_sec": 1790743282.6251383
+    },
+    "gemini335_link -> gemini335_color_optical_frame": {
+      "parent": "gemini335_link",
+      "child": "gemini335_color_optical_frame",
+      "translation_xyz_m": [
+        0.015,
+        0,
+        0
+      ],
+      "quaternion_xyzw": [
+        0.5,
+        -0.4999999999999999,
+        0.5,
+        -0.5000000000000001
+      ],
+      "stamp_sec": 1790743282.6251383
+    },
+    "gemini335_color_optical_frame -> gemini335_depth_optical_frame": {
+      "parent": "gemini335_color_optical_frame",
+      "child": "gemini335_depth_optical_frame",
+      "translation_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "quaternion_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "stamp_sec": 1790743282.6251383
+    },
+    "arm_link4 -> gemini335_link": {
+      "parent": "arm_link4",
+      "child": "gemini335_link",
+      "translation_xyz_m": [
+        0.04,
+        0,
+        0.065
+      ],
+      "quaternion_xyzw": [
+        0,
+        -0.7071067811848163,
+        0,
+        0.7071067811882787
+      ],
+      "stamp_sec": 1790743282.6251383
+    },
+    "mid360_link -> livox_frame": {
+      "parent": "mid360_link",
+      "child": "livox_frame",
+      "translation_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "quaternion_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "stamp_sec": 1790743282.6251383
+    },
+    "mid360_link -> livox_imu_frame": {
+      "parent": "mid360_link",
+      "child": "livox_imu_frame",
+      "translation_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "quaternion_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "stamp_sec": 1790743282.6251383
+    },
+    "sensor_mast_link -> mid360_link": {
+      "parent": "sensor_mast_link",
+      "child": "mid360_link",
+      "translation_xyz_m": [
+        0,
+        0,
+        0.155
+      ],
+      "quaternion_xyzw": [
+        0,
+        0.38268343236508984,
+        0,
+        0.9238795325112867
+      ],
+      "stamp_sec": 1790743282.6251383
+    },
+    "base_link -> sensor_mast_link": {
+      "parent": "base_link",
+      "child": "sensor_mast_link",
+      "translation_xyz_m": [
+        0.06,
+        0,
+        0.05
+      ],
+      "quaternion_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "stamp_sec": 1790743282.6251383
+    }
+  },
+  "dynamic": {
+    "arm_base_link -> handeye_tool_frame": {
+      "parent": "arm_base_link",
+      "child": "handeye_tool_frame",
+      "translation_xyz_m": [
+        0.2355348246532658,
+        -0.041298057029155365,
+        0.22061682386116294
+      ],
+      "quaternion_xyzw": [
+        -0.008699111932533407,
+        -0.09998399501651169,
+        -0.08623995989844825,
+        0.9912064343560515
+      ],
+      "stamp_sec": 1790746574.7860613
+    },
+    "arm_base_link -> arm_link1": {
+      "parent": "arm_base_link",
+      "child": "arm_link1",
+      "translation_xyz_m": [
+        0,
+        0,
+        0
+      ],
+      "quaternion_xyzw": [
+        0,
+        0,
+        -0.08667759359661933,
+        0.9962364150984944
+      ],
+      "stamp_sec": 1790746574.7559156
+    },
+    "arm_link1 -> arm_link2": {
+      "parent": "arm_link1",
+      "child": "arm_link2",
+      "translation_xyz_m": [
+        0,
+        0,
+        0.07545
+      ],
+      "quaternion_xyzw": [
+        0,
+        -0.24336109154052327,
+        0,
+        0.9699357603079727
+      ],
+      "stamp_sec": 1790746574.7559156
+    },
+    "arm_link2 -> arm_link3": {
+      "parent": "arm_link2",
+      "child": "arm_link3",
+      "translation_xyz_m": [
+        0,
+        0,
+        0.11391
+      ],
+      "quaternion_xyzw": [
+        0,
+        0.5308440257395095,
+        0,
+        0.8474695394742343
+      ],
+      "stamp_sec": 1790746574.7559156
+    },
+    "arm_link3 -> arm_link4": {
+      "parent": "arm_link3",
+      "child": "arm_link4",
+      "translation_xyz_m": [
+        0,
+        0,
+        0.11
+      ],
+      "quaternion_xyzw": [
+        0,
+        0.3626413622313714,
+        0,
+        0.9319287753895011
+      ],
+      "stamp_sec": 1790746574.7559156
+    },
+    "arm_link4 -> arm_link5": {
+      "parent": "arm_link4",
+      "child": "arm_link5",
+      "translation_xyz_m": [
+        0,
+        0.0209925,
+        0.15601
+      ],
+      "quaternion_xyzw": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "stamp_sec": 1790746574.7559156
+    }
+  },
+  "status": {
+    "/grasp/status": "ABORT: 未启动，等待开始搜索",
+    "/perception/grasp_mode": "idle"
+  },
+  "joint_states": {
+    "names": [
+      "arm_joint1",
+      "arm_joint2",
+      "arm_joint3",
+      "arm_joint4",
+      "arm_joint5"
+    ],
+    "positions": [
+      -0.1735729941108362,
+      -0.4916592502868029,
+      1.119192382841364,
+      0.7422012644105888,
+      0.0209925
+    ],
+    "stamp_sec": 1790746574.7559156
+  },
+  "publishers": {
+    "/tf_static": [
+      {
+        "node": "/handeye_tf_preview",
+        "gid": [
+          1,
+          15,
+          221,
+          58,
+          24,
+          130,
+          76,
+          125,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          17,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "node": "/robot_state_publisher",
+        "gid": [
+          1,
+          15,
+          221,
+          58,
+          136,
+          124,
+          253,
+          221,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          19,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "/tf": [
+      {
+        "node": "/handeye_tf_preview",
+        "gid": [
+          1,
+          15,
+          221,
+          58,
+          24,
+          130,
+          76,
+          125,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          18,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "node": "/robot_state_publisher",
+        "gid": [
+          1,
+          15,
+          221,
+          58,
+          136,
+          124,
+          253,
+          221,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          18,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    ]
+  }
+}

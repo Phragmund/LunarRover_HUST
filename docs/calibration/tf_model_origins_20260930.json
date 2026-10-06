@@ -1,0 +1,2759 @@
+{
+  "schema_version": 1,
+  "notes": [
+    "Fixed joints give static transforms. Non-fixed joint origins are zero-position offsets, not their live transforms.",
+    "These model-reference snapshots are not the calibrated real-arm FK model.",
+    "Camera optical transforms of Rover_0 must be suppressed with external_camera_tf:=true when the hand-eye node is active."
+  ],
+  "models": {
+    "Rover_0_live_description": {
+      "source": "src/lunar_rover_description/Rover_0/urdf/lunar_rover.urdf.xacro",
+      "source_sha256": "570593820b5bdf3c4990a0f9cc36f327073962b8afbe93be22ad6b4b653408f7",
+      "arguments": {
+        "use_sim": "false",
+        "external_camera_tf": "false (Rover_0 default, preserves legacy camera values)"
+      },
+      "joints": [
+        {
+          "joint": "left_rocker_joint",
+          "type": "revolute",
+          "parent": "base_link",
+          "child": "left_rocker_link",
+          "origin_translation_xyz_m": [
+            0,
+            0.135,
+            -0.04
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0.135
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.04
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "joint": "left_bogie_joint",
+          "type": "revolute",
+          "parent": "left_rocker_link",
+          "child": "left_bogie_link",
+          "origin_translation_xyz_m": [
+            0.065,
+            0,
+            -0.04
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0.065
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.04
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "joint": "left_front_steering_joint",
+          "type": "revolute",
+          "parent": "left_bogie_link",
+          "child": "left_front_steering_link",
+          "origin_translation_xyz_m": [
+            0.13,
+            0.03749999999999998,
+            -0.04
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0.13
+            ],
+            [
+              0,
+              1,
+              0,
+              0.03749999999999998
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.04
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "joint": "left_front_wheel_joint",
+          "type": "continuous",
+          "parent": "left_front_steering_link",
+          "child": "left_front_wheel_link",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "joint": "left_middle_wheel_joint",
+          "type": "continuous",
+          "parent": "left_bogie_link",
+          "child": "left_middle_wheel_link",
+          "origin_translation_xyz_m": [
+            -0.065,
+            0.03749999999999998,
+            -0.04
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              -0.065
+            ],
+            [
+              0,
+              1,
+              0,
+              0.03749999999999998
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.04
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "joint": "left_rear_steering_joint",
+          "type": "revolute",
+          "parent": "left_rocker_link",
+          "child": "left_rear_steering_link",
+          "origin_translation_xyz_m": [
+            -0.195,
+            0.03749999999999998,
+            -0.08
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              -0.195
+            ],
+            [
+              0,
+              1,
+              0,
+              0.03749999999999998
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.08
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "joint": "left_rear_wheel_joint",
+          "type": "continuous",
+          "parent": "left_rear_steering_link",
+          "child": "left_rear_wheel_link",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "joint": "right_rocker_joint",
+          "type": "revolute",
+          "parent": "base_link",
+          "child": "right_rocker_link",
+          "origin_translation_xyz_m": [
+            0,
+            -0.135,
+            -0.04
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              -0.135
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.04
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "joint": "right_bogie_joint",
+          "type": "revolute",
+          "parent": "right_rocker_link",
+          "child": "right_bogie_link",
+          "origin_translation_xyz_m": [
+            0.065,
+            0,
+            -0.04
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0.065
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.04
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "joint": "right_front_steering_joint",
+          "type": "revolute",
+          "parent": "right_bogie_link",
+          "child": "right_front_steering_link",
+          "origin_translation_xyz_m": [
+            0.13,
+            -0.03749999999999998,
+            -0.04
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0.13
+            ],
+            [
+              0,
+              1,
+              0,
+              -0.03749999999999998
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.04
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "joint": "right_front_wheel_joint",
+          "type": "continuous",
+          "parent": "right_front_steering_link",
+          "child": "right_front_wheel_link",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "joint": "right_middle_wheel_joint",
+          "type": "continuous",
+          "parent": "right_bogie_link",
+          "child": "right_middle_wheel_link",
+          "origin_translation_xyz_m": [
+            -0.065,
+            -0.03749999999999998,
+            -0.04
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              -0.065
+            ],
+            [
+              0,
+              1,
+              0,
+              -0.03749999999999998
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.04
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "joint": "right_rear_steering_joint",
+          "type": "revolute",
+          "parent": "right_rocker_link",
+          "child": "right_rear_steering_link",
+          "origin_translation_xyz_m": [
+            -0.195,
+            -0.03749999999999998,
+            -0.08
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              -0.195
+            ],
+            [
+              0,
+              1,
+              0,
+              -0.03749999999999998
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.08
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "joint": "right_rear_wheel_joint",
+          "type": "continuous",
+          "parent": "right_rear_steering_link",
+          "child": "right_rear_wheel_link",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "joint": "sensor_mast_joint",
+          "type": "fixed",
+          "parent": "base_link",
+          "child": "sensor_mast_link",
+          "origin_translation_xyz_m": [
+            0.06,
+            0,
+            0.05
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0.06
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0.05
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "mid360_joint",
+          "type": "fixed",
+          "parent": "sensor_mast_link",
+          "child": "mid360_link",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0.155
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0.7853981633974483,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0.3826834323650897,
+            0,
+            0.9238795325112867
+          ],
+          "origin_matrix_4x4": [
+            [
+              0.7071067811865476,
+              0,
+              0.7071067811865475,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              -0.7071067811865475,
+              0,
+              0.7071067811865476,
+              0.155
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "livox_frame_joint",
+          "type": "fixed",
+          "parent": "mid360_link",
+          "child": "livox_frame",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "livox_imu_frame_joint",
+          "type": "fixed",
+          "parent": "mid360_link",
+          "child": "livox_imu_frame",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "gemini335_joint",
+          "type": "fixed",
+          "parent": "arm_link4",
+          "child": "gemini335_link",
+          "origin_translation_xyz_m": [
+            0.04,
+            0,
+            0.065
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            -1.57079632679,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            -0.7071067811848163,
+            0,
+            0.7071067811882787
+          ],
+          "origin_matrix_4x4": [
+            [
+              4.8965888601467475e-12,
+              0,
+              -1,
+              0.04
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              1,
+              0,
+              4.8965888601467475e-12,
+              0.065
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "gemini335_color_optical_joint",
+          "type": "fixed",
+          "parent": "gemini335_link",
+          "child": "gemini335_color_optical_frame",
+          "origin_translation_xyz_m": [
+            0.015,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            -1.5707963267948966,
+            0,
+            -1.5707963267948966
+          ],
+          "origin_quaternion_xyzw": [
+            -0.5,
+            0.5,
+            -0.5,
+            0.5
+          ],
+          "origin_matrix_4x4": [
+            [
+              6.123233995736766e-17,
+              6.123233995736766e-17,
+              1,
+              0.015
+            ],
+            [
+              -1,
+              3.749399456654644e-33,
+              6.123233995736766e-17,
+              0
+            ],
+            [
+              0,
+              -1,
+              6.123233995736766e-17,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "gemini335_depth_optical_joint",
+          "type": "fixed",
+          "parent": "gemini335_color_optical_frame",
+          "child": "gemini335_depth_optical_frame",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "camera_color_optical_alias_joint",
+          "type": "fixed",
+          "parent": "gemini335_color_optical_frame",
+          "child": "camera_color_optical_frame",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "camera_depth_optical_alias_joint",
+          "type": "fixed",
+          "parent": "gemini335_depth_optical_frame",
+          "child": "camera_depth_optical_frame",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "arm_base_joint",
+          "type": "fixed",
+          "parent": "base_link",
+          "child": "arm_base_link",
+          "origin_translation_xyz_m": [
+            0.13,
+            0,
+            0.056
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0.13
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0.056
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "arm_joint1",
+          "type": "revolute",
+          "parent": "arm_base_link",
+          "child": "arm_link1",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "joint": "arm_joint2",
+          "type": "revolute",
+          "parent": "arm_link1",
+          "child": "arm_link2",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0.07545
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0.07545
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "joint": "arm_joint3",
+          "type": "revolute",
+          "parent": "arm_link2",
+          "child": "arm_link3",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0.11391
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0.11391
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "joint": "arm_joint4",
+          "type": "revolute",
+          "parent": "arm_link3",
+          "child": "arm_link4",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0.11
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0.11
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "joint": "arm_joint5",
+          "type": "prismatic",
+          "parent": "arm_link4",
+          "child": "arm_link5",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0.15601
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0.15601
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            1,
+            0
+          ]
+        }
+      ]
+    },
+    "Rover_1_model_reference": {
+      "source": "src/lunar_rover_description/Rover_1/urdf/lunar_rover_rover1_integrated.urdf.xacro",
+      "source_sha256": "7a793c6dac26ae667ee049fa06bb6034bf674844165341d184f3d0dd704a0936",
+      "arguments": {
+        "use_sim": "false",
+        "external_camera_tf": "false (Rover_0 default, preserves legacy camera values)"
+      },
+      "joints": [
+        {
+          "joint": "base_to_cad_joint",
+          "type": "fixed",
+          "parent": "base_link",
+          "child": "cad_base_link",
+          "origin_translation_xyz_m": [
+            0.2745,
+            0.135,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            -1.570796327
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            -0.7071067812590626,
+            0.7071067811140325
+          ],
+          "origin_matrix_4x4": [
+            [
+              -2.0510342851533115e-10,
+              1,
+              0,
+              0.2745
+            ],
+            [
+              -1,
+              -2.0510342851533115e-10,
+              0,
+              0.135
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "right_rocker_joint",
+          "type": "revolute",
+          "parent": "cad_base_link",
+          "child": "Left_bigrocker_Link",
+          "origin_translation_xyz_m": [
+            0.296,
+            -0.27,
+            -0.03
+          ],
+          "origin_rpy_rad_xyz": [
+            -1.5708,
+            0,
+            1.5708
+          ],
+          "origin_quaternion_xyzw": [
+            0.49999999999662686,
+            0.5000018366025518,
+            -0.49999999999662686,
+            -0.4999981633974483
+          ],
+          "origin_matrix_4x4": [
+            [
+              -0.000003673205103346574,
+              0.0000036732051033217936,
+              -0.9999999999865075,
+              0.296
+            ],
+            [
+              0.9999999999932537,
+              1.3492435731251315e-11,
+              -0.0000036732051033217936,
+              -0.27
+            ],
+            [
+              0,
+              -0.9999999999932537,
+              -0.000003673205103346574,
+              -0.03
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "joint": "right_bogie_joint",
+          "type": "revolute",
+          "parent": "Left_bigrocker_Link",
+          "child": "Left_smallrocker_Link",
+          "origin_translation_xyz_m": [
+            0.12096,
+            0.061797,
+            -0.0299
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0.12096
+            ],
+            [
+              0,
+              1,
+              0,
+              0.061797
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.0299
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "joint": "right_front_steering_joint",
+          "type": "revolute",
+          "parent": "Left_smallrocker_Link",
+          "child": "right_front_steering_link",
+          "origin_translation_xyz_m": [
+            0.079563,
+            0.23813,
+            0.0001
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0.079563
+            ],
+            [
+              0,
+              1,
+              0,
+              0.23813
+            ],
+            [
+              0,
+              0,
+              1,
+              0.0001
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            -1,
+            0
+          ]
+        },
+        {
+          "joint": "right_front_wheel_joint",
+          "type": "continuous",
+          "parent": "right_front_steering_link",
+          "child": "LF_Link",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "joint": "right_middle_wheel_joint",
+          "type": "continuous",
+          "parent": "Left_smallrocker_Link",
+          "child": "LM_Link",
+          "origin_translation_xyz_m": [
+            -0.13286,
+            0.21354,
+            -0.0001
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              -0.13286
+            ],
+            [
+              0,
+              1,
+              0,
+              0.21354
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.0001
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "joint": "right_rear_steering_joint",
+          "type": "revolute",
+          "parent": "Left_bigrocker_Link",
+          "child": "right_rear_steering_link",
+          "origin_translation_xyz_m": [
+            -0.20979,
+            0.30639,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              -0.20979
+            ],
+            [
+              0,
+              1,
+              0,
+              0.30639
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            -1,
+            0
+          ]
+        },
+        {
+          "joint": "right_rear_wheel_joint",
+          "type": "continuous",
+          "parent": "right_rear_steering_link",
+          "child": "LB_Link",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "joint": "left_rocker_joint",
+          "type": "revolute",
+          "parent": "cad_base_link",
+          "child": "Right_bigrocker_Link",
+          "origin_translation_xyz_m": [
+            -0.026,
+            -0.27,
+            -0.03
+          ],
+          "origin_rpy_rad_xyz": [
+            -1.5708,
+            0,
+            1.5708
+          ],
+          "origin_quaternion_xyzw": [
+            0.49999999999662686,
+            0.5000018366025518,
+            -0.49999999999662686,
+            -0.4999981633974483
+          ],
+          "origin_matrix_4x4": [
+            [
+              -0.000003673205103346574,
+              0.0000036732051033217936,
+              -0.9999999999865075,
+              -0.026
+            ],
+            [
+              0.9999999999932537,
+              1.3492435731251315e-11,
+              -0.0000036732051033217936,
+              -0.27
+            ],
+            [
+              0,
+              -0.9999999999932537,
+              -0.000003673205103346574,
+              -0.03
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "joint": "left_bogie_joint",
+          "type": "revolute",
+          "parent": "Right_bigrocker_Link",
+          "child": "Right_smallrocker_Link",
+          "origin_translation_xyz_m": [
+            0.11314,
+            0.075167,
+            0.0301
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0.11314
+            ],
+            [
+              0,
+              1,
+              0,
+              0.075167
+            ],
+            [
+              0,
+              0,
+              1,
+              0.0301
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "joint": "left_front_steering_joint",
+          "type": "revolute",
+          "parent": "Right_smallrocker_Link",
+          "child": "left_front_steering_link",
+          "origin_translation_xyz_m": [
+            0.12819,
+            0.21589,
+            0.0001
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0.12819
+            ],
+            [
+              0,
+              1,
+              0,
+              0.21589
+            ],
+            [
+              0,
+              0,
+              1,
+              0.0001
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            -1,
+            0
+          ]
+        },
+        {
+          "joint": "left_front_wheel_joint",
+          "type": "continuous",
+          "parent": "left_front_steering_link",
+          "child": "RF_Link",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "joint": "left_middle_wheel_joint",
+          "type": "continuous",
+          "parent": "Right_smallrocker_Link",
+          "child": "RM_Link",
+          "origin_translation_xyz_m": [
+            -0.084631,
+            0.23683,
+            -0.0001
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              -0.084631
+            ],
+            [
+              0,
+              1,
+              0,
+              0.23683
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.0001
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "joint": "left_rear_steering_joint",
+          "type": "revolute",
+          "parent": "Right_bigrocker_Link",
+          "child": "left_rear_steering_link",
+          "origin_translation_xyz_m": [
+            -0.2443,
+            0.28045,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              -0.2443
+            ],
+            [
+              0,
+              1,
+              0,
+              0.28045
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            -1,
+            0
+          ]
+        },
+        {
+          "joint": "left_rear_wheel_joint",
+          "type": "continuous",
+          "parent": "left_rear_steering_link",
+          "child": "RB_Link",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "joint": "sensor_mast_joint",
+          "type": "fixed",
+          "parent": "cad_base_link",
+          "child": "sensor_mast_link",
+          "origin_translation_xyz_m": [
+            0.135,
+            -0.21,
+            0.02
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0.135
+            ],
+            [
+              0,
+              1,
+              0,
+              -0.21
+            ],
+            [
+              0,
+              0,
+              1,
+              0.02
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "mid360_joint",
+          "type": "fixed",
+          "parent": "sensor_mast_link",
+          "child": "mid360_link",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0.155
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0.610865238,
+            1.570796327
+          ],
+          "origin_quaternion_xyzw": [
+            -0.2126311099266308,
+            0.21263110988301948,
+            0.6743797232968387,
+            0.6743797231585211
+          ],
+          "origin_matrix_4x4": [
+            [
+              -1.6801089278230963e-10,
+              -1,
+              -1.1764249357793644e-10,
+              0
+            ],
+            [
+              0.8191520444025687,
+              -2.0510342851533115e-10,
+              0.5735764361888415,
+              0
+            ],
+            [
+              -0.5735764361888415,
+              0,
+              0.8191520444025687,
+              0.155
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "livox_frame_joint",
+          "type": "fixed",
+          "parent": "mid360_link",
+          "child": "livox_frame",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "livox_imu_frame_joint",
+          "type": "fixed",
+          "parent": "mid360_link",
+          "child": "livox_imu_frame",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "gemini335_joint",
+          "type": "fixed",
+          "parent": "cad_base_link",
+          "child": "gemini335_link",
+          "origin_translation_xyz_m": [
+            0.135,
+            0.0175,
+            -0.075
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            1.570796327
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0.7071067812590626,
+            0.7071067811140325
+          ],
+          "origin_matrix_4x4": [
+            [
+              -2.0510342851533115e-10,
+              -1,
+              0,
+              0.135
+            ],
+            [
+              1,
+              -2.0510342851533115e-10,
+              0,
+              0.0175
+            ],
+            [
+              0,
+              0,
+              1,
+              -0.075
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "gemini335_color_optical_joint",
+          "type": "fixed",
+          "parent": "gemini335_link",
+          "child": "gemini335_color_optical_frame",
+          "origin_translation_xyz_m": [
+            0.0175,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            -1.570796327,
+            0,
+            -1.570796327
+          ],
+          "origin_quaternion_xyzw": [
+            -0.5,
+            0.5000000001025517,
+            -0.5,
+            0.49999999989744826
+          ],
+          "origin_matrix_4x4": [
+            [
+              -2.0510342851533115e-10,
+              -2.0510342851533115e-10,
+              1,
+              0.0175
+            ],
+            [
+              -1,
+              4.2067416388743556e-20,
+              -2.0510342851533115e-10,
+              0
+            ],
+            [
+              0,
+              -1,
+              -2.0510342851533115e-10,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "gemini335_depth_optical_joint",
+          "type": "fixed",
+          "parent": "gemini335_color_optical_frame",
+          "child": "gemini335_depth_optical_frame",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "camera_color_optical_alias_joint",
+          "type": "fixed",
+          "parent": "gemini335_color_optical_frame",
+          "child": "camera_color_optical_frame",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        },
+        {
+          "joint": "camera_depth_optical_alias_joint",
+          "type": "fixed",
+          "parent": "gemini335_depth_optical_frame",
+          "child": "camera_depth_optical_frame",
+          "origin_translation_xyz_m": [
+            0,
+            0,
+            0
+          ],
+          "origin_rpy_rad_xyz": [
+            0,
+            0,
+            0
+          ],
+          "origin_quaternion_xyzw": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "origin_matrix_4x4": [
+            [
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "axis_xyz": null
+        }
+      ]
+    }
+  }
+}

@@ -37,7 +37,7 @@ source /opt/ros/humble/setup.bash
 source install/setup.bash
 ros2 daemon stop >/dev/null 2>&1 || true
 ros2 daemon start >/dev/null 2>&1 || true
-xacro /home/phragmund/LunarRover/install/lunar_rover_description/share/lunar_rover_description/urdf/lunar_rover.urdf.xacro use_sim:=false > /tmp/lunar_rover_real.urdf
+xacro /home/phragmund/LunarRover/install/lunar_rover_description/share/lunar_rover_description/urdf/lunar_rover.urdf.xacro use_sim:=false external_camera_tf:=true > /tmp/lunar_rover_real.urdf
 python3 -c "import yaml; urdf=open('/tmp/lunar_rover_real.urdf').read(); yaml.safe_dump({'robot_state_publisher':{'ros__parameters':{'robot_description':urdf,'use_sim_time':False}}}, open('/tmp/rsp_params.yaml','w'), allow_unicode=True, sort_keys=False)"
 
 echo "=== [3/3] 启动待命传感器、手机遥控与底盘 ==="

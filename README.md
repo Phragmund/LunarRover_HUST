@@ -26,6 +26,9 @@ camera -> manipulation -> arm / gripper
 
 包职责、运行边界见 [`src/README.md`](src/README.md)。唯一的 ROS 接口定义和使用规则见 [`docs/interface_contract.md`](docs/interface_contract.md)。
 
+手眼及整车 TF 的版本、全精度参数、历史快照与回退步骤见 [`docs/tf_calibration_history.md`](docs/tf_calibration_history.md)。
+Web 控制台自动标定的操作、自动采样门槛和下载接口见 [`docs/handeye_web_calibration.md`](docs/handeye_web_calibration.md)。
+
 ## 环境与构建
 
 目标环境为 Ubuntu 22.04、ROS 2 Humble 与 Gazebo Fortress。先导入固定依赖，再构建：

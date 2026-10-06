@@ -40,8 +40,7 @@ ensure_handeye_tf() {
     return 0
   fi
   echo "$(date -Is) dynamic hand-eye TF publisher absent; starting it"
-  setsid bash -lc "cd '$repo_root' && source /opt/ros/humble/setup.bash && source '$repo_root/install/setup.bash' && exec python3 tools/handeye_tf_preview_node.py" </dev/null >/tmp/handeye_tf_preview.log 2>&1 &
-  echo $! >"$handeye_pid_file"
+  bash "$repo_root/scripts/restart_handeye_tf.sh" --ensure
 }
 
 camera_failures=0

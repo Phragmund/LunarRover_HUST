@@ -1,0 +1,324 @@
+{
+  "session": "generated/calibration/handeye_samples/20260930_131448",
+  "samples_sha256": "e893510548390b5d55cdf7de7dfe452dec429e46233d2565d86f2c3cefaf353b",
+  "method": "OpenCV PARK",
+  "convention": "handeye_tool_frame -> camera_color_optical_frame; translation and delta axes expressed in handeye_tool_frame",
+  "online_tf": {
+    "source": "Observed /tf_static on 2026-09-30; publisher process tools/handeye_tf_preview_node.py",
+    "translation_xyz_m": [
+      -0.03559743396701177,
+      -0.04235515197231568,
+      0.034338323438433536
+    ],
+    "quaternion_xyzw": [
+      0.5392000692917981,
+      0.5329644933235356,
+      0.4440413096916233,
+      0.4775347625246304
+    ],
+    "rpy_deg_xyz": [
+      98.60628626259472,
+      1.7285283915686782,
+      87.84692388366314
+    ],
+    "matrix_4x4": [
+      [
+        0.03755232828746968,
+        0.15065866071080647,
+        0.9878723554149171,
+        -0.03559743396701177
+      ],
+      [
+        0.9988393062096672,
+        0.024181201126135976,
+        -0.041657050816015784,
+        -0.04235515197231568
+      ],
+      [
+        -0.030163935598340907,
+        0.9882900573540764,
+        -0.14957573173578576,
+        0.034338323438433536
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ]
+  },
+  "quality": {
+    "total_samples": 12,
+    "filtered_samples": 9,
+    "min_corners": 35,
+    "max_image_joint_dt_ms": 100,
+    "excluded_indices": [
+      10,
+      11,
+      12
+    ],
+    "max_observed_image_joint_dt_ms": 30.68852424621582
+  },
+  "solutions": [
+    {
+      "label": "all_12_samples",
+      "method": "PARK",
+      "sample_indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "sample_count": 12,
+      "tool_T_camera": {
+        "translation_xyz_m": [
+          -0.03462280662651714,
+          -0.014470450185839449,
+          0.024134876054882966
+        ],
+        "rpy_deg_xyz": [
+          90.84244596468261,
+          7.153227616506778,
+          93.10931428266143
+        ],
+        "matrix_4x4": [
+          [
+            -0.05381896337085807,
+            0.007927725995028721,
+            0.9985192388452987,
+            -0.03462280662651714
+          ],
+          [
+            0.9907560081723381,
+            0.12512404489474252,
+            0.05240711458940881,
+            -0.014470450185839449
+          ],
+          [
+            -0.12452329682474703,
+            0.992109431741149,
+            -0.01458848854991005,
+            0.024134876054882966
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ]
+        ]
+      },
+      "base_T_board_mean_translation_m": [
+        0.6104419402868023,
+        0.048214464846739725,
+        0.14823793247351325
+      ],
+      "translation_residual_mm": {
+        "mean": 11.774476238915272,
+        "median": 11.175588942887988,
+        "max": 19.319832110718444
+      },
+      "worst_samples": [
+        {
+          "index": 2,
+          "translation_residual_mm": 19.319832110718444,
+          "charuco_corners": 45,
+          "image_joint_dt_ms": 27.039289474487305
+        },
+        {
+          "index": 8,
+          "translation_residual_mm": 13.64206924047131,
+          "charuco_corners": 53,
+          "image_joint_dt_ms": 23.754358291625977
+        },
+        {
+          "index": 10,
+          "translation_residual_mm": 13.112200084219419,
+          "charuco_corners": 29,
+          "image_joint_dt_ms": 8.766651153564453
+        },
+        {
+          "index": 7,
+          "translation_residual_mm": 12.94898398253007,
+          "charuco_corners": 53,
+          "image_joint_dt_ms": 13.379812240600586
+        },
+        {
+          "index": 6,
+          "translation_residual_mm": 11.838084698192356,
+          "charuco_corners": 49,
+          "image_joint_dt_ms": 1.7712116241455078
+        },
+        {
+          "index": 9,
+          "translation_residual_mm": 11.205969458667353,
+          "charuco_corners": 50,
+          "image_joint_dt_ms": 21.67034149169922
+        }
+      ],
+      "delta_from_online": {
+        "translation_xyz_tool_mm": [
+          0.9746273404946243,
+          27.884701786476228,
+          -10.203447383550571
+        ],
+        "translation_norm_mm": 29.708867879514276,
+        "relative_rotation_angle_deg": 11.118402452416436
+      },
+      "online_tf_board_consistency_same_samples": {
+        "mean_translation_residual_mm": 17.797312945016316,
+        "max_translation_residual_mm": 35.335631234759745
+      },
+      "on_axis_point_shift_mm": {
+        "0.3": 63.89585731695477,
+        "0.5": 94.52171355287443
+      },
+      "leave_one_out_stability": {
+        "mean_translation_change_mm": 2.031023408713816,
+        "max_translation_change_mm": 4.2009143044695865,
+        "mean_rotation_change_deg": 0.4536799167360401,
+        "max_rotation_change_deg": 0.899495400558532
+      }
+    },
+    {
+      "label": "quality_filtered_9_samples",
+      "method": "PARK",
+      "sample_indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "sample_count": 9,
+      "tool_T_camera": {
+        "translation_xyz_m": [
+          -0.03278278469183627,
+          -0.012516691232139731,
+          0.025684488586076894
+        ],
+        "rpy_deg_xyz": [
+          91.04969265283323,
+          8.075154555591848,
+          92.74548545496698
+        ],
+        "matrix_4x4": [
+          [
+            -0.047424486554814876,
+            0.011571145597320299,
+            0.9988078026644864,
+            -0.03278278469183627
+          ],
+          [
+            0.9889482092508668,
+            0.14116462145193262,
+            0.045320956188360274,
+            -0.012516691232139731
+          ],
+          [
+            -0.1404719099838011,
+            0.9899185109087959,
+            -0.0181379234094274,
+            0.025684488586076894
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ]
+        ]
+      },
+      "base_T_board_mean_translation_m": [
+        0.611621009313277,
+        0.046810618332437756,
+        0.15195281208142739
+      ],
+      "translation_residual_mm": {
+        "mean": 11.20269530283865,
+        "median": 11.343325514165679,
+        "max": 18.288807972578418
+      },
+      "worst_samples": [
+        {
+          "index": 2,
+          "translation_residual_mm": 18.288807972578418,
+          "charuco_corners": 45,
+          "image_joint_dt_ms": 27.039289474487305
+        },
+        {
+          "index": 7,
+          "translation_residual_mm": 16.021081677265904,
+          "charuco_corners": 53,
+          "image_joint_dt_ms": 13.379812240600586
+        },
+        {
+          "index": 3,
+          "translation_residual_mm": 14.493172706423657,
+          "charuco_corners": 50,
+          "image_joint_dt_ms": 30.68852424621582
+        },
+        {
+          "index": 9,
+          "translation_residual_mm": 11.489716261573157,
+          "charuco_corners": 50,
+          "image_joint_dt_ms": 21.67034149169922
+        },
+        {
+          "index": 8,
+          "translation_residual_mm": 11.343325514165679,
+          "charuco_corners": 53,
+          "image_joint_dt_ms": 23.754358291625977
+        },
+        {
+          "index": 6,
+          "translation_residual_mm": 9.047707419985313,
+          "charuco_corners": 49,
+          "image_joint_dt_ms": 1.7712116241455078
+        }
+      ],
+      "delta_from_online": {
+        "translation_xyz_tool_mm": [
+          2.814649275175496,
+          29.83846074017595,
+          -8.653834852356642
+        ],
+        "translation_norm_mm": 31.195269633986655,
+        "relative_rotation_angle_deg": 11.295550238745001
+      },
+      "online_tf_board_consistency_same_samples": {
+        "mean_translation_residual_mm": 19.631366193548335,
+        "max_translation_residual_mm": 38.65430902412724
+      },
+      "on_axis_point_shift_mm": {
+        "0.3": 64.13096551688163,
+        "0.5": 93.28417255096463
+      },
+      "leave_one_out_stability": {
+        "mean_translation_change_mm": 2.826037662817747,
+        "max_translation_change_mm": 4.2955974572882925,
+        "mean_rotation_change_deg": 0.6422093700016812,
+        "max_rotation_change_deg": 1.2372461116983429
+      }
+    }
+  ],
+  "notes": [
+    "Comparison only; live TF and control offsets were not modified.",
+    "Board consistency residuals are in-sample estimates, not independent absolute accuracy measurements.",
+    "Solver FK matches current TF geometry and arm joint mapping.",
+    "Assumes calibration board and rover base remained stationary throughout collection."
+  ]
+}

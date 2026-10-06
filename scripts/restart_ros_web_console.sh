@@ -88,7 +88,12 @@ echo "[ros-web-console] starting on port $PORT ..."
 setsid -f python3 "$ROOT_DIR/src/lunar_rover_control/scripts/ros_web_console_server.py" \
   "${args[@]}" >"$LOG_FILE" 2>&1 < /dev/null
 
-sleep 1
+for _ in {1..10}; do
+  if ss -ltnp | grep -q ":$PORT "; then
+    break
+  fi
+  sleep 0.5
+done
 if ss -ltnp | grep -q ":$PORT "; then
   echo "[ros-web-console] started"
   echo "[ros-web-console] local: http://127.0.0.1:$PORT"

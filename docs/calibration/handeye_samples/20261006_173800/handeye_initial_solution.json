@@ -1,0 +1,383 @@
+{
+  "source_dir": "generated/calibration/handeye_samples/20261006_173800",
+  "notes": [
+    "FK uses corrected arm lengths: 75.45, 113.91, 110.00, 156.01 mm.",
+    "tool_T_camera means camera_color_optical_frame expressed in the IK tool frame.",
+    "Filter: image/joint dt <= 100.0 ms, ChArUco corners >= 35, residual <= 40.0 mm."
+  ],
+  "data_quality": {
+    "total_samples": 87,
+    "filtered_samples": 87,
+    "robust_samples": 87,
+    "charuco_corners_min_median_max": [
+      35,
+      48.0,
+      54
+    ],
+    "image_joint_dt_ms_max": 39.183616638183594,
+    "excluded_by_initial_filter": [],
+    "excluded_by_residual_trim": []
+  },
+  "solutions": [
+    {
+      "label": "filtered",
+      "method": "PARK",
+      "sample_indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87
+      ],
+      "sample_count": 87,
+      "tool_T_camera": {
+        "translation_xyz_m": [
+          -0.05104166224300734,
+          -0.04055428655630356,
+          0.01827941981664151
+        ],
+        "rpy_deg_xyz": [
+          96.81738326438285,
+          1.7940911295802568,
+          87.25080693713412
+        ],
+        "matrix_4x4": [
+          [
+            0.04794054877529706,
+            0.12005962766734338,
+            0.9916084860404446,
+            -0.05104166224300734
+          ],
+          [
+            0.9983594207104788,
+            0.025356957803379668,
+            -0.05133704091195204,
+            -0.04055428655630356
+          ],
+          [
+            -0.031307680555432406,
+            0.9924427996087899,
+            -0.11864703385629323,
+            0.01827941981664151
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "base_T_board_mean_translation_m": [
+        0.6509241692469803,
+        0.036836713680037464,
+        0.13635105896001776
+      ],
+      "translation_residual_mm": {
+        "mean": 11.733434129540981,
+        "median": 10.423604820094207,
+        "max": 39.25785019887268
+      },
+      "worst_samples": [
+        {
+          "index": 30,
+          "translation_residual_mm": 39.25785019887268,
+          "charuco_corners": 41,
+          "image_joint_dt_ms": 8.44573974609375
+        },
+        {
+          "index": 9,
+          "translation_residual_mm": 27.23244978492148,
+          "charuco_corners": 52,
+          "image_joint_dt_ms": 28.29742431640625
+        },
+        {
+          "index": 69,
+          "translation_residual_mm": 27.183795825147136,
+          "charuco_corners": 35,
+          "image_joint_dt_ms": 36.956071853637695
+        },
+        {
+          "index": 68,
+          "translation_residual_mm": 26.497963142029832,
+          "charuco_corners": 54,
+          "image_joint_dt_ms": 21.29340171813965
+        },
+        {
+          "index": 84,
+          "translation_residual_mm": 21.903444608501726,
+          "charuco_corners": 39,
+          "image_joint_dt_ms": 6.851434707641602
+        },
+        {
+          "index": 70,
+          "translation_residual_mm": 21.713965807518644,
+          "charuco_corners": 36,
+          "image_joint_dt_ms": 31.20565414428711
+        }
+      ]
+    },
+    {
+      "label": "filtered_plus_residual_trim",
+      "method": "PARK",
+      "sample_indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87
+      ],
+      "sample_count": 87,
+      "tool_T_camera": {
+        "translation_xyz_m": [
+          -0.05104166224300734,
+          -0.04055428655630356,
+          0.01827941981664151
+        ],
+        "rpy_deg_xyz": [
+          96.81738326438285,
+          1.7940911295802568,
+          87.25080693713412
+        ],
+        "matrix_4x4": [
+          [
+            0.04794054877529706,
+            0.12005962766734338,
+            0.9916084860404446,
+            -0.05104166224300734
+          ],
+          [
+            0.9983594207104788,
+            0.025356957803379668,
+            -0.05133704091195204,
+            -0.04055428655630356
+          ],
+          [
+            -0.031307680555432406,
+            0.9924427996087899,
+            -0.11864703385629323,
+            0.01827941981664151
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "base_T_board_mean_translation_m": [
+        0.6509241692469803,
+        0.036836713680037464,
+        0.13635105896001776
+      ],
+      "translation_residual_mm": {
+        "mean": 11.733434129540981,
+        "median": 10.423604820094207,
+        "max": 39.25785019887268
+      },
+      "worst_samples": [
+        {
+          "index": 30,
+          "translation_residual_mm": 39.25785019887268,
+          "charuco_corners": 41,
+          "image_joint_dt_ms": 8.44573974609375
+        },
+        {
+          "index": 9,
+          "translation_residual_mm": 27.23244978492148,
+          "charuco_corners": 52,
+          "image_joint_dt_ms": 28.29742431640625
+        },
+        {
+          "index": 69,
+          "translation_residual_mm": 27.183795825147136,
+          "charuco_corners": 35,
+          "image_joint_dt_ms": 36.956071853637695
+        },
+        {
+          "index": 68,
+          "translation_residual_mm": 26.497963142029832,
+          "charuco_corners": 54,
+          "image_joint_dt_ms": 21.29340171813965
+        },
+        {
+          "index": 84,
+          "translation_residual_mm": 21.903444608501726,
+          "charuco_corners": 39,
+          "image_joint_dt_ms": 6.851434707641602
+        },
+        {
+          "index": 70,
+          "translation_residual_mm": 21.713965807518644,
+          "charuco_corners": 36,
+          "image_joint_dt_ms": 31.20565414428711
+        }
+      ]
+    }
+  ]
+}

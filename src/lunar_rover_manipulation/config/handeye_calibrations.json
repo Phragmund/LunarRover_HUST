@@ -1,0 +1,853 @@
+{
+  "schema_version": 1,
+  "active_calibration": "20261006_mount1_fused_v1_park",
+  "convention": {
+    "transform": "parent_T_child maps child coordinates into parent",
+    "length_unit": "m",
+    "angle_unit": "deg for rpy_deg_xyz",
+    "quaternion_order": "xyzw",
+    "rpy_order": "Rz(yaw) @ Ry(pitch) @ Rx(roll)"
+  },
+  "kinematics": {
+    "zero_degrees": [
+      90,
+      180,
+      135,
+      135,
+      0
+    ],
+    "ros_directions": [
+      1,
+      -1,
+      1,
+      1,
+      1
+    ],
+    "j1_j2_axis_offset_m": 0.07545,
+    "upper_arm_m": 0.11391,
+    "forearm_m": 0.11,
+    "tool_m": 0.15601
+  },
+  "base_T_arm": {
+    "parent": "base_link",
+    "child": "arm_base_link",
+    "translation_xyz_m": [
+      0.13,
+      0,
+      0.056
+    ],
+    "quaternion_xyzw": [
+      0,
+      0,
+      0,
+      1
+    ]
+  },
+  "camera_aliases": [
+    {
+      "parent": "camera_color_optical_frame",
+      "child": "gemini335_color_optical_frame"
+    },
+    {
+      "parent": "camera_color_optical_frame",
+      "child": "camera_depth_optical_frame"
+    },
+    {
+      "parent": "camera_depth_optical_frame",
+      "child": "gemini335_depth_optical_frame"
+    }
+  ],
+  "profiles": {
+    "20260829_all27_tsai": {
+      "source_session": "generated/calibration/handeye_samples/20260829_152555",
+      "method": "TSAI",
+      "sample_count": 27,
+      "sample_indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27
+      ],
+      "tool_T_camera": {
+        "parent": "handeye_tool_frame",
+        "child": "camera_color_optical_frame",
+        "translation_xyz_m": [
+          -0.033266605851087046,
+          -0.07019320328932172,
+          0.04890909439957332
+        ],
+        "rpy_deg_xyz": [
+          101.41104145219491,
+          2.4938197897970573,
+          83.50723598802713
+        ],
+        "rotation_vector": [
+          1.383651973373143,
+          1.2801124225563407,
+          0.9964566769764093
+        ],
+        "matrix_4x4": [
+          [
+            0.11297063930026408,
+            0.2014002259160457,
+            0.9729725503101593,
+            -0.033266605851087046
+          ],
+          [
+            0.9926451395976974,
+            0.020005967783369716,
+            -0.11939592993950322,
+            -0.07019320328932172
+          ],
+          [
+            -0.043511624758880284,
+            0.9793047075624709,
+            -0.19765886839913316,
+            0.04890909439957332
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ]
+        ],
+        "quaternion_xyzw": [
+          0.5680280670697592,
+          0.5255221681533138,
+          0.4090735033332132,
+          0.48355913254856975
+        ]
+      },
+      "base_T_board_display": {
+        "parent": "base_link",
+        "child": "charuco_board_frame",
+        "translation_xyz_m": [
+          0.6135932407614947,
+          0.0929896627794893,
+          0.20163143428985406
+        ],
+        "quaternion_xyzw": [
+          -0.4618499150231812,
+          0.5262963259591497,
+          0.5421698069921179,
+          -0.4644983677701251
+        ]
+      },
+      "translation_residual_mm": {
+        "mean": 28.97007922907078,
+        "median": 23.100798929263522,
+        "max": 75.93143365281426
+      },
+      "notes": [
+        "Historical candidate; only 20260831_filtered36_park is verified as the previous online default.",
+        "Legacy board-display translation retained without arm-base offset for exact historical rollback."
+      ]
+    },
+    "20260829_filtered21_tsai": {
+      "source_session": "generated/calibration/handeye_samples/20260829_152555",
+      "method": "TSAI",
+      "sample_count": 21,
+      "sample_indices": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        27
+      ],
+      "tool_T_camera": {
+        "parent": "handeye_tool_frame",
+        "child": "camera_color_optical_frame",
+        "translation_xyz_m": [
+          -0.03612681790023626,
+          -0.07578600799685742,
+          0.04086110040777685
+        ],
+        "rpy_deg_xyz": [
+          102.95207016777425,
+          2.458380221022211,
+          83.67102080923134
+        ],
+        "rotation_vector": [
+          1.4030443512554072,
+          1.2998769526551097,
+          0.98490773641099
+        ],
+        "matrix_4x4": [
+          [
+            0.11013556749193398,
+            0.22737801548885295,
+            0.9675584710215609,
+            -0.03612681790023626
+          ],
+          [
+            0.9929905791426157,
+            0.01683951572093556,
+            -0.11698777903822774,
+            -0.07578600799685742
+          ],
+          [
+            -0.042893665117852635,
+            0.9736609619280396,
+            -0.22392959766436005,
+            0.04086110040777685
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ]
+        ],
+        "quaternion_xyzw": [
+          0.5738522565598567,
+          0.5316562672190938,
+          0.4028322601042431,
+          0.4751435271443013
+        ]
+      },
+      "base_T_board_display": {
+        "parent": "base_link",
+        "child": "charuco_board_frame",
+        "translation_xyz_m": [
+          0.6131936656874218,
+          0.08724875500754052,
+          0.1855092532939118
+        ],
+        "quaternion_xyzw": [
+          -0.45596661578092806,
+          0.5223109593468955,
+          0.5451800161625396,
+          -0.4712371558105605
+        ]
+      },
+      "translation_residual_mm": {
+        "mean": 27.534094929310612,
+        "median": 21.410749209450255,
+        "max": 71.8637772527412
+      },
+      "notes": [
+        "Historical candidate; only 20260831_filtered36_park is verified as the previous online default.",
+        "Legacy board-display translation retained without arm-base offset for exact historical rollback."
+      ]
+    },
+    "20260829_robust17_park": {
+      "source_session": "generated/calibration/handeye_samples/20260829_152555",
+      "method": "PARK",
+      "sample_count": 17,
+      "sample_indices": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        17,
+        18,
+        19,
+        20,
+        22,
+        23,
+        24,
+        25,
+        27
+      ],
+      "tool_T_camera": {
+        "parent": "handeye_tool_frame",
+        "child": "camera_color_optical_frame",
+        "translation_xyz_m": [
+          -0.04333974049583029,
+          -0.042208125516247676,
+          0.025279711677807286
+        ],
+        "rpy_deg_xyz": [
+          102.64545512959967,
+          -0.7522332588871101,
+          88.31130372779116
+        ],
+        "rotation_vector": [
+          1.3951881149395888,
+          1.340490392698809,
+          1.088014053725984
+        ],
+        "matrix_4x4": [
+          [
+            0.029466503333363057,
+            0.21844482899518827,
+            0.9754043171252333,
+            -0.04333974049583029
+          ],
+          [
+            0.9994795474808694,
+            -0.0192558383895957,
+            -0.02588139979503083,
+            -0.042208125516247676
+          ],
+          [
+            0.013128569942704907,
+            0.9756592998445547,
+            -0.21889854105972287,
+            0.025279711677807286
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ]
+        ],
+        "quaternion_xyzw": [
+          0.5629433547841809,
+          0.5408734138725967,
+          0.4390019345049873,
+          0.4447786314235583
+        ]
+      },
+      "base_T_board_display": {
+        "parent": "base_link",
+        "child": "charuco_board_frame",
+        "translation_xyz_m": [
+          0.5941350765438793,
+          0.15225723221901746,
+          0.16742991927668838
+        ],
+        "quaternion_xyzw": [
+          -0.48202776270819836,
+          0.49672985833382194,
+          0.5270724462344494,
+          -0.49305508844207613
+        ]
+      },
+      "translation_residual_mm": {
+        "mean": 19.54799578239134,
+        "median": 20.01692346126925,
+        "max": 33.42788111279879
+      },
+      "notes": [
+        "Historical candidate; only 20260831_filtered36_park is verified as the previous online default.",
+        "Legacy board-display translation retained without arm-base offset for exact historical rollback."
+      ]
+    },
+    "20260831_filtered36_park": {
+      "source_session": "generated/calibration/handeye_samples/20260831_223240",
+      "method": "PARK",
+      "sample_count": 36,
+      "sample_indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        16,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42
+      ],
+      "tool_T_camera": {
+        "parent": "handeye_tool_frame",
+        "child": "camera_color_optical_frame",
+        "translation_xyz_m": [
+          -0.03559743396701177,
+          -0.04235515197231568,
+          0.034338323438433536
+        ],
+        "rpy_deg_xyz": [
+          98.60628626259471,
+          1.728528391568674,
+          87.84692388366312
+        ],
+        "matrix_4x4": [
+          [
+            0.03755232828746995,
+            0.15065866071088482,
+            0.987872355414819,
+            -0.03559743396701177
+          ],
+          [
+            0.9988393062096673,
+            0.024181201126136486,
+            -0.04165705081602284,
+            -0.04235515197231568
+          ],
+          [
+            -0.030163935598340835,
+            0.9882900573540532,
+            -0.1495757317357819,
+            0.034338323438433536
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ]
+        ],
+        "quaternion_xyzw": [
+          0.5392000692917992,
+          0.5329644933235748,
+          0.44404130969158023,
+          0.4775347625246254
+        ]
+      },
+      "base_T_board_display": {
+        "parent": "base_link",
+        "child": "charuco_board_frame",
+        "translation_xyz_m": [
+          0.568216245161778,
+          0.17172235141982198,
+          0.22930751482102782
+        ],
+        "quaternion_xyzw": [
+          -0.47780596875596487,
+          0.5412978393913705,
+          0.49482225332578694,
+          -0.4835794070315638
+        ]
+      },
+      "translation_residual_mm": {
+        "mean": 17.277148071190496,
+        "median": 17.268868368363513,
+        "max": 34.83636763649975
+      },
+      "notes": [
+        "Historical candidate; only 20260831_filtered36_park is verified as the previous online default.",
+        "Legacy board-display translation retained without arm-base offset for exact historical rollback."
+      ]
+    },
+    "20260930_all12_park": {
+      "source_session": "generated/calibration/handeye_samples/20260930_131448",
+      "source_samples_archive": "docs/calibration/handeye_samples/20260930_131448.jsonl",
+      "source_samples_sha256": "e893510548390b5d55cdf7de7dfe452dec429e46233d2565d86f2c3cefaf353b",
+      "method": "PARK",
+      "sample_count": 12,
+      "sample_indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "tool_T_camera": {
+        "parent": "handeye_tool_frame",
+        "child": "camera_color_optical_frame",
+        "translation_xyz_m": [
+          -0.03462280662651714,
+          -0.014470450185839449,
+          0.024134876054882966
+        ],
+        "rpy_deg_xyz": [
+          90.84244596468261,
+          7.153227616506778,
+          93.10931428266143
+        ],
+        "matrix_4x4": [
+          [
+            -0.05381896337085807,
+            0.007927725995028721,
+            0.9985192388452987,
+            -0.03462280662651714
+          ],
+          [
+            0.9907560081723381,
+            0.12512404489474252,
+            0.05240711458940881,
+            -0.014470450185839449
+          ],
+          [
+            -0.12452329682474703,
+            0.992109431741149,
+            -0.01458848854991005,
+            0.024134876054882966
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ]
+        ],
+        "quaternion_xyzw": [
+          0.45706823349582104,
+          0.5462443356266495,
+          0.4780445664177037,
+          0.5139836069791717
+        ]
+      },
+      "base_T_board_display": {
+        "parent": "base_link",
+        "child": "charuco_board_frame",
+        "translation_xyz_m": [
+          0.7404419402868023,
+          0.048214464846739725,
+          0.20423793247351324
+        ],
+        "quaternion_xyzw": [
+          -0.3646871411159722,
+          0.6113889061903343,
+          0.5658215207306304,
+          -0.4159962754281852
+        ]
+      },
+      "translation_residual_mm": {
+        "mean": 11.774476238915272,
+        "median": 11.175588942887988,
+        "max": 19.319832110718444
+      },
+      "delta_from_previous_online": {
+        "translation_xyz_tool_mm": [
+          0.9746273404946243,
+          27.884701786476228,
+          -10.203447383550571
+        ],
+        "translation_norm_mm": 29.708867879514276,
+        "relative_rotation_angle_deg": 11.118402452416436
+      },
+      "notes": [
+        "All12 is selected to match the new TF requested after the 12-sample comparison; filtered9 remains an alternate candidate.",
+        "Board display is recomputed in base_link, including base_T_arm translation; not used for grasp localization.",
+        "In-sample residuals do not establish independent absolute grasp accuracy."
+      ]
+    },
+    "20260930_filtered9_park": {
+      "source_session": "generated/calibration/handeye_samples/20260930_131448",
+      "source_samples_archive": "docs/calibration/handeye_samples/20260930_131448.jsonl",
+      "source_samples_sha256": "e893510548390b5d55cdf7de7dfe452dec429e46233d2565d86f2c3cefaf353b",
+      "method": "PARK",
+      "sample_count": 9,
+      "sample_indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "tool_T_camera": {
+        "parent": "handeye_tool_frame",
+        "child": "camera_color_optical_frame",
+        "translation_xyz_m": [
+          -0.03278278469183627,
+          -0.012516691232139731,
+          0.025684488586076894
+        ],
+        "rpy_deg_xyz": [
+          91.04969265283323,
+          8.075154555591848,
+          92.74548545496698
+        ],
+        "matrix_4x4": [
+          [
+            -0.047424486554814876,
+            0.011571145597320299,
+            0.9988078026644864,
+            -0.03278278469183627
+          ],
+          [
+            0.9889482092508668,
+            0.14116462145193262,
+            0.045320956188360274,
+            -0.012516691232139731
+          ],
+          [
+            -0.1404719099838011,
+            0.9899185109087959,
+            -0.0181379234094274,
+            0.025684488586076894
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ]
+        ],
+        "quaternion_xyzw": [
+          0.45539785226841595,
+          0.5492556398016091,
+          0.4712011093189491,
+          0.5185562195866817
+        ]
+      },
+      "base_T_board_display": {
+        "parent": "base_link",
+        "child": "charuco_board_frame",
+        "translation_xyz_m": [
+          0.741621009313277,
+          0.046810618332437756,
+          0.20795281208142738
+        ],
+        "quaternion_xyzw": [
+          -0.3597880204089025,
+          0.6174998387677362,
+          0.5619282565251168,
+          -0.41651310184759566
+        ]
+      },
+      "translation_residual_mm": {
+        "mean": 11.20269530283865,
+        "median": 11.343325514165679,
+        "max": 18.288807972578418
+      },
+      "delta_from_previous_online": {
+        "translation_xyz_tool_mm": [
+          2.814649275175496,
+          29.83846074017595,
+          -8.653834852356642
+        ],
+        "translation_norm_mm": 31.195269633986655,
+        "relative_rotation_angle_deg": 11.295550238745001
+      },
+      "notes": [
+        "All12 is selected to match the new TF requested after the 12-sample comparison; filtered9 remains an alternate candidate.",
+        "Board display is recomputed in base_link, including base_T_arm translation; not used for grasp localization.",
+        "In-sample residuals do not establish independent absolute grasp accuracy."
+      ]
+    },
+    "20261006_mount1_group1_park64": {
+      "source_session": "generated/calibration/handeye_samples/20261006_162701",
+      "source_samples_archive": "docs/calibration/handeye_samples/20261006_162701/samples.jsonl",
+      "source_samples_sha256": "e95b3c39492731fe204c0a2676a8e7d499e149eec0f9175aef57809ef1b70be9",
+      "method": "PARK",
+      "sample_count": 64,
+      "sample_indices": [
+        2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+        18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+        48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
+        63, 64, 65
+      ],
+      "tool_T_camera": {
+        "parent": "handeye_tool_frame",
+        "child": "camera_color_optical_frame",
+        "translation_xyz_m": [
+          -0.03272288580358435,
+          -0.024813617520555078,
+          0.015968310784280196
+        ],
+        "rpy_deg_xyz": [
+          97.54736729001031,
+          2.598495279046181,
+          89.80023623167075
+        ],
+        "matrix_4x4": [
+          [0.003482943434612567, 0.1315016901873039, 0.991309827746203, -0.03272288580358435],
+          [0.9989656890751161, 0.044485769053941956, -0.009411078703137949, -0.024813617520555078],
+          [-0.04533675281388623, 0.9903172834145434, -0.13121073513553108, 0.015968310784280196],
+          [0.0, 0.0, 0.0, 1.0]
+        ],
+        "quaternion_xyzw": [
+          0.5220651083713075,
+          0.5413440589759316,
+          0.45299573739037774,
+          0.47873739601044957
+        ]
+      },
+      "base_T_board_display": {
+        "parent": "base_link",
+        "child": "charuco_board_frame",
+        "translation_xyz_m": [
+          0.6812946240022745,
+          0.01627103571187786,
+          0.1851995462528598
+        ],
+        "rpy_deg_xyz": [
+          92.27402073218718,
+          1.674389023627228,
+          -114.37212646595427
+        ],
+        "quaternion_xyzw": [
+          -0.399185839534714,
+          0.6004011654660327,
+          0.5880144685006862,
+          -0.3666170902397361
+        ]
+      },
+      "translation_residual_mm": {
+        "mean": 8.725367215692637,
+        "median": 8.56918162439023,
+        "max": 16.606645879628495
+      },
+      "notes": [
+        "New camera-mount campaign, group 1. The all-65 solve is preserved in the campaign report; sample 1 is excluded here as a 38.07 mm residual outlier.",
+        "Candidate only: do not activate as the final grasp TF until additional groups agree and an independent physical validation is recorded.",
+        "Board display is a mean pose in base_link and is for calibration visualization only; it is not used for grasp localization."
+      ]
+    },
+    "20261006_mount1_fused_v1_park": {
+      "source_sessions": [
+        "generated/calibration/handeye_samples/20261006_162701",
+        "generated/calibration/handeye_samples/20261006_173121",
+        "generated/calibration/handeye_samples/20261006_173800"
+      ],
+      "source_samples_archives": [
+        "docs/calibration/handeye_samples/20261006_162701/samples.jsonl",
+        "docs/calibration/handeye_samples/20261006_173121/samples.jsonl",
+        "docs/calibration/handeye_samples/20261006_173800/samples.jsonl"
+      ],
+      "source_samples_sha256": {
+        "group1": "e95b3c39492731fe204c0a2676a8e7d499e149eec0f9175aef57809ef1b70be9",
+        "group2": "056f023f42a1ee821b53422591cca386ea9b75a9bf87b4ea3a34d8b63696a075",
+        "group3": "14e04e950c71e4f9273be477deb18a879cfc7a9af0e7d0a00c831fd58a677be4"
+      },
+      "method": "PARK_SO3_EQUAL_GROUP",
+      "sample_count": 244,
+      "sample_counts_by_group": {
+        "group1": 64,
+        "group2": 99,
+        "group3": 81
+      },
+      "sample_selection": {
+        "group1": "exclude sample 1",
+        "group2": "exclude samples 22, 63, 66; retain 67-90",
+        "group3": "exclude samples 9, 30, 68, 69, 70, 84 (full-solve residual > 20 mm)"
+      },
+      "tool_T_camera": {
+        "parent": "handeye_tool_frame",
+        "child": "camera_color_optical_frame",
+        "translation_xyz_m": [
+          -0.041300930793331,
+          -0.033105358015466,
+          0.023544996820221
+        ],
+        "rpy_deg_xyz": [
+          96.74495136942197,
+          2.171248767858557,
+          88.13580708965193
+        ],
+        "matrix_4x4": [
+          [0.032507208736384, 0.118611666027145, 0.992408461301310, -0.041300930793331],
+          [0.998753174869490, 0.033783527556892, -0.036752808789618, -0.033105358015466],
+          [-0.037886370481779, 0.992365832719002, -0.117365569839028, 0.023544996820221],
+          [0.0, 0.0, 0.0, 1.0]
+        ],
+        "quaternion_xyzw": [
+          0.528225626749242,
+          0.528829341248085,
+          0.451758700488351,
+          0.487063950229908
+        ]
+      },
+      "base_T_board_display": {
+        "parent": "base_link",
+        "child": "charuco_board_frame",
+        "translation_xyz_m": [
+          0.6812946240022745,
+          0.01627103571187786,
+          0.1851995462528598
+        ],
+        "rpy_deg_xyz": [
+          92.27402073218718,
+          1.674389023627228,
+          -114.37212646595427
+        ],
+        "quaternion_xyzw": [
+          -0.399185839534714,
+          0.6004011654660327,
+          0.5880144685006862,
+          -0.3666170902397361
+        ]
+      },
+      "group_translation_residual_mm": {
+        "group1": {
+          "mean": 8.725367215692637,
+          "median": 8.56918162439023,
+          "max": 16.606645879628495
+        },
+        "group2": {
+          "mean": 13.2500448100331,
+          "median": 12.72422702694992,
+          "max": 27.774448236111574
+        },
+        "group3": {
+          "mean": 10.705600423595943,
+          "median": 10.030957272639899,
+          "max": 19.240684274592766
+        }
+      },
+      "notes": [
+        "New camera-mount first-version calibration from three independent chassis positions.",
+        "Translation is the equal-group arithmetic mean; rotation is the equal-group SO(3) mean, not an RPY average.",
+        "The board display pose is a representative group-1 pose for visualization only; it is not used for grasp localization.",
+        "This profile is deployed as active_calibration after the three-group fusion review; physical grasp validation remains required."
+      ]
+    }
+  }
+}

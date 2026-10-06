@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""ChArUco overlay and hand-eye sample recorder.
+"""Web-console ChArUco overlay and automatic hand-eye sample recorder.
 
-Press ``p`` in the OpenCV window to save one sample containing:
+The node has no GUI. It publishes the annotated camera image for the unified
+web console and saves a sample after the board and arm have remained stable:
 
 - color image timestamp;
 - camera intrinsics;
@@ -15,14 +16,17 @@ import json
 import math
 from datetime import datetime
 from pathlib import Path
+import time
+import zipfile
 
 import cv2
 import numpy as np
 import rclpy
 from cv_bridge import CvBridge
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from sensor_msgs.msg import CameraInfo, Image, JointState
+from sensor_msgs.msg import CameraInfo, CompressedImage, Image, JointState
 from std_msgs.msg import String
 
 
@@ -93,9 +97,33 @@ class CharucoHandeyeSampler(Node):
         self.min_charuco_corners = int(
             self.declare_parameter("min_charuco_corners", 8).value
         )
-        self.window_name = self.declare_parameter(
-            "window_name", "ChArUco hand-eye sampler"
+        self.overlay_topic = self.declare_parameter(
+            "overlay_topic", "/handeye/calibration_overlay/compressed"
         ).value
+        self.auto_sample_enabled = bool(
+            self.declare_parameter("auto_sample_enabled", True).value
+        )
+        self.auto_sample_stable_sec = float(
+            self.declare_parameter("auto_sample_stable_sec", 0.8).value
+        )
+        self.auto_sample_min_interval_sec = float(
+            self.declare_parameter("auto_sample_min_interval_sec", 1.5).value
+        )
+        self.auto_sample_joint_stable_deg = float(
+            self.declare_parameter("auto_sample_joint_stable_deg", 0.6).value
+        )
+        self.auto_sample_min_joint_change_deg = float(
+            self.declare_parameter("auto_sample_min_joint_change_deg", 2.0).value
+        )
+        self.auto_sample_min_charuco_corners = int(
+            self.declare_parameter("auto_sample_min_charuco_corners", 35).value
+        )
+        self.auto_sample_pose_stable_translation_m = float(
+            self.declare_parameter("auto_sample_pose_stable_translation_m", 0.004).value
+        )
+        self.auto_sample_pose_stable_rotation_deg = float(
+            self.declare_parameter("auto_sample_pose_stable_rotation_deg", 1.5).value
+        )
         self.command_topic = self.declare_parameter(
             "command_topic", "/handeye/calibration_command"
         ).value
@@ -121,15 +149,33 @@ class CharucoHandeyeSampler(Node):
         self.latest_frame = None
         self.latest_image_message = None
         self.latest_overlay = None
+        self.received_first_frame = False
+        self.quit_requested = False
         self.sample_count = 0
+        self.last_status_emit = 0.0
+        self.last_status_state = "waiting_for_frame"
+        self.last_joint_vector = None
+        self.joint_stable_since = None
+        self.last_detection_for_stability = None
+        self.pose_stable_since = None
+        self.last_sample_monotonic = None
+        self.last_sample_joint_vector = None
+        self.archive_path = None
         self.session_dir = self.output_dir / datetime.now().strftime("%Y%m%d_%H%M%S")
         self.session_dir.mkdir(parents=True, exist_ok=True)
         self.samples_jsonl = self.session_dir / "samples.jsonl"
 
-        self.create_subscription(CameraInfo, self.camera_info_topic, self.on_info, 10)
+        # Camera images may be published with sensor-data BEST_EFFORT QoS.
+        # A RELIABLE subscriber cannot receive those images; BEST_EFFORT accepts
+        # both BEST_EFFORT and RELIABLE camera publishers.
+        camera_qos = QoSProfile(depth=5, reliability=ReliabilityPolicy.BEST_EFFORT)
+        self.create_subscription(CameraInfo, self.camera_info_topic, self.on_info, camera_qos)
         self.create_subscription(JointState, self.joint_state_topic, self.on_joint_state, 10)
-        self.create_subscription(Image, self.image_topic, self.on_image, 10)
+        self.create_subscription(Image, self.image_topic, self.on_image, camera_qos)
         self.create_subscription(String, self.command_topic, self.on_command, 10)
+        self.overlay_publisher = self.create_publisher(
+            CompressedImage, self.overlay_topic, camera_qos
+        )
         status_qos = QoSProfile(
             depth=1,
             reliability=ReliabilityPolicy.RELIABLE,
@@ -139,21 +185,50 @@ class CharucoHandeyeSampler(Node):
             String, self.status_topic, status_qos
         )
 
-        cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
-        cv2.resizeWindow(self.window_name, 960, 600)
         self.get_logger().info(
-            "ChArUco sampler ready: press 'p' to save, 'q' to quit. Output: %s"
-            % self.session_dir
+            "Web ChArUco sampler ready: auto sampling enabled=%s, output=%s"
+            % (self.auto_sample_enabled, self.session_dir)
         )
-        self.publish_status("ready")
+        self.publish_status("waiting_for_frame", force=True)
 
-    def publish_status(self, state):
+    def publish_status(self, state=None, force=False, reason=""):
+        state = str(state or self.last_status_state)
+        now = time.monotonic()
+        if not force and now - self.last_status_emit < 0.3:
+            return
+        self.last_status_emit = now
+        self.last_status_state = state
+        detection = self.latest_detection or {}
+        joint_stable = bool(
+            self.joint_stable_since is not None
+            and now - self.joint_stable_since >= self.auto_sample_stable_sec
+        )
+        pose_stable = bool(
+            self.pose_stable_since is not None
+            and now - self.pose_stable_since >= self.auto_sample_stable_sec
+        )
         message = String()
         message.data = json.dumps(
             {
-                "state": str(state),
+                "state": state,
                 "samples": int(self.sample_count),
                 "output_dir": str(self.session_dir),
+                "archive_path": str(self.archive_path or ""),
+                "download_ready": bool(self.archive_path and self.archive_path.exists()),
+                "marker_count": int(detection.get("marker_count", 0)),
+                "charuco_corners": int(detection.get("charuco_count", 0)),
+                "pose_ok": bool(detection.get("ok", False)),
+                "joint_stable": joint_stable,
+                "pose_stable": pose_stable,
+                "auto_sample_enabled": self.auto_sample_enabled,
+                "auto_ready": bool(
+                    detection.get("ok", False)
+                    and int(detection.get("charuco_count", 0))
+                    >= self.auto_sample_min_charuco_corners
+                    and joint_stable
+                    and pose_stable
+                ),
+                "reason": reason,
             },
             ensure_ascii=False,
         )
@@ -161,12 +236,10 @@ class CharucoHandeyeSampler(Node):
 
     def on_command(self, message):
         command = message.data.strip().lower()
-        if command == "p":
-            self.save_current_sample()
-        elif command == "q":
-            self.publish_status("stopping")
+        if command == "q":
+            self.publish_status("stopping", force=True, reason="WebUI 请求结束标定")
             self.get_logger().info("quit requested from web command")
-            rclpy.shutdown()
+            self.quit_requested = True
 
     def on_info(self, message):
         self.camera_info_msg = message
@@ -175,6 +248,66 @@ class CharucoHandeyeSampler(Node):
 
     def on_joint_state(self, message):
         self.latest_joint_state = message
+        vector = self._joint_vector()
+        if vector is None:
+            return
+        now = time.monotonic()
+        if self.last_joint_vector is None:
+            self.joint_stable_since = now
+        elif np.max(np.abs(vector - self.last_joint_vector)) > math.radians(
+            self.auto_sample_joint_stable_deg
+        ):
+            self.joint_stable_since = now
+        elif self.joint_stable_since is None:
+            self.joint_stable_since = now
+        self.last_joint_vector = vector
+
+    def _joint_vector(self):
+        if self.latest_joint_state is None:
+            return None
+        names = ["arm_joint1", "arm_joint2", "arm_joint3", "arm_joint4", "arm_joint5"]
+        values = dict(zip(self.latest_joint_state.name, self.latest_joint_state.position))
+        if not all(name in values for name in names):
+            return None
+        return np.asarray([float(values[name]) for name in names], dtype=float)
+
+    @staticmethod
+    def _rotation_delta_deg(first_rvec, second_rvec):
+        first, _ = cv2.Rodrigues(np.asarray(first_rvec, dtype=float))
+        second, _ = cv2.Rodrigues(np.asarray(second_rvec, dtype=float))
+        relative = first.T @ second
+        cosine = np.clip((np.trace(relative) - 1.0) * 0.5, -1.0, 1.0)
+        return math.degrees(math.acos(float(cosine)))
+
+    def _update_pose_stability(self, detection):
+        if not detection.get("ok"):
+            self.last_detection_for_stability = None
+            self.pose_stable_since = None
+            return
+        now = time.monotonic()
+        previous = self.last_detection_for_stability
+        stable = previous is not None
+        if stable:
+            translation_delta = float(
+                np.linalg.norm(
+                    np.asarray(detection["tvec"]) - np.asarray(previous["tvec"])
+                )
+            )
+            rotation_delta = self._rotation_delta_deg(
+                previous["rvec"], detection["rvec"]
+            )
+            stable = (
+                translation_delta <= self.auto_sample_pose_stable_translation_m
+                and rotation_delta <= self.auto_sample_pose_stable_rotation_deg
+            )
+        if not stable:
+            self.pose_stable_since = now
+        elif self.pose_stable_since is None:
+            self.pose_stable_since = now
+        self.last_detection_for_stability = {
+            "tvec": list(detection["tvec"]),
+            "rvec": list(detection["rvec"]),
+        }
 
     def on_image(self, message):
         frame = self.bridge.imgmsg_to_cv2(message, desired_encoding="bgr8")
@@ -184,28 +317,51 @@ class CharucoHandeyeSampler(Node):
         self.latest_image_message = message
         self.latest_overlay = overlay
 
+        self._update_pose_stability(detection)
         self.draw_status(overlay, detection)
-        cv2.imshow(self.window_name, overlay)
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord("p"):
-            self.save_sample(message, detection, overlay)
-        elif key == ord("q"):
-            self.publish_status("stopping")
-            self.get_logger().info("quit requested from sampler window")
-            rclpy.shutdown()
-
-    def save_current_sample(self):
-        if (
-            self.latest_image_message is None
-            or self.latest_detection is None
-            or self.latest_overlay is None
-        ):
-            self.get_logger().warning("sample rejected: no camera frame available")
-            self.publish_status("waiting_for_frame")
-            return
-        self.save_sample(
-            self.latest_image_message, self.latest_detection, self.latest_overlay
+        overlay_message = self.bridge.cv2_to_compressed_imgmsg(
+            overlay, dst_format="jpg"
         )
+        overlay_message.header = message.header
+        self.overlay_publisher.publish(overlay_message)
+        if not self.received_first_frame:
+            self.received_first_frame = True
+            self.publish_status("ready", force=True, reason="相机画面已接入，等待稳定")
+            self.get_logger().info("camera frame received; web calibration overlay is live")
+        self.auto_sample(message, detection, overlay)
+
+    def auto_sample(self, image_msg, detection, overlay):
+        if not self.auto_sample_enabled:
+            self.publish_status("ready", reason="自动采样已关闭")
+            return
+        now = time.monotonic()
+        corners = int(detection.get("charuco_count", 0))
+        current_joints = self._joint_vector()
+        stable_sec = min(
+            now - self.joint_stable_since if self.joint_stable_since else 0.0,
+            now - self.pose_stable_since if self.pose_stable_since else 0.0,
+        )
+        if not detection.get("ok") or corners < self.auto_sample_min_charuco_corners:
+            self.publish_status("ready", reason=f"角点不足：{corners}/{self.auto_sample_min_charuco_corners}")
+            return
+        if current_joints is None or self.joint_stable_since is None or self.pose_stable_since is None:
+            self.publish_status("ready", reason="等待机械臂反馈")
+            return
+        if stable_sec < self.auto_sample_stable_sec:
+            self.publish_status("stabilizing", reason=f"稳定中：{stable_sec:.1f}/{self.auto_sample_stable_sec:.1f}s")
+            return
+        if self.last_sample_monotonic is not None and now - self.last_sample_monotonic < self.auto_sample_min_interval_sec:
+            self.publish_status("ready", reason="刚完成采样，等待下一姿态")
+            return
+        if self.last_sample_joint_vector is not None and np.max(
+            np.abs(current_joints - self.last_sample_joint_vector)
+        ) < math.radians(self.auto_sample_min_joint_change_deg):
+            self.publish_status("ready", reason="姿态未改变，移动机械臂后自动采样")
+            return
+        self.save_sample(image_msg, detection, overlay)
+        self.last_sample_monotonic = now
+        self.last_sample_joint_vector = current_joints.copy()
+        self.publish_status("sampling", force=True, reason="已自动保存稳定姿态")
 
     def detect_and_draw(self, frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -221,7 +377,24 @@ class CharucoHandeyeSampler(Node):
         if ids is None or marker_count == 0:
             return frame, detection
 
-        cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+        # The web console keeps the camera's required 180° display rotation.
+        # Do not rotate the full overlay here: marker geometry must stay in
+        # the camera pixel coordinates so it remains registered to the board.
+        # Marker-id labels are redrawn with the same pre-rotation as the
+        # status text below.  This keeps the ids readable after the web view's
+        # 180° transform without touching the camera pixels.
+        cv2.aruco.drawDetectedMarkers(frame, corners, None)
+        for marker_corners, marker_id in zip(corners, ids.reshape(-1)):
+            center = np.mean(marker_corners.reshape(4, 2), axis=0)
+            self._put_text_for_rotated_web_view(
+                frame,
+                str(int(marker_id)),
+                (int(center[0] - 6), int(center[1] + 5)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 0, 0),
+                2,
+            )
         ret, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(
             corners,
             ids,
@@ -276,8 +449,14 @@ class CharucoHandeyeSampler(Node):
         status = "POSE OK" if pose_ok else ("BOARD PARTIAL" if marker_count else "NO BOARD")
         color = (0, 255, 0) if pose_ok else ((0, 255, 255) if marker_count else (0, 0, 255))
         cv2.rectangle(frame, (8, 8), (560, 96), (0, 0, 0), -1)
-        cv2.putText(frame, status, (16, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.75, color, 2)
-        cv2.putText(
+        # The web image is rotated 180° for the physically inverted camera.
+        # Render text upside-down in the source frame so that the web rotation
+        # makes it readable again.  This changes only glyph orientation; the
+        # black status panel remains at the same image location.
+        self._put_text_for_rotated_web_view(
+            frame, status, (16, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.75, color, 2
+        )
+        self._put_text_for_rotated_web_view(
             frame,
             f"markers={marker_count} charuco_corners={charuco_count} samples={self.sample_count}",
             (16, 62),
@@ -286,9 +465,9 @@ class CharucoHandeyeSampler(Node):
             color,
             2,
         )
-        cv2.putText(
+        self._put_text_for_rotated_web_view(
             frame,
-            "press p to sample, q to quit",
+            "AUTO SAMPLE: keep board visible and arm still; finish from web console",
             (16, 88),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.55,
@@ -297,7 +476,7 @@ class CharucoHandeyeSampler(Node):
         )
         if pose_ok:
             tvec = detection["tvec"]
-            cv2.putText(
+            self._put_text_for_rotated_web_view(
                 frame,
                 f"camera->board xyz: {tvec[0]:+.3f}, {tvec[1]:+.3f}, {tvec[2]:+.3f} m",
                 (16, frame.shape[0] - 18),
@@ -306,6 +485,48 @@ class CharucoHandeyeSampler(Node):
                 (0, 255, 0),
                 2,
             )
+
+    @staticmethod
+    def _put_text_for_rotated_web_view(frame, text, origin, font, scale, color, thickness):
+        """Draw text that becomes upright after the web UI's 180° rotation.
+
+        ``origin`` follows OpenCV's normal baseline convention in source-image
+        coordinates.  Only the text glyphs are flipped; the camera pixels and
+        their detection coordinates are left untouched.
+        """
+        (text_width, text_height), baseline = cv2.getTextSize(
+            text, font, scale, thickness
+        )
+        padding = max(2, thickness + 1)
+        patch = np.zeros(
+            (text_height + baseline + 2 * padding, text_width + 2 * padding, 3),
+            dtype=np.uint8,
+        )
+        cv2.putText(
+            patch,
+            text,
+            (padding, text_height + padding),
+            font,
+            scale,
+            color,
+            thickness,
+            cv2.LINE_AA,
+        )
+        patch = cv2.flip(patch, -1)
+        x = int(origin[0] - padding)
+        y = int(origin[1] - text_height - padding)
+        x0 = max(0, x)
+        y0 = max(0, y)
+        x1 = min(frame.shape[1], x + patch.shape[1])
+        y1 = min(frame.shape[0], y + patch.shape[0])
+        if x0 >= x1 or y0 >= y1:
+            return
+        patch_x0 = x0 - x
+        patch_y0 = y0 - y
+        patch_crop = patch[patch_y0:patch_y0 + (y1 - y0), patch_x0:patch_x0 + (x1 - x0)]
+        mask = np.any(patch_crop != 0, axis=2)
+        frame_crop = frame[y0:y1, x0:x1]
+        frame_crop[mask] = patch_crop[mask]
 
     def save_sample(self, image_msg, detection, overlay):
         if not detection or not detection.get("ok"):
@@ -367,16 +588,43 @@ class CharucoHandeyeSampler(Node):
         )
         self.publish_status("sampling")
 
+    def finish_session(self):
+        if self.archive_path is None:
+            archive = self.output_dir / f"{self.session_dir.name}.zip"
+            manifest = {
+                "session_dir": str(self.session_dir),
+                "samples": self.sample_count,
+                "automatic_sampling": self.auto_sample_enabled,
+                "min_charuco_corners": self.auto_sample_min_charuco_corners,
+                "stable_sec": self.auto_sample_stable_sec,
+                "joint_stable_deg": self.auto_sample_joint_stable_deg,
+                "pose_stable_translation_m": self.auto_sample_pose_stable_translation_m,
+                "pose_stable_rotation_deg": self.auto_sample_pose_stable_rotation_deg,
+                "generated_at": datetime.now().isoformat(timespec="seconds"),
+            }
+            manifest_path = self.session_dir / "session_manifest.json"
+            manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
+            with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+                for file_path in sorted(self.session_dir.iterdir()):
+                    if file_path.is_file():
+                        bundle.write(file_path, arcname=file_path.name)
+            self.archive_path = archive
+        self.publish_status("stopped", force=True, reason="采样文件已打包，可从 WebUI 下载")
+        self.get_logger().info("saved hand-eye session archive: %s", self.archive_path)
+
 
 def main():
     rclpy.init()
     node = CharucoHandeyeSampler()
     try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
+        # Shut down outside callbacks so command-triggered exit cannot block
+        # executor cleanup while a callback is still executing.
+        while rclpy.ok() and not node.quit_requested:
+            rclpy.spin_once(node, timeout_sec=0.1)
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
-        cv2.destroyAllWindows()
+        node.finish_session()
         node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()

@@ -32,7 +32,7 @@ stop_recorded_group() {
 
 # Replace only stale vision-chain processes.  Bracketed patterns avoid matching
 # this launcher itself.
-for pattern in '[o]rbbec_camera' '[c]amera_container' '[t]arget_detector_node.py' '[t]arget_fusion_detector_node.py' '[g]rasp_state_machine_node.py' '[m]ission_executive_node.py' '[a]ctive_search_node.py' '[g]rasp_target_localizer' '[h]andeye_tf_preview_node.py'; do
+for pattern in '[o]rbbec_camera' '[c]amera_container' '[t]arget_detector_node.py' '[t]arget_fusion_detector_node.py' '[g]rasp_state_machine_node.py' '[m]ission_executive_node.py' '[a]ctive_search_node.py' '[g]rasp_target_localizer'; do
   pkill -TERM -f "$pattern" 2>/dev/null || true
 done
 stop_recorded_group "$camera_pid_file"
@@ -62,8 +62,7 @@ if ! timeout 10 ros2 topic echo /camera/color/image_raw --qos-reliability best_e
   timeout 12 ros2 topic echo /camera/color/image_raw --qos-reliability best_effort --once >/dev/null 2>&1
 fi
 
-setsid -f bash -lc "cd '$repo_root' && source /opt/ros/humble/setup.bash && source '$repo_root/install/setup.bash' && exec python3 tools/handeye_tf_preview_node.py" \
-  </dev/null >/tmp/handeye_tf_preview.log 2>&1
+bash "$repo_root/scripts/restart_handeye_tf.sh"
 
 start_visual_launch
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Visual grasp state machine (阶段 A/B partial skeleton).
+"""Visual grasp state machine.
 
 Implements the first half of the real-rover visual grasp pipeline:
 
     ABORT -> WIDE_SEARCH -> TARGET_LOCKED -> POSE_AVERAGING
-          -> WORKSPACE_CHECK -> APPROACH_WITH_CHASSIS (placeholder only)
+          -> TF/IK_REACHABILITY -> APPROACH_WITH_CHASSIS (repeatable)
           -> MOVE_TO_GRASP (motion entry point)
          -> ABORT
 
@@ -15,13 +15,12 @@ It still does NOT command the chassis or the arm. It only:
   - watches /perception/target_detection for a YOLO-confirmed candidate
     (class_id left the hsv_candidate placeholder) that stays put for a few frames,
     then locks onto it,
-  - after HSV lock, switches to the low-frequency HSV+SAM perception mode and
-    averages target pose samples only while the camera depth is in the reliable
-    far-enough range,
-  - evaluates whether the averaged target pose is inside the arm workspace; if
-    yes, enters MOVE_TO_GRASP, otherwise enters APPROACH_WITH_CHASSIS as a
-    placeholder reminder that chassis approach control still needs to be
-    implemented.
+  - after HSV lock, performs visual centering and samples the RGB-D point
+    derived from the target mask (one pose, five samples by default),
+  - transforms that measured point through the active base->arm TF and checks
+    the actual IK/FK reachability, not a fixed-radius workspace approximation,
+  - if unreachable, advances the chassis for one guarded step, recenters the
+    target, and repeats mask-distance sampling and TF/IK reachability.
 
 Locking normally requires YOLO confirmation.  The operator can explicitly send
 ``skip_yolo_confirm`` to accept the latest HSV proposal for commissioning; this
@@ -192,9 +191,9 @@ class GraspStateMachine(Node):
         self.chassis_approach_max_angular_z = max(
             0.01, float(self.declare_parameter("chassis_approach_max_angular_z", 0.12).value)
         )
-        # Automated four-corner parallax sampling.  The center is frozen at
-        # the instant YOLO confirmation locks a target; only J1/J4 move while
-        # J2/J3/J5 remain at that captured pose.
+        # Legacy automated four-corner parallax sampling.  It remains available
+        # for calibration/rollback, but production grasping currently bypasses
+        # it and uses a single centered mask-distance batch.
         self.auto_sampling_enabled = bool(
             self.declare_parameter("auto_sampling_enabled", True).value
         )
@@ -223,6 +222,15 @@ class GraspStateMachine(Node):
         )
         self.tf_timeout_sec = float(
             self.declare_parameter("tf_timeout_sec", 0.12).value
+        )
+        self.arm_base_frame = str(
+            self.declare_parameter("arm_base_frame", "arm_base_link").value
+        )
+        self.tf_reachability_tolerance_m = max(
+            0.001,
+            float(
+                self.declare_parameter("tf_reachability_tolerance_m", 0.025).value
+            ),
         )
         self.workspace_center_x_m = float(
             self.declare_parameter("workspace_center_x_m", 0.13).value
@@ -275,6 +283,12 @@ class GraspStateMachine(Node):
         self.upper_arm_m = float(self.declare_parameter("upper_arm_m", 0.11391).value)
         self.forearm_m = float(self.declare_parameter("forearm_m", 0.11000).value)
         self.tool_m = float(self.declare_parameter("tool_m", 0.15601).value)
+        # Optional empirical J2 trim.  The new-mount baseline keeps this at
+        # zero so IK commands are sent exactly as solved from the TF target.
+        self.ik_j2_compensation_deg = max(
+            0.0,
+            float(self.declare_parameter("ik_j2_compensation_deg", 0.0).value),
+        )
         self.gripper_stroke_m = float(
             self.declare_parameter("gripper_stroke_m", 0.045).value
         )
@@ -920,7 +934,9 @@ class GraspStateMachine(Node):
         if chosen is None:
             return None, None, True
 
-        chosen[1] = self.compensate_j2_angle(chosen[1])
+        chosen[1] = self.compensate_j2_angle(
+            chosen[1], self.ik_j2_compensation_deg
+        )
         chosen[4] = clamp(chosen[4], 0.0, 90.0)
         return chosen, chosen_sign, clamped
 
@@ -954,32 +970,118 @@ class GraspStateMachine(Node):
         ]
 
     @staticmethod
-    def compensate_j2_angle(j2):
+    def compensate_j2_angle(j2, compensation_deg=0.0):
+        if compensation_deg <= 0.0:
+            return j2
         if j2 > 182.2:
-            return j2 - 2.0
+            return j2 - compensation_deg
         if j2 < 177.8:
-            return j2 + 2.0
+            return j2 + compensation_deg
         return j2
+
+    def _transform_point_to_arm_base(self, point, stamp=None):
+        """Transform a measured base_link point into the active arm base.
+
+        TargetObservation is published in ``base_link``.  The old grasp gate
+        subtracted a fixed hand-tuned workspace center instead of using TF;
+        that made objects outside the real arm envelope look reachable.  Use
+        the current TF tree here so the same target coordinates feed both the
+        reachability gate and the final TF-direct IK motion.
+        """
+        if point is None:
+            return None
+        requested_time = Time()
+        if stamp is not None:
+            try:
+                if int(stamp.sec) != 0 or int(stamp.nanosec) != 0:
+                    requested_time = Time.from_msg(stamp)
+            except (AttributeError, TypeError, ValueError):
+                requested_time = Time()
+        try:
+            transform = self.tf_buffer.lookup_transform(
+                self.arm_base_frame,
+                "base_link",
+                requested_time,
+                timeout=Duration(seconds=self.tf_timeout_sec),
+            )
+        except TransformException:
+            if requested_time.nanoseconds == 0:
+                return None
+            try:
+                transform = self.tf_buffer.lookup_transform(
+                    self.arm_base_frame,
+                    "base_link",
+                    Time(),
+                    timeout=Duration(seconds=self.tf_timeout_sec),
+                )
+            except TransformException as exc:
+                self.get_logger().warning(
+                    f"无法读取 {self.arm_base_frame}<-base_link TF: {exc}"
+                )
+                return None
+        rotation = _rotation_matrix(transform.transform.rotation)
+        translation = transform.transform.translation
+        offset = np.array(
+            [translation.x, translation.y, translation.z], dtype=np.float64
+        )
+        return rotation @ np.asarray(point, dtype=np.float64) + offset
 
     def _target_in_arm_base(self):
         point = self._latest_point()
         if point is None:
             return None
-        arm_base = np.array(
-            [
-                self.workspace_center_x_m,
-                self.workspace_center_y_m,
-                self.workspace_center_z_m,
-            ],
-            dtype=np.float64,
+        stamp = None
+        if self.latest_observation is not None:
+            stamp = self.latest_observation.header.stamp
+        return self._transform_point_to_arm_base(point, stamp)
+
+    def _tf_reachability_check(self, point):
+        """Return actual TF/IK reachability for a measured base-frame point.
+
+        The current tool pitch is retained for the pre-grasp gate.  A clamped
+        IK result is treated as unreachable: it means the solver had to move
+        the requested point onto a workspace boundary and must not trigger a
+        grasp at the wrong location.
+        """
+        stamp = None
+        if self.latest_observation is not None:
+            stamp = self.latest_observation.header.stamp
+        arm_target = self._transform_point_to_arm_base(point, stamp)
+        if arm_target is None:
+            return False, "TF_UNAVAILABLE", None, None
+        if not self.current_joints_ready:
+            return False, "WAITING_JOINTS", arm_target, None
+
+        current_degrees = self.ros_to_degrees(self.current_joint_ros)
+        current_tip = self.fk_from_degrees(current_degrees)
+        ik_target = IkTarget(
+            x=float(arm_target[0]),
+            y=float(arm_target[1]),
+            z=float(arm_target[2]),
+            pitch_deg=current_tip.pitch_deg,
+            grip_deg=current_tip.grip_deg,
         )
-        return point - arm_base
+        solution, _branch_sign, clamped = self.solve_ik(ik_target)
+        if solution is None:
+            return False, "IK_NO_SOLUTION", arm_target, None
+        solved = self.fk_from_degrees(solution)
+        solved_point = np.array([solved.x, solved.y, solved.z], dtype=np.float64)
+        error = float(np.linalg.norm(solved_point - arm_target))
+        if clamped or error > self.tf_reachability_tolerance_m:
+            return (
+                False,
+                "IK_UNREACHABLE "
+                f"clamped={bool(clamped)} error={error:.3f}m",
+                arm_target,
+                error,
+            )
+        return True, f"TF_REACHABLE error={error:.3f}m", arm_target, error
 
     def _arm_from_camera_rotation(self):
         """Return R_arm_camera for vectors; translation is deliberately unused."""
         try:
             transform = self.tf_buffer.lookup_transform(
-                "arm_base_link",
+                self.arm_base_frame,
                 self.camera_frame,
                 Time(),
                 timeout=Duration(seconds=self.tf_timeout_sec),
@@ -987,7 +1089,7 @@ class GraspStateMachine(Node):
             return _rotation_matrix(transform.transform.rotation)
         except TransformException as exc:
             self.get_logger().warning(
-                f"视觉伺服无法读取 arm_base_link<-{self.camera_frame} TF: {exc}"
+                f"视觉伺服无法读取 {self.arm_base_frame}<-{self.camera_frame} TF: {exc}"
             )
             return None
 
@@ -1144,7 +1246,7 @@ class GraspStateMachine(Node):
 
     def _begin_auto_centering(self) -> None:
         if not self.auto_center_before_sampling_enabled:
-            self._start_auto_sampling()
+            self._begin_distance_sampling()
             return
         self.auto_center_active = True
         self.auto_center_started_at = time.monotonic()
@@ -1162,18 +1264,18 @@ class GraspStateMachine(Node):
             self.auto_center_active = False
             self.publish_pose_average_status(
                 "AUTO_CENTERED "
-                f"px=({error[0]:+.0f},{error[1]:+.0f})，开始四角采样"
+                f"px=({error[0]:+.0f},{error[1]:+.0f})，开始 mask 距离采样"
             )
-            self.get_logger().info("预采样视觉居中完成，开始自动四角采样")
-            self._start_auto_sampling()
+            self.get_logger().info("预采样视觉居中完成，开始 mask/RGB-D 距离采样")
+            self._begin_distance_sampling()
             return
         if now - self.auto_center_started_at >= self.auto_center_timeout_sec:
             self.auto_center_active = False
             self.publish_pose_average_status(
-                "AUTO_CENTER_TIMEOUT：目标未居中，直接开始四角采样"
+                "AUTO_CENTER_TIMEOUT：目标未完全居中，按当前视野开始 mask 距离采样"
             )
-            self.get_logger().warning("预采样视觉居中超时，按当前位置开始自动四角采样")
-            self._start_auto_sampling()
+            self.get_logger().warning("预采样视觉居中超时，按当前位置开始 mask 距离采样")
+            self._begin_distance_sampling()
             return
         if correction is None:
             self.publish_pose_average_status(f"AUTO_CENTER_WAITING {status}")
@@ -1183,10 +1285,10 @@ class GraspStateMachine(Node):
         if self.auto_center_steps >= self.auto_center_max_steps:
             self.auto_center_active = False
             self.publish_pose_average_status(
-                "AUTO_CENTER_MAX_STEPS：目标未居中，直接开始四角采样"
+                "AUTO_CENTER_MAX_STEPS：目标未完全居中，开始 mask 距离采样"
             )
-            self.get_logger().warning("预采样视觉居中达到最大步数，按当前位置开始自动四角采样")
-            self._start_auto_sampling()
+            self.get_logger().warning("预采样视觉居中达到最大步数，按当前位置开始 mask 距离采样")
+            self._begin_distance_sampling()
             return
         if not self.current_joints_ready:
             self.publish_pose_average_status("AUTO_CENTER_WAITING_JOINTS")
@@ -1210,6 +1312,24 @@ class GraspStateMachine(Node):
             f"step={self.auto_center_steps}/{self.auto_center_max_steps} "
             f"px=({error[0]:+.0f},{error[1]:+.0f}) "
             f"ddeg=({j1_delta:+.2f},{j4_delta:+.2f})"
+        )
+
+    def _begin_distance_sampling(self) -> None:
+        """Start one centered RGB-D mask-distance batch.
+
+        The legacy four-corner parallax routine remains available for rollback,
+        but the production grasp path intentionally samples one stable pose.
+        """
+        self.auto_sampling_start_pending = False
+        self.auto_sampling_targets = []
+        self.auto_sampling_index = 0
+        self.auto_sampling_release_at = 0.0
+        self.pose_batch_waiting_for_motion = False
+        self.publish_pose_average_status(
+            "MASK_DISTANCE_SAMPLING "
+            f"pose=1/{self.pose_average_pose_count} "
+            f"samples=0/{self.pose_average_samples_per_pose} "
+            "等待 mask 区域 RGB-D 距离"
         )
 
     def _current_target_camera_depth(self):
@@ -2005,6 +2125,19 @@ class GraspStateMachine(Node):
             % (self.chassis_approach_step_count, duration),
         )
 
+    def _begin_post_approach_resampling(self) -> None:
+        """After a chassis step, recenter and take a fresh mask-distance batch."""
+        self.averaged_point = None
+        self.averaged_depth_m = None
+        self.reset_pose_averaging()
+        self.chassis_approach_phase = "sampling"
+        self.set_state(
+            POSE_AVERAGING,
+            "底盘已停车，重新视觉居中后采样 mask 区域距离",
+        )
+        self.publish_mode("precise_hsv_sam")
+        self._begin_auto_centering()
+
     def _advance_chassis_approach(self) -> None:
         if self.chassis_approach_phase == "idle":
             self._begin_chassis_approach()
@@ -2036,11 +2169,7 @@ class GraspStateMachine(Node):
                 self.chassis_approach_phase = "waiting_observation"
                 self.set_state(APPROACH_WITH_CHASSIS, "等待停车后的新 RGB-D 观测")
                 return
-            point = self.latest_observation.pose.position
-            self._update_post_lock_state(
-                np.array([point.x, point.y, point.z], dtype=np.float64),
-                allow_approach=True,
-            )
+            self._begin_post_approach_resampling()
 
     def set_state(self, state: str, detail: str = "") -> None:
         self.state = state
@@ -2182,11 +2311,7 @@ class GraspStateMachine(Node):
             self.state == APPROACH_WITH_CHASSIS
             and self.chassis_approach_phase == "waiting_observation"
         ):
-            point = message.pose.position
-            self._update_post_lock_state(
-                np.array([point.x, point.y, point.z], dtype=np.float64),
-                allow_approach=True,
-            )
+            self._begin_post_approach_resampling()
 
     def on_detection(self, message) -> None:
         if not self.active:
@@ -2356,7 +2481,7 @@ class GraspStateMachine(Node):
         self.publish_mode("precise_hsv_sam")
         self.set_state(
             POSE_AVERAGING,
-            "HSV 已锁定，进入 HSV+低频 SAM，等待 20cm 以上可靠深度统计",
+            "HSV 已锁定，先视觉居中，再对 mask 区域进行 RGB-D 距离统计",
         )
         self._begin_auto_centering()
 
@@ -2553,11 +2678,11 @@ class GraspStateMachine(Node):
             f"poses={completed}/{self.pose_average_pose_count} "
             f"samples={completed * self.pose_average_samples_per_pose} "
             f"point=({self.averaged_point[0]:.3f},{self.averaged_point[1]:.3f},{self.averaged_point[2]:.3f}) "
-            f"pose_spread={pose_spread:.3f}m"
+            f"pose_spread={pose_spread:.3f}m source={getattr(observation, 'source', 'rgbd_mask_geometry')}"
         )
         self.set_state(
             WORKSPACE_CHECK,
-            f"{completed} 个机械臂姿态的远距离位姿统计完成，进行工作区判定",
+            f"mask 距离采样完成（{completed} 个姿态），进行 TF+IK 可达性判定",
         )
         self._update_post_lock_state()
 
@@ -2566,67 +2691,60 @@ class GraspStateMachine(Node):
             return np.array(self.averaged_point, dtype=np.float64)
         return None
 
-    def _workspace_check(self, point):
-        center = np.array(
-            [
-                self.workspace_center_x_m,
-                self.workspace_center_y_m,
-                self.workspace_center_z_m,
-            ],
-            dtype=np.float64,
-        )
-        distance = float(np.linalg.norm(point - center))
-        failures = []
-        if distance > self.workspace_radius_m:
-            failures.append(f"dist>{self.workspace_radius_m:.3f}")
-        return (len(failures) == 0), failures, distance
-
     def _update_post_lock_state(self, point=None, allow_approach=False) -> None:
         if point is None:
             point = self._latest_point()
         if point is None:
             self.publish_workspace_status("NO_OBSERVATION")
             return
-        in_workspace, failures, distance = self._workspace_check(point)
+        reachable, reason, arm_target, ik_error = self._tf_reachability_check(point)
         point_text = f"point=({point[0]:.3f},{point[1]:.3f},{point[2]:.3f})"
-        center_text = (
-            f" center=({self.workspace_center_x_m:.3f},"
-            f"{self.workspace_center_y_m:.3f},{self.workspace_center_z_m:.3f})"
-            f" dist={distance:.3f}"
+        arm_text = (
+            " arm_target=TF_UNAVAILABLE"
+            if arm_target is None
+            else f" arm_target=({arm_target[0]:.3f},{arm_target[1]:.3f},{arm_target[2]:.3f})"
         )
-        if in_workspace:
+        if reachable:
             self._stop_chassis_approach()
-            self.publish_workspace_status(f"IN_WORKSPACE {point_text}{center_text}")
+            self.publish_workspace_status(
+                f"TF_REACHABLE {point_text}{arm_text} ik_error={ik_error:.3f}m"
+            )
             self.publish_mode("precise_hsv_sam")
             if self.state != MOVE_TO_GRASP:
                 self.set_state(
                     MOVE_TO_GRASP,
-                    "目标已进入工作区 "
-                    f"位置=({point[0]:.3f},{point[1]:.3f},{point[2]:.3f}) "
-                    f"dist={distance:.3f}，等待 TF+J1/J4 云台校准增量移动",
+                    "TF 变换后的夹爪工作中心已确认可达，进入精细抓取 "
+                    f"位置=({point[0]:.3f},{point[1]:.3f},{point[2]:.3f})",
                 )
                 if (
-                    self.auto_sampling_enabled
-                    and self.auto_execute_increment_enabled
+                    self.auto_execute_increment_enabled
                     and not self.auto_increment_dispatched
                 ):
                     self.auto_increment_dispatched = True
-                    self.get_logger().info("自动四角采样完成，自动触发一次单步增量")
+                    self.get_logger().info("TF/IK 可达性确认完成，自动触发一次精细抓取")
                     self.execute_increment_step()
             return
+        if reason in ("WAITING_JOINTS", "TF_UNAVAILABLE"):
+            self.publish_workspace_status(f"{reason} {point_text}{arm_text}")
+            self.publish_pose_average_status(
+                f"{reason}：已完成 mask 距离采样，等待 TF/关节反馈后复核"
+            )
+            self.set_state(
+                WORKSPACE_CHECK,
+                "等待当前 TF 与关节反馈，暂不驱动底盘",
+            )
+            return
         self.publish_mode("locked_hsv")
-        detail = ",".join(failures)
         self.publish_workspace_status(
-            f"OUT_OF_WORKSPACE {point_text}{center_text} constraints={detail}"
+            f"TF_UNREACHABLE {point_text}{arm_text} reason={reason}"
         )
         if self.state != APPROACH_WITH_CHASSIS:
             self.set_state(
                 APPROACH_WITH_CHASSIS,
-                "目标未进入工作区，等待后续底盘接近控制 "
-                f"位置=({point[0]:.3f},{point[1]:.3f},{point[2]:.3f}) "
-                f"dist={distance:.3f} 约束={detail}",
+                "TF/IK 判定当前夹爪工作中心不可达，底盘主动靠近后重新采样 "
+                f"位置=({point[0]:.3f},{point[1]:.3f},{point[2]:.3f}) reason={reason}",
             )
-        if allow_approach or self.chassis_approach_phase == "idle":
+        if allow_approach or self.chassis_approach_phase in ("idle", "sampling"):
             self._begin_chassis_approach()
 
     # ---- heartbeat ------------------------------------------------------
@@ -2649,6 +2767,10 @@ class GraspStateMachine(Node):
                 self._advance_chassis_approach()
             if self.state == POSE_AVERAGING and self.auto_center_active:
                 self._advance_auto_centering()
+            if self.state == WORKSPACE_CHECK and self.averaged_point is not None:
+                # TF/joint feedback can arrive just after the fifth mask
+                # sample. Recheck without collecting a second pose batch.
+                self._update_post_lock_state()
             if self.state == POSE_AVERAGING and self.auto_sampling_start_pending:
                 self._start_auto_sampling()
             self.publish_tf_target_projection()

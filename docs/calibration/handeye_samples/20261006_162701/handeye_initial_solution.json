@@ -1,0 +1,339 @@
+{
+  "source_dir": "generated/calibration/handeye_samples/20261006_162701",
+  "notes": [
+    "FK uses corrected arm lengths: 75.45, 113.91, 110.00, 156.01 mm.",
+    "tool_T_camera means camera_color_optical_frame expressed in the IK tool frame.",
+    "Filter: image/joint dt <= 100.0 ms, ChArUco corners >= 35, residual <= 40.0 mm."
+  ],
+  "data_quality": {
+    "total_samples": 65,
+    "filtered_samples": 65,
+    "robust_samples": 65,
+    "charuco_corners_min_median_max": [
+      36,
+      52.0,
+      54
+    ],
+    "image_joint_dt_ms_max": 33.33401679992676,
+    "excluded_by_initial_filter": [],
+    "excluded_by_residual_trim": []
+  },
+  "solutions": [
+    {
+      "label": "filtered",
+      "method": "PARK",
+      "sample_indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65
+      ],
+      "sample_count": 65,
+      "tool_T_camera": {
+        "translation_xyz_m": [
+          -0.03134232785498235,
+          -0.023410250985510535,
+          0.024100822780358
+        ],
+        "rpy_deg_xyz": [
+          97.55036287891748,
+          2.543450777608441,
+          89.81096709803442
+        ],
+        "matrix_4x4": [
+          [
+            0.003295990318648103,
+            0.1315420456799004,
+            0.9913051128025951,
+            -0.03134232785498235
+          ],
+          [
+            0.9990094179964617,
+            0.043558500346405175,
+            -0.009101637322157925,
+            -0.023410250985510535
+          ],
+          [
+            -0.04437701209173843,
+            0.9903531427051269,
+            -0.1312681741015048,
+            0.024100822780358
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "base_T_board_mean_translation_m": [
+        0.5510067672872846,
+        0.018071834899155873,
+        0.13740295072130784
+      ],
+      "translation_residual_mm": {
+        "mean": 9.209979594741952,
+        "median": 8.707813500404066,
+        "max": 38.072571119346456
+      },
+      "worst_samples": [
+        {
+          "index": 1,
+          "translation_residual_mm": 38.072571119346456,
+          "charuco_corners": 48,
+          "image_joint_dt_ms": 5.419015884399414
+        },
+        {
+          "index": 48,
+          "translation_residual_mm": 16.69886595412895,
+          "charuco_corners": 54,
+          "image_joint_dt_ms": 8.453130722045898
+        },
+        {
+          "index": 4,
+          "translation_residual_mm": 16.550311301185488,
+          "charuco_corners": 54,
+          "image_joint_dt_ms": 4.139423370361328
+        },
+        {
+          "index": 16,
+          "translation_residual_mm": 15.888718734081518,
+          "charuco_corners": 45,
+          "image_joint_dt_ms": 27.901887893676758
+        },
+        {
+          "index": 63,
+          "translation_residual_mm": 15.494608159237767,
+          "charuco_corners": 49,
+          "image_joint_dt_ms": 6.356477737426758
+        },
+        {
+          "index": 5,
+          "translation_residual_mm": 14.128539579465464,
+          "charuco_corners": 54,
+          "image_joint_dt_ms": 10.943412780761719
+        }
+      ]
+    },
+    {
+      "label": "filtered_plus_residual_trim",
+      "method": "PARK",
+      "sample_indices": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65
+      ],
+      "sample_count": 65,
+      "tool_T_camera": {
+        "translation_xyz_m": [
+          -0.03134232785498235,
+          -0.023410250985510535,
+          0.024100822780358
+        ],
+        "rpy_deg_xyz": [
+          97.55036287891748,
+          2.543450777608441,
+          89.81096709803442
+        ],
+        "matrix_4x4": [
+          [
+            0.003295990318648103,
+            0.1315420456799004,
+            0.9913051128025951,
+            -0.03134232785498235
+          ],
+          [
+            0.9990094179964617,
+            0.043558500346405175,
+            -0.009101637322157925,
+            -0.023410250985510535
+          ],
+          [
+            -0.04437701209173843,
+            0.9903531427051269,
+            -0.1312681741015048,
+            0.024100822780358
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "base_T_board_mean_translation_m": [
+        0.5510067672872846,
+        0.018071834899155873,
+        0.13740295072130784
+      ],
+      "translation_residual_mm": {
+        "mean": 9.209979594741952,
+        "median": 8.707813500404066,
+        "max": 38.072571119346456
+      },
+      "worst_samples": [
+        {
+          "index": 1,
+          "translation_residual_mm": 38.072571119346456,
+          "charuco_corners": 48,
+          "image_joint_dt_ms": 5.419015884399414
+        },
+        {
+          "index": 48,
+          "translation_residual_mm": 16.69886595412895,
+          "charuco_corners": 54,
+          "image_joint_dt_ms": 8.453130722045898
+        },
+        {
+          "index": 4,
+          "translation_residual_mm": 16.550311301185488,
+          "charuco_corners": 54,
+          "image_joint_dt_ms": 4.139423370361328
+        },
+        {
+          "index": 16,
+          "translation_residual_mm": 15.888718734081518,
+          "charuco_corners": 45,
+          "image_joint_dt_ms": 27.901887893676758
+        },
+        {
+          "index": 63,
+          "translation_residual_mm": 15.494608159237767,
+          "charuco_corners": 49,
+          "image_joint_dt_ms": 6.356477737426758
+        },
+        {
+          "index": 5,
+          "translation_residual_mm": 14.128539579465464,
+          "charuco_corners": 54,
+          "image_joint_dt_ms": 10.943412780761719
+        }
+      ]
+    }
+  ]
+}
