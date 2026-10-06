@@ -53,6 +53,30 @@ class MotionSolver(Node):
         self.max_steer_deg = float(self.declare_parameter("max_steer_deg", 30.0).value)
         self.spin_pose_deg = float(self.declare_parameter("spin_pose_deg", 45.0).value)
         self.spin_delay = float(self.declare_parameter("spin_delay", 0.5).value)
+        # Steering must reach its new angle before the drive motors push, or a
+        # short step is spent creeping straight.  The H7 reports the real steer
+        # angles in its periodic $STD frame, so gate on that feedback rather
+        # than on a fixed delay.
+        self.turn_steer_settle_enabled = bool(
+            self.declare_parameter("turn_steer_settle_enabled", True).value
+        )
+        self.turn_steer_tolerance_deg = float(
+            self.declare_parameter("turn_steer_tolerance_deg", 2.0).value
+        )
+        # Fall back to driving after this long so a steering fault degrades to
+        # the old behaviour instead of stalling the rover outright.  The H7's
+        # own $STEER:STALL/RESUME pairs show a steering move completing in
+        # ~60 ms, so this is a generous cap that also bounds how long a
+        # continuously steered joystick can hold the drive.
+        self.turn_steer_timeout_sec = float(
+            self.declare_parameter("turn_steer_timeout_sec", 0.5).value
+        )
+        # $STD arrives at roughly 5 Hz.  If it stops arriving there is nothing
+        # to confirm against, so drive immediately instead of waiting out the
+        # timeout on every command.
+        self.steer_feedback_timeout_sec = float(
+            self.declare_parameter("steer_feedback_timeout_sec", 1.0).value
+        )
         self.boost_factor = float(self.declare_parameter("boost_factor", 2.2).value)
         self.front_toe_in_comp_deg = float(
             self.declare_parameter("front_toe_in_comp_deg", 2.5).value
@@ -145,6 +169,17 @@ class MotionSolver(Node):
         self.raw_feedback_topic = self.declare_parameter(
             "raw_feedback_topic", "/h7/rx_frame"
         ).value
+        # Narrow exception to the manipulation lock below.  /grasp/active is
+        # raised for a whole grasp session, including the guarded chassis
+        # approach that the grasp state machine itself drives; without this
+        # channel the lock would drop the approach twist and deadlock the
+        # chassis.  The flag is honoured only while it keeps arriving.
+        self.chassis_approach_active_topic = self.declare_parameter(
+            "chassis_approach_active_topic", "/grasp/chassis_approach_active"
+        ).value
+        self.chassis_approach_timeout = max(
+            0.1, float(self.declare_parameter("chassis_approach_timeout", 0.5).value)
+        )
 
         count = len(self.arm_joint_names)
         mapping_lengths = {
@@ -165,10 +200,15 @@ class MotionSolver(Node):
         self.mode = "stop"
         self.turn_side = "left"
         self.spin_side = "left"
-        self.spin_start_time = 0.0
-        self.spin_wheels_started = False
-        self._spin_drive_speeds = [0.0] * 4
+        self._turn_wheels_started = False
         self._last_ang = None
+        # Steer-then-drive gate shared by straight and turn modes.
+        self._turn_angles = None
+        self._turn_drive_speeds = [0.0] * 4
+        self._turn_wheels_started = False
+        self._turn_steer_sent_at = 0.0
+        self._turn_hold_deadline = 0.0
+        self._steer_feedback_at = 0.0
         self._prev_relax = False
         self._prev_rearm = False
         self._prev_calibrate = False
@@ -177,6 +217,11 @@ class MotionSolver(Node):
         self.boost_active = False
         self.grasp_active = False
         self.search_active = False
+        # chassis-approach yield channel: last value plus arrival time, so a
+        # publisher that dies mid-step cannot leave the chassis unlocked.
+        self._chassis_approach_requested = False
+        self._chassis_approach_stamp = 0.0
+        self._manipulation_lock_state = False
         self._arm_lock = threading.Lock()
         self._trajectory_lock = threading.Lock()
         # Real-arm desk-facing home confirmed on 2026-08-29. The older coarse
@@ -217,6 +262,17 @@ class MotionSolver(Node):
             "/search/active",
             self.on_search_active,
             grasp_qos,
+            callback_group=callback_group,
+        )
+        # Deliberately VOLATILE, unlike the two locks above: a late-joining
+        # motion_solver must not receive a latched "true" from a finished
+        # approach and unlock the chassis with no live publisher behind it.
+        # The producer refreshes the flag at its approach tick rate instead.
+        self.chassis_approach_subscription = self.create_subscription(
+            Bool,
+            self.chassis_approach_active_topic,
+            self.on_chassis_approach_active,
+            10,
             callback_group=callback_group,
         )
         self.arm_trajectory_subscription = self.create_subscription(
@@ -375,6 +431,10 @@ class MotionSolver(Node):
         feedback = String()
         feedback.data = frame
         self.raw_feedback_publisher.publish(feedback)
+        if frame.startswith("$STD"):
+            # $STD carries the measured steer angles; its arrival time is what
+            # makes the steer-then-drive gate trustworthy.
+            self._steer_feedback_at = time.monotonic()
         if frame.startswith("$STEER:"):
             self.get_logger().info("H7 回执: %s" % frame)
             if frame.startswith("$STEER:CALSTART,"):
@@ -639,25 +699,54 @@ class MotionSolver(Node):
         if active == self.grasp_active:
             return
         self.grasp_active = active
-        self.update_manipulation_lock("抓取")
+        self.update_manipulation_lock("抓取会话")
 
     def on_search_active(self, message):
         active = bool(message.data)
         if active == self.search_active:
             return
         self.search_active = active
-        self.update_manipulation_lock("搜索")
+        self.update_manipulation_lock("探索扫描")
+
+    def on_chassis_approach_active(self, message):
+        self._chassis_approach_requested = bool(message.data)
+        self._chassis_approach_stamp = time.monotonic()
+        self.update_manipulation_lock(
+            "底盘接近让行" if self._chassis_approach_requested else "底盘接近让行结束"
+        )
+
+    def chassis_approach_yield(self):
+        """True only while a live guarded approach keeps refreshing the flag."""
+        if not self._chassis_approach_requested:
+            return False
+        age = time.monotonic() - self._chassis_approach_stamp
+        return 0.0 <= age <= self.chassis_approach_timeout
 
     def manipulation_locked(self):
+        if self.chassis_approach_yield():
+            # The grasp state machine is itself driving the chassis and its
+            # twist reaches us through /manual_control.  Honouring the lock
+            # here would drop the one command that is trying to move the rover,
+            # so a live guarded approach owns the chassis instead.
+            return False
         return self.grasp_active or self.search_active
 
     def update_manipulation_lock(self, source):
-        if self.manipulation_locked():
+        # The approach flag is refreshed several times per second, so act only
+        # on real transitions: re-issuing the stop on every refresh would
+        # cancel the very step the yield was granted for.
+        locked = self.manipulation_locked()
+        if locked == self._manipulation_lock_state:
+            return
+        self._manipulation_lock_state = locked
+        if locked:
             self.boost_active = False
             self._enter_stop()
-            self.get_logger().info(f"{source}锁已启用：忽略底盘遥控并保持3508零速")
+            self.get_logger().info(
+                f"{source}：底盘安全锁已启用，忽略遥控并保持3508零速"
+            )
         else:
-            self.get_logger().info("操作锁已解除：恢复底盘遥控")
+            self.get_logger().info(f"{source}：底盘安全锁已解除，恢复遥控")
 
     # ---------- 单发 ANG（变化超过阈值才发）----------
     def _send_ang_if_changed(self, angles):
@@ -678,12 +767,91 @@ class MotionSolver(Node):
         self.h7.set_drive_speeds(speeds)
 
     # ---------- 各模式 ----------
+    # ---------- 先打舵，舵到位后再驱动 ----------
+    def _steering_feedback_fresh(self):
+        return (
+            time.monotonic() - self._steer_feedback_at
+        ) <= self.steer_feedback_timeout_sec
+
+    def _steering_at_target(self):
+        if self._turn_angles is None or not self._steering_feedback_fresh():
+            return False
+        actual = self.h7.get_steer_angles()
+        if actual is None or len(actual) != len(self._turn_angles):
+            return False
+        return all(
+            abs(float(a) - float(b)) <= self.turn_steer_tolerance_deg
+            for a, b in zip(actual, self._turn_angles)
+        )
+
+    def _format_angles(self, values):
+        return "[" + ",".join("%.1f" % v for v in values) + "]"
+
+    def _command_steering(self, mode, angles, speeds, force_rearm=False, hold_sec=None):
+        """Send $ANG first; tick() releases the drive once the wheels arrive.
+
+        Issuing $ANG and $M3508:SPD in the same call let the drive motors push
+        while the steered wheels were still travelling, so a short guarded step
+        was spent creeping straight and the rover never actually turned.  The
+        hold budget is per mode entry and is deliberately not reset when the
+        target angle changes: a continuously steered joystick would otherwise
+        re-arm the wait forever and hold the drive at zero.
+
+        straight, turn and spin all share this gate, so all three are handled
+        here.
+        """
+        entry = force_rearm or self.mode != mode
+        if entry:
+            budget = self.turn_steer_timeout_sec if hold_sec is None else hold_sec
+            self._turn_hold_deadline = time.monotonic() + budget
+            self._turn_wheels_started = False
+            self._turn_steer_sent_at = time.monotonic()
+        self.mode = mode
+        self._send_ang_if_changed(angles)
+        self._turn_angles = [float(a) for a in angles]
+        self._turn_drive_speeds = [float(s) for s in speeds]
+        if not self.turn_steer_settle_enabled:
+            self._turn_wheels_started = True
+        if self._turn_wheels_started:
+            self._set_drive_speeds(speeds)
+        else:
+            self._set_drive_speeds(self.zero_speeds)
+
+    def _advance_steer_settle(self):
+        """Release the drive as soon as the steered wheels are in position."""
+        if self._turn_wheels_started:
+            return
+        if not self._steering_feedback_fresh():
+            # Nothing live to confirm against: drive straight away rather than
+            # stalling every command behind an unverifiable wait.
+            reason = "无舵角反馈"
+        elif self._steering_at_target():
+            reason = "舵角已到位"
+        elif time.monotonic() >= self._turn_hold_deadline:
+            reason = "等待超时"
+        else:
+            self._set_drive_speeds(self.zero_speeds)
+            return
+        self._turn_wheels_started = True
+        waited = time.monotonic() - self._turn_steer_sent_at
+        detail = "目标 %s / 反馈 %s" % (
+            self._format_angles(self._turn_angles or []),
+            self._format_angles(self.h7.get_steer_angles()),
+        )
+        if reason == "等待超时":
+            self.get_logger().warning(
+                "转向 %.2fs 未到位，按超时放行驱动：%s" % (waited, detail)
+            )
+        else:
+            self.get_logger().info(
+                "转向就绪（%s，%.2fs）：%s" % (reason, waited, detail)
+            )
+        self._set_drive_speeds(self._turn_drive_speeds)
+
     def _enter_straight(self, ly):
         speed = ly / 255.0 * self.max_speed
-        self.mode = "straight"
         angles = self.forward_comp_angles if ly > 0 else self.zero_angles
-        self._send_ang_if_changed(angles)
-        self._set_drive_speeds([speed, speed, speed, speed])
+        self._command_steering("straight", angles, [speed, speed, speed, speed])
 
     def _enter_turn(self, lx, ly):
         side = "right" if lx > 0 else "left"
@@ -707,10 +875,8 @@ class MotionSolver(Node):
             angles = [a + c for a, c in zip(angles, self.forward_comp_angles)]
         throttle = ly / 255.0 * self.max_speed
         speeds = [r * throttle for r in ratios]
-        self.mode = "turn"
         self.turn_side = side
-        self._send_ang_if_changed(angles)
-        self._set_drive_speeds(speeds)
+        self._command_steering("turn", angles, speeds)
 
     def _enter_spin(self, rx):
         side = "right" if rx > 0 else "left"
@@ -722,17 +888,17 @@ class MotionSolver(Node):
         else:
             speeds = [-rr, rr, -rf, rf]    # 右自转：右退左进
 
-        self._send_ang_if_changed(self.spin_pose_angles)
-        if self.mode != "spin" or side != self.spin_side:
-            # 进入/切换原地转：先停轮，延迟后再启动
-            self._set_drive_speeds(self.zero_speeds)
-            self.mode = "spin"
-            self.spin_side = side
-            self.spin_start_time = time.monotonic()
-            self.spin_wheels_started = False
-        self._spin_drive_speeds = speeds
-        if self.spin_wheels_started:
-            self._set_drive_speeds(speeds)
+        # Spin also needs the wheels at the spin pose before the motors turn:
+        # that is exactly the "set the steering first, then rotate" order.  A
+        # change of spin direction is a fresh manoeuvre and re-arms the gate.
+        self._command_steering(
+            "spin",
+            self.spin_pose_angles,
+            speeds,
+            force_rearm=side != self.spin_side,
+            hold_sec=self.spin_delay + self.turn_steer_timeout_sec,
+        )
+        self.spin_side = side
 
     def _enter_stop(self):
         previous_mode = self.mode
@@ -742,7 +908,7 @@ class MotionSolver(Node):
         else:
             self._send_ang_if_changed(self.zero_angles)
         self._set_drive_speeds(self.zero_speeds)
-        self.spin_wheels_started = False
+        self._turn_wheels_started = False
 
     # ---------- R / T 单次动作 ----------
     def _relax_all(self):
@@ -752,7 +918,7 @@ class MotionSolver(Node):
         for joint_id in self.arm_joint_ids:
             self.h7.send_raw("$ARM:TORQUE,%d,0!" % joint_id)
         self.mode = "stop"
-        self.spin_wheels_started = False
+        self._turn_wheels_started = False
         self.get_logger().info("R：已断开所有转矩输出")
 
     def _rearm_all(self):
@@ -772,7 +938,7 @@ class MotionSolver(Node):
         # 触发四轮机械限位标定（mask=15 全通道，单通道超时 8000ms），下位机自动跑
         self._set_drive_speeds(self.zero_speeds)
         self.mode = "stop"
-        self.spin_wheels_started = False
+        self._turn_wheels_started = False
         self._calibration_active = True
         self.h7.send_raw("$STEER:CAL,15,8000!")
         self.get_logger().info("已触发四轮机械限位标定: $STEER:CAL,15,8000")
@@ -786,13 +952,25 @@ class MotionSolver(Node):
         if self._calibration_active:
             self._set_drive_speeds(self.zero_speeds)
             return
+        # Re-evaluate here as well: an approach yield that stops being
+        # refreshed must re-engage the lock and stop the wheels on its own,
+        # without waiting for another /grasp/active or /search/active edge.
+        self.update_manipulation_lock("底盘接近让行超时")
         if self.manipulation_locked():
             self._set_drive_speeds(self.zero_speeds)
             return
-        if self.mode == "spin" and not self.spin_wheels_started:
-            if time.monotonic() - self.spin_start_time >= self.spin_delay:
-                self.spin_wheels_started = True
-                self._set_drive_speeds(self._spin_drive_speeds)
+        if self.mode == "spin" and not self._turn_wheels_started:
+            # Keep the historical minimum hold on top of the steer-arrival
+            # gate: the spin pose is a 45 deg move, so give it at least
+            # spin_delay before the wheels are driven against each other.
+            if time.monotonic() - self._turn_steer_sent_at < self.spin_delay:
+                self._set_drive_speeds(self.zero_speeds)
+            else:
+                self._advance_steer_settle()
+        elif self.mode in ("turn", "straight"):
+            # The drive stays at zero until the steered wheels have reached the
+            # commanded angle.
+            self._advance_steer_settle()
 
     def shutdown(self):
         try:

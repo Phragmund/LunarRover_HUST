@@ -31,6 +31,8 @@
 
 仿真/标准 ROS 链为 `Nav2 /cmd_vel -> twist_stamper_node -> /navigation/chassis_cmd_vel -> chassis_cmd_mux_node -> /chassis/cmd_vel`。实机链为 `Nav2 /cmd_vel_nav -> twist_stamper_node -> /navigation/chassis_cmd_vel -> nav_to_manual_mux -> /manual_control -> motion_solver/H7`；网页或键盘的非零人工输入可抢占自治输出。任何节点不得绕过所属链路的仲裁器直接同时向最终控制话题发布。下位机必须实施 250 ms 命令超时、急停、故障锁止和独立限幅；完整要求见 [`lower_controller_contract.md`](lower_controller_contract.md)。
 
+抓取状态机的受控底盘接近走同一条实机链：`/grasp/chassis_cmd_vel -> nav_to_manual_mux -> /manual_control`。由于 `/manual_control` 是仲裁后的唯一出口，`motion_solver` 无法从话题区分人工杆量与自治指令，因此底盘安全锁不得按话题一刀切：`/grasp/active`（抓取会话进行中）与 `/search/active` 只表示"存在独占会话"，而 `motion_solver` 在锁生效期间忽略 `/manual_control` 的人工杆量。抓取接近期间由状态机自行驱动底盘，必须额外发布 `/grasp/chassis_approach_active` 显式让行，否则会形成"发出接近指令的节点自己举锁、指令被自己丢弃"的自锁。该让行信号按接近步进周期持续刷新，`motion_solver` 仅在信号新鲜期内放行；信号停更即自动收回让行、恢复锁定并停车，保证发布者异常退出时底盘不会滞留解锁状态。手机非零杆量在仲裁器中仍优先于接近指令。
+
 ## 操作接口
 
 | 接口 | 类型 | 约定 |
@@ -42,6 +44,8 @@
 | `/gripper_controller/commands` | `std_msgs/msg/Float64MultiArray` | 控制 `arm_joint5`。 |
 | `/search/target_confirmed` | `lunar_rover_msgs/msg/TargetObservation` | 由默认自训练 YOLO `weights/best.pt` 确认，并经连续观测、空间离散度和去重检查后的候选目标；任务层据此暂停探索并交接抓取。 |
 | `/grasp/result` | `std_msgs/msg/String` | 抓取结果：`SUCCESS`、`UNCONFIRMED`、`FAILED`、`ABORTED` 或 `UNLOAD_COMPLETE`；只有 `SUCCESS` 可增加任务物块计数。 |
+| `/grasp/active`、`/search/active` | `std_msgs/msg/Bool` | 抓取会话与探索扫描的独占标志，锁存发布（TRANSIENT_LOCAL）。仅表示"存在独占会话"，不得作为"底盘必须静止"的唯一依据；其消费方包括 `active_search`、`lidar_gate_node`、`chassis_cmd_mux_node` 和 `motion_solver` 的安全锁。 |
+| `/grasp/chassis_approach_active` | `std_msgs/msg/Bool` | 抓取状态机在受控底盘接近步进期间的显式让行信号。按接近步进周期（约 5 Hz）持续刷新，消费方 `motion_solver` 只在信号新鲜期内放行底盘；订阅方必须使用易失（VOLATILE）QoS 并配合超时，避免收到上一个会话的残留 `true`。 |
 | `/mission/command` | `std_msgs/msg/String` | 任务显式控制：`start`、`return_home`、`abort`；节点启动时保持 `READY`，不得自行行驶。 |
 | `/mission/state`、`/mission/status` | `std_msgs/msg/String` | 任务阶段和可读状态。 |
 | `/mission/autonomy_active`、`/mission/exploration_enabled` | `std_msgs/msg/Bool` | 分别授予 Nav2 控制权、启停前沿探索。 |

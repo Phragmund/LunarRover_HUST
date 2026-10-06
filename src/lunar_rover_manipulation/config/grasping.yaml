@@ -214,12 +214,77 @@ grasp_state_machine:
     # This prevents a moving/incorrect mask from contaminating the distance gate.
     chassis_approach_enabled: true
     chassis_approach_topic: /grasp/chassis_cmd_vel
-    chassis_approach_move_sec: 1.0
-    chassis_approach_speed_mps: 0.04
+    # Narrow yield signal consumed by motion_solver.  /grasp/active is raised
+    # for the whole grasp session, so without this separate flag the downstream
+    # manipulation lock would drop this node's own approach twist.
+    chassis_approach_active_topic: /grasp/chassis_approach_active
+    # Time allowed for the arm to settle after the chassis stops, before the
+    # fresh mask-distance batch is taken.
     chassis_approach_settle_sec: 1.0
-    chassis_approach_deadband_px: 20.0
-    chassis_approach_steer_gain: 0.0015
-    chassis_approach_max_angular_z: 0.12
+
+    # ---- phase 1: align the heading with an in-place spin --------------------
+    # Ackermann cannot help at creep speed: yaw rate is v*tan(steer)/L, about
+    # 2.5 deg/s at 3 cm/s, so aligning 30 deg of heading would take a dozen
+    # separate approach steps.  Spinning in place is roughly 27 deg/s and
+    # travels no distance, so the heading is fixed first, in one manoeuvre.
+    # linear.x is held at 0 and nav_to_manual_mux turns the pure yaw command
+    # into an rx spin.
+    #
+    # PID gains are in (rad/s) per deg, per deg*s and per deg/s so the terms
+    # add directly.  All three gains and the cap were halved on 2026-10-06
+    # because the spin was judged too fast on hardware; kp alone now gives
+    # ~0.12 rad/s at 30 deg of bearing.  ki removes a steady offset from a
+    # biased bearing estimate; kd is kept small because the bearing refreshes
+    # at the camera rate, not the control rate.
+    chassis_align_kp: 0.004
+    chassis_align_ki: 0.002
+    chassis_align_kd: 0.005
+    # nav_to_manual_mux scales an in-place command by w_max = 0.47 rad/s, so
+    # this is spin authority; 0.175 is about 10 deg/s (halved from 0.35).
+    chassis_align_max_angular_z: 0.175
+    chassis_align_tolerance_deg: 5.0
+    chassis_align_timeout_sec: 10.0
+    # A bearing older than this cannot be trusted to steer by.
+    chassis_bearing_max_age_sec: 1.0
+
+    # ---- phase 2: one continuous run forward, no segmented creeping ---------
+    # Halved again on 2026-10-06: 0.011025 m/s is 50% of 0.02205.
+    # NOTE: nav_to_manual_mux treats |linear.x| below nav_to_manual_mux's
+    # spin_linear_eps (0.01) as a pure-rotation request, which would turn this
+    # forward run into an in-place spin.  Keep this above that threshold; the
+    # node logs an error at startup if it is not.
+    chassis_drive_speed_mps: 0.011025
+    # Upper bound on the run.  The run normally ends as soon as the live
+    # target is confirmed inside the arm workspace.  At this speed it is also
+    # the safety bound on how far a run can travel with no reachable verdict:
+    # 15 s is about 16 cm, which covers the ~12 cm the first hardware run
+    # needed with a small margin without letting the rover drive into the
+    # block if the IK gate never fires.
+    chassis_drive_max_sec: 15.0
+    # Gentle pure-P steering trim applied while driving, so the rover keeps its
+    # heading instead of wandering.  Saturated at half of full lock; expressed
+    # as a steer angle and converted to the equivalent angular_z for this
+    # speed, so the cap keeps its physical meaning if the speed is retuned.
+    # 0.42 m matches nav_to_manual_mux.wheelbase.  The gain was halved with the
+    # speed so the trim still saturates at about 20 deg of bearing rather than
+    # becoming twitchy.
+    chassis_drive_trim_gain: 0.00035
+    chassis_drive_trim_max_steer_deg: 15.0
+    chassis_drive_wheelbase_m: 0.42
+    # Consecutive reachable observations required before ending the run, so one
+    # noisy frame cannot stop it early.  Kept at 2 (about 0.4 s) because the
+    # run has to stop the moment the workspace is entered.
+    chassis_drive_reach_confirmations: 2
+    # The chassis carries the camera, so the arm has to keep the target in the
+    # middle of the frame for the whole run; otherwise the target leaves the
+    # field of view before the workspace is reached.  Reuses the same J1/J4
+    # pixel-to-angle calibration as pre-sampling centering.
+    chassis_track_enabled: true
+    chassis_track_motion_duration_sec: 0.3
+    chassis_track_margin_sec: 0.05
+    # Mirror of nav_to_manual_mux's spin_linear_eps, used only to warn at
+    # startup when the forward speed falls into the in-place spin branch.
+    chassis_mux_spin_linear_eps: 0.01
     # Temporarily bypass YOLO-confirmed four-corner sampling.  The state
     # machine now centers the mask, samples distance, and checks TF+IK reach.
     auto_sampling_enabled: false
@@ -242,6 +307,18 @@ grasp_state_machine:
     tf_timeout_sec: 0.12
     arm_base_frame: arm_base_link
     tf_reachability_tolerance_m: 0.025
+    # Radial compensation for the TF bias, applied to the working centre in the
+    # arm base frame.  L0 is interpolated linearly on the polar radius about
+    # the J1 yaw axis: tf_compensation_near_l0_m when the block sits on the
+    # axis, tf_compensation_far_l0_m when it sits on the IK workspace boundary.
+    # The shift is horizontal (along the axis-to-centre line); height is left
+    # alone.  The boundary radius is derived from the IK geometry each time, so
+    # it follows the current tool pitch (it moves between about 0.30 m and
+    # 0.43 m across the pitch range) rather than being a fixed constant.
+    # The live value is printed in /grasp/workspace_status as comp(r=../.. ratio=.. L0=..).
+    tf_compensation_enabled: true
+    tf_compensation_near_l0_m: -0.05
+    tf_compensation_far_l0_m: 0.05
     workspace_center_x_m: 0.13
     workspace_center_y_m: 0.0
     workspace_center_z_m: 0.056
@@ -333,8 +410,20 @@ grasp_state_machine:
     # image x/y error adds only small J1/J4 angle corrections.
     gimbal_servo_enabled: false
     gimbal_tf_approach_enabled: true
-    gimbal_j1_gain_deg_per_px: 0.05
-    gimbal_j4_gain_deg_per_px: 0.05
+    # Pre-sampling centering is pure proportional control, so the step shrinks
+    # with the remaining error.  The plant sensitivity here is about
+    # 0.3 deg/px: the color focal length is ~315 px, and J1's 0.25 m lever arm
+    # removes part of the rotation shift at the ~0.65 m working distance
+    # (5.5 px/deg of pure rotation becomes ~3.3 px/deg).  At the old 0.05 the
+    # loop removed only a sixth of the error per step, so the 2026-10-06 run
+    # walked 112 px down to 112*(5/6)^12 = 12.6 px -- just outside the 12 px
+    # deadband -- and exhausted all 12 steps.  0.15 removes about half per
+    # step, converging in roughly four, and stays under a unity loop gain (no
+    # overshoot) for sensitivities down to about 0.15 deg/px.
+    # These are also read by the gimbal servo, which is disabled above, so the
+    # change is confined to auto-centering.
+    gimbal_j1_gain_deg_per_px: 0.15
+    gimbal_j4_gain_deg_per_px: 0.15
     gimbal_j1_sign: 1.0
     gimbal_j4_sign: -1.0
     gimbal_pixel_deadband: 8.0

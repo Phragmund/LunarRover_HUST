@@ -173,24 +173,145 @@ class GraspStateMachine(Node):
         self.chassis_approach_topic = str(
             self.declare_parameter("chassis_approach_topic", "/grasp/chassis_cmd_vel").value
         )
-        self.chassis_approach_move_sec = max(
-            0.1, float(self.declare_parameter("chassis_approach_move_sec", 1.0).value)
-        )
-        self.chassis_approach_speed_mps = max(
-            0.01, float(self.declare_parameter("chassis_approach_speed_mps", 0.04).value)
+        # Distinct from /grasp/active: /grasp/active means "a grasp session is
+        # running" and is consumed by search, lidar gate and the mux.  This
+        # topic is the narrow exception that tells motion_solver the grasp
+        # chain is itself driving the chassis right now, so its downstream
+        # manipulation lock must yield instead of dropping the approach twist.
+        self.chassis_approach_active_topic = str(
+            self.declare_parameter(
+                "chassis_approach_active_topic", "/grasp/chassis_approach_active"
+            ).value
         )
         self.chassis_approach_settle_sec = max(
             0.1, float(self.declare_parameter("chassis_approach_settle_sec", 1.0).value)
         )
-        self.chassis_approach_deadband_px = max(
-            0.0, float(self.declare_parameter("chassis_approach_deadband_px", 20.0).value)
+        # ---- phase 1: align the heading with an in-place spin ----------------
+        # Ackermann turning cannot help here: at this creep speed the yaw rate
+        # is v*tan(steer)/L, about 2.5 deg/s, so aligning 30 deg would take a
+        # dozen steps.  Spinning in place is roughly 27 deg/s, ten times faster,
+        # and it moves the rover not at all.  A PID on the base_link bearing
+        # drives it; linear.x stays 0 so nav_to_manual_mux turns the command
+        # into an rx spin.
+        self.chassis_align_kp = float(
+            self.declare_parameter("chassis_align_kp", 0.004).value
         )
-        self.chassis_approach_steer_gain = float(
-            self.declare_parameter("chassis_approach_steer_gain", 0.0015).value
+        self.chassis_align_ki = float(
+            self.declare_parameter("chassis_align_ki", 0.002).value
         )
-        self.chassis_approach_max_angular_z = max(
-            0.01, float(self.declare_parameter("chassis_approach_max_angular_z", 0.12).value)
+        self.chassis_align_kd = float(
+            self.declare_parameter("chassis_align_kd", 0.005).value
         )
+        # nav_to_manual_mux scales an in-place command by w_max = 0.47 rad/s,
+        # so this is the spin-authority cap; 0.175 is about 10 deg/s.
+        self.chassis_align_max_angular_z = max(
+            0.01,
+            float(
+                self.declare_parameter("chassis_align_max_angular_z", 0.175).value
+            ),
+        )
+        self.chassis_align_tolerance_deg = max(
+            0.5,
+            float(
+                self.declare_parameter("chassis_align_tolerance_deg", 5.0).value
+            ),
+        )
+        self.chassis_align_timeout_sec = max(
+            1.0,
+            float(self.declare_parameter("chassis_align_timeout_sec", 10.0).value),
+        )
+        # A bearing older than this cannot be trusted to steer by.
+        self.chassis_bearing_max_age_sec = max(
+            0.1,
+            float(self.declare_parameter("chassis_bearing_max_age_sec", 1.0).value),
+        )
+        # ---- phase 2: one continuous run forward, no segmented creeping -----
+        self.chassis_drive_speed_mps = max(
+            0.002,
+            float(self.declare_parameter("chassis_drive_speed_mps", 0.011025).value),
+        )
+        self.chassis_drive_max_sec = max(
+            1.0, float(self.declare_parameter("chassis_drive_max_sec", 10.0).value)
+        )
+        # Gentle steering trim while driving, pure proportional on the bearing.
+        self.chassis_drive_trim_gain = float(
+            self.declare_parameter("chassis_drive_trim_gain", 0.0007).value
+        )
+        # The trim saturates at half of full lock, per the agreed behaviour.
+        # It is expressed as a steer angle and converted to the equivalent
+        # angular_z for this speed, so the cap keeps its physical meaning if the
+        # speed changes.  0.42 m matches nav_to_manual_mux.wheelbase.
+        self.chassis_drive_trim_max_steer_deg = max(
+            0.0,
+            float(
+                self.declare_parameter(
+                    "chassis_drive_trim_max_steer_deg", 15.0
+                ).value
+            ),
+        )
+        self.chassis_drive_wheelbase_m = max(
+            0.05,
+            float(self.declare_parameter("chassis_drive_wheelbase_m", 0.42).value),
+        )
+        # Consecutive reachable observations required before stopping the run,
+        # so a single noisy frame cannot end it early.  Kept low because the
+        # run must stop the moment the workspace is entered.
+        self.chassis_drive_reach_confirmations = max(
+            1,
+            int(
+                self.declare_parameter("chassis_drive_reach_confirmations", 2).value
+            ),
+        )
+        # ---- arm tracking while the chassis drives --------------------------
+        # The chassis moves the camera, so without tracking the arm the target
+        # drifts out of frame long before the workspace is reached.  This reuses
+        # the pre-sampling centering correction (same J1/J4 pixel-to-angle
+        # calibration) but runs continuously instead of converging then
+        # handing over.
+        self.chassis_track_enabled = bool(
+            self.declare_parameter("chassis_track_enabled", True).value
+        )
+        self.chassis_track_motion_duration_sec = max(
+            0.05,
+            float(
+                self.declare_parameter(
+                    "chassis_track_motion_duration_sec", 0.3
+                ).value
+            ),
+        )
+        self.chassis_track_margin_sec = max(
+            0.0,
+            float(self.declare_parameter("chassis_track_margin_sec", 0.05).value),
+        )
+        # nav_to_manual_mux treats |linear.x| below this as a pure-rotation
+        # request and converts it into an in-place spin.  The forward run must
+        # stay above it or "drive forward" silently becomes "spin in place".
+        self.chassis_mux_spin_linear_eps = max(
+            0.0,
+            float(
+                self.declare_parameter("chassis_mux_spin_linear_eps", 0.01).value
+            ),
+        )
+        # ---- radial TF-bias compensation on the working centre ---------------
+        # The TF chain is biased, so the reported working centre drifts off the
+        # real block.  The commanded centre is shifted along the horizontal
+        # vector from the J1 yaw axis to the working centre: negative (pull
+        # back) when the block sits on the J1 axis, positive (reach further)
+        # when it sits on the IK workspace boundary, linear in the polar radius
+        # between the two.  The boundary is derived from the IK geometry, not
+        # hard-coded.
+        self.tf_compensation_enabled = bool(
+            self.declare_parameter("tf_compensation_enabled", True).value
+        )
+        self.tf_compensation_near_l0_m = float(
+            self.declare_parameter("tf_compensation_near_l0_m", -0.05).value
+        )
+        self.tf_compensation_far_l0_m = float(
+            self.declare_parameter("tf_compensation_far_l0_m", 0.05).value
+        )
+        # Last computed compensation, surfaced in status messages so a real run
+        # shows the live radius, boundary and L0 for calibration.
+        self.tf_compensation_detail = None
         # Legacy automated four-corner parallax sampling.  It remains available
         # for calibration/rollback, but production grasping currently bypasses
         # it and uses a single centered mask-distance batch.
@@ -585,6 +706,9 @@ class GraspStateMachine(Node):
         self.chassis_approach_publisher = self.create_publisher(
             TwistStamped, self.chassis_approach_topic, 10
         )
+        self.chassis_approach_active_publisher = self.create_publisher(
+            Bool, self.chassis_approach_active_topic, state_qos
+        )
 
         self.create_subscription(Empty, "/grasp/trigger", self.on_trigger, 10)
         self.create_subscription(String, "/grasp/command", self.on_command, 10)
@@ -665,6 +789,15 @@ class GraspStateMachine(Node):
         self.chassis_approach_phase = "idle"
         self.chassis_approach_release_at = 0.0
         self.chassis_approach_step_count = 0
+        self.chassis_approach_steer_detail = "未计算"
+        # Heading PID used by the in-place alignment phase.
+        self.heading_pid_integral = 0.0
+        self.heading_pid_last_error = None
+        self.heading_pid_last_at = None
+        # Consecutive reachable observations seen during the forward run.
+        self.chassis_drive_reach_streak = 0
+        # Next time the arm may be re-commanded to keep the target centred.
+        self.chassis_track_next_command_at = 0.0
         self.last_branch_sign = None
         self.grasp_finish_timer = None
         self.unload_timer = None
@@ -682,6 +815,17 @@ class GraspStateMachine(Node):
             f"lock requires YOLO confirmation unless manually overridden, "
             f"hsv_class_id={self.hsv_class_id!r}"
         )
+        if self.chassis_drive_speed_mps <= self.chassis_mux_spin_linear_eps:
+            # nav_to_manual_mux switches to the in-place spin branch below this
+            # speed, so the "forward run" would silently become a pivot with no
+            # forward motion at all.  Fail loudly at startup rather than
+            # mysteriously never approaching.
+            self.get_logger().error(
+                "chassis_drive_speed_mps=%.5f is at or below the mux in-place "
+                "spin threshold %.5f: the forward run would become a spin. "
+                "Raise the speed or lower nav_to_manual_mux.spin_linear_eps."
+                % (self.chassis_drive_speed_mps, self.chassis_mux_spin_linear_eps)
+            )
 
     # ---- arm IK ---------------------------------------------------------
 
@@ -1024,7 +1168,61 @@ class GraspStateMachine(Node):
         offset = np.array(
             [translation.x, translation.y, translation.z], dtype=np.float64
         )
-        return rotation @ np.asarray(point, dtype=np.float64) + offset
+        arm_point = rotation @ np.asarray(point, dtype=np.float64) + offset
+        return self._apply_radius_compensation(arm_point)
+
+    def _workspace_boundary_radius_m(self, target_z, pitch_deg):
+        """Horizontal radius at which the IK stops reaching, for this pose.
+
+        Mirrors solve_ik: the wrist must stay within upper+forearm of the
+        shoulder, and the tool displaces the wrist by tool_m along the pitch.
+        Deriving it instead of hard-coding it matters because the boundary
+        moves between about 0.30 m and 0.43 m over the tool pitch range.
+        """
+        pitch_rad = math.radians(pitch_deg)
+        reach = self.upper_arm_m + self.forearm_m
+        vertical = target_z + self.tool_m * math.cos(pitch_rad)
+        horizontal = self.base_to_shoulder_m + self.tool_m * math.sin(pitch_rad)
+        squared = reach * reach - vertical * vertical
+        if squared <= 0.0:
+            # The shoulder cannot even reach this height; no radial allowance.
+            return max(0.0, horizontal)
+        return horizontal + math.sqrt(squared)
+
+    def _apply_radius_compensation(self, arm_point):
+        """Shift the commanded working centre radially to offset the TF bias.
+
+        The correction is defined on the polar radius about the J1 yaw axis:
+        ``tf_compensation_near_l0_m`` when the block sits on the axis itself,
+        ``tf_compensation_far_l0_m`` when it sits on the IK workspace boundary,
+        and linear in the polar radius between the two.  The shift is along the
+        horizontal vector from the J1 axis to the working centre, so height is
+        deliberately left alone.
+        """
+        self.tf_compensation_detail = None
+        if not self.tf_compensation_enabled or not self.current_joints_ready:
+            return arm_point
+        x = float(arm_point[0])
+        y = float(arm_point[1])
+        z = float(arm_point[2])
+        radius = math.hypot(x, y)
+        if radius < 1e-6:
+            return arm_point
+        pitch_deg = self.fk_from_degrees(
+            self.ros_to_degrees(self.current_joint_ros)
+        ).pitch_deg
+        boundary = self._workspace_boundary_radius_m(z, pitch_deg)
+        if boundary <= 1e-6:
+            return arm_point
+        ratio = clamp(radius / boundary, 0.0, 1.0)
+        l0 = self.tf_compensation_near_l0_m + ratio * (
+            self.tf_compensation_far_l0_m - self.tf_compensation_near_l0_m
+        )
+        self.tf_compensation_detail = (
+            "r=%.3f/%.3f ratio=%.2f L0=%+.4fm" % (radius, boundary, ratio, l0)
+        )
+        direction = np.array([x / radius, y / radius, 0.0], dtype=np.float64)
+        return np.asarray(arm_point, dtype=np.float64) + direction * l0
 
     def _target_in_arm_base(self):
         point = self._latest_point()
@@ -2104,29 +2302,53 @@ class GraspStateMachine(Node):
         message.twist.angular.z = float(angular_z)
         self.chassis_approach_publisher.publish(message)
 
+    def _publish_chassis_approach_active(self, active: bool) -> None:
+        """Tell motion_solver the grasp chain currently owns the chassis.
+
+        This is the narrow exception to motion_solver's manipulation lock.
+        Without it the approach twist is dropped at the lock, because
+        /grasp/active is already true for the whole grasp session.  The flag is
+        refreshed on every approach tick so the consumer can expire it on its
+        own if this node dies mid-step.
+        """
+        message = Bool()
+        message.data = bool(active)
+        self.chassis_approach_active_publisher.publish(message)
+
     def _stop_chassis_approach(self) -> None:
         self._publish_chassis_approach()
+        self._publish_chassis_approach_active(False)
         self.chassis_approach_phase = "idle"
+        self._reset_heading_pid()
+
+    def _reset_heading_pid(self) -> None:
+        self.heading_pid_integral = 0.0
+        self.heading_pid_last_error = None
+        self.heading_pid_last_at = None
 
     def _begin_chassis_approach(self) -> None:
         if not self.chassis_approach_enabled:
+            self._publish_chassis_approach_active(False)
             self.set_state(APPROACH_WITH_CHASSIS, "底盘接近已禁用，等待人工靠近")
             return
-        if self.latest_detection_center is None:
-            self.set_state(APPROACH_WITH_CHASSIS, "等待锁定 HSV 目标重新进入画面后再靠近")
+        if self._chassis_approach_bearing_deg() is None:
+            self._publish_chassis_approach_active(False)
+            self.set_state(APPROACH_WITH_CHASSIS, "等待物块方位可用后再接近")
             return
-        duration = self.chassis_approach_move_sec
-        self.chassis_approach_phase = "moving"
-        self.chassis_approach_release_at = time.monotonic() + duration
+        self.chassis_approach_phase = "aligning"
+        self.chassis_approach_release_at = time.monotonic() + self.chassis_align_timeout_sec
         self.chassis_approach_step_count += 1
+        self.chassis_drive_reach_streak = 0
+        self._reset_heading_pid()
+        self._publish_chassis_approach_active(True)
         self.set_state(
             APPROACH_WITH_CHASSIS,
-            "底盘步进 %d：前进 %.1fs，保持目标居中"
-            % (self.chassis_approach_step_count, duration),
+            "底盘接近 %d：舵轮先打到自转姿态，再原地转向对准物块方位"
+            % self.chassis_approach_step_count,
         )
 
     def _begin_post_approach_resampling(self) -> None:
-        """After a chassis step, recenter and take a fresh mask-distance batch."""
+        """After the run, recenter and take a fresh mask-distance batch."""
         self.averaged_point = None
         self.averaged_depth_m = None
         self.reset_pose_averaging()
@@ -2138,31 +2360,225 @@ class GraspStateMachine(Node):
         self.publish_mode("precise_hsv_sam")
         self._begin_auto_centering()
 
+    @staticmethod
+    def _bearing_from_point(point):
+        if point is None:
+            return None
+        x = float(point[0])
+        y = float(point[1])
+        if math.hypot(x, y) < 1e-3:
+            return None
+        return math.degrees(math.atan2(y, x))
+
+    def _chassis_approach_bearing_deg(self):
+        """Target bearing in base_link, positive to rover-left.
+
+        Steering from the image x error alone is camera-relative: it silently
+        assumes the camera looks along the rover's forward axis, so any arm yaw
+        (J1, and the rest of the chain) biases the correction and the rover can
+        drive away from the block.  Every observation is published in
+        base_link, so atan2(y, x) is the true heading error to null.  The live
+        observation is preferred because the heading servo has to be able to
+        see the rover turning; the averaged sample point is the fallback.
+        """
+        if (
+            self.latest_observation is not None
+            and time.monotonic() - self.latest_observation_at
+            <= self.chassis_bearing_max_age_sec
+        ):
+            position = self.latest_observation.pose.position
+            bearing = self._bearing_from_point((position.x, position.y, position.z))
+            if bearing is not None:
+                return bearing
+        return self._bearing_from_point(self._latest_point())
+
+    def _heading_pid_output(self, error_deg: float) -> float:
+        """PID on the heading error, returning an in-place spin angular.z.
+
+        Gains are in (rad/s) per deg, per deg*s and per deg/s, so the three
+        terms add up directly.  The integral is clamped so the I term alone can
+        never exceed full spin authority (anti-windup), which matters because
+        the bearing updates at the camera rate rather than the control rate.
+        """
+        now = time.monotonic()
+        dt = 0.0 if self.heading_pid_last_at is None else now - self.heading_pid_last_at
+        derivative = 0.0
+        if dt > 1e-3 and self.heading_pid_last_error is not None:
+            derivative = (error_deg - self.heading_pid_last_error) / dt
+        self.heading_pid_last_error = error_deg
+        self.heading_pid_last_at = now
+        self.heading_pid_integral += error_deg * dt
+        if self.chassis_align_ki > 1e-9:
+            limit = self.chassis_align_max_angular_z / self.chassis_align_ki
+            self.heading_pid_integral = clamp(
+                self.heading_pid_integral, -limit, limit
+            )
+        output = (
+            self.chassis_align_kp * error_deg
+            + self.chassis_align_ki * self.heading_pid_integral
+            + self.chassis_align_kd * derivative
+        )
+        return clamp(
+            output,
+            -self.chassis_align_max_angular_z,
+            self.chassis_align_max_angular_z,
+        )
+
+    def _chassis_drive_trim_limit(self) -> float:
+        """angular.z that makes the mux command the trim's steer-angle cap.
+
+        The trim is capped as a steer angle (half of full lock).  At a given
+        forward speed the mux inverts an angular.z into a steer angle, so the
+        equivalent angular.z is v*tan(delta)/wheelbase -- keeping the cap
+        physical rather than a magic number if the speed is retuned.
+        """
+        return (
+            self.chassis_drive_speed_mps
+            * math.tan(math.radians(self.chassis_drive_trim_max_steer_deg))
+            / self.chassis_drive_wheelbase_m
+        )
+
+    def _chassis_drive_reached(self) -> bool:
+        """True once the live target is confirmed inside the arm workspace."""
+        if (
+            self.latest_observation is None
+            or time.monotonic() - self.latest_observation_at
+            > self.observation_max_age_sec
+        ):
+            self.chassis_drive_reach_streak = 0
+            return False
+        position = self.latest_observation.pose.position
+        point = np.array([position.x, position.y, position.z], dtype=np.float64)
+        reachable, _reason, _target, _error = self._tf_reachability_check(point)
+        self.chassis_drive_reach_streak = (
+            self.chassis_drive_reach_streak + 1 if reachable else 0
+        )
+        return self.chassis_drive_reach_streak >= self.chassis_drive_reach_confirmations
+
+    def _finish_chassis_approach(self, detail: str, warning: bool = False) -> None:
+        self._publish_chassis_approach()
+        self._publish_chassis_approach_active(False)
+        self.chassis_approach_phase = "settling"
+        self.chassis_approach_release_at = (
+            time.monotonic() + self.chassis_approach_settle_sec
+        )
+        if warning:
+            self.get_logger().warning(detail)
+        self.set_state(APPROACH_WITH_CHASSIS, detail)
+
+    def _advance_chassis_align(self, now: float) -> None:
+        """Phase 1: spin in place until the heading points at the block."""
+        bearing = self._chassis_approach_bearing_deg()
+        if bearing is None:
+            self._stop_chassis_approach()
+            self.set_state(
+                APPROACH_WITH_CHASSIS, "对准期间物块方位不可用，底盘已停止"
+            )
+            return
+        if abs(bearing) <= self.chassis_align_tolerance_deg:
+            self._publish_chassis_approach()
+            self.chassis_approach_phase = "driving"
+            self.chassis_approach_release_at = now + self.chassis_drive_max_sec
+            self.chassis_drive_reach_streak = 0
+            self.chassis_track_next_command_at = now
+            self.set_state(
+                APPROACH_WITH_CHASSIS,
+                "车头已对准物块（方位角 %+.1f°），开始一次到位前进 %.4f m/s"
+                % (bearing, self.chassis_drive_speed_mps),
+            )
+            return
+        if now >= self.chassis_approach_release_at:
+            self._stop_chassis_approach()
+            self.set_state(
+                APPROACH_WITH_CHASSIS,
+                "原地转向对准超时（方位角仍为 %+.1f°），底盘已停止" % bearing,
+            )
+            return
+        angular_z = self._heading_pid_output(bearing)
+        self.chassis_approach_steer_detail = "自转对准 方位角=%+.1f°" % bearing
+        # linear.x stays 0: nav_to_manual_mux turns a pure yaw command into an
+        # rx spin, which rotates in place ten times faster than an Ackermann
+        # turn can at this creep speed.
+        self._publish_chassis_approach(0.0, angular_z)
+        self._publish_chassis_approach_active(True)
+
+    def _track_target_with_arm(self, now: float) -> None:
+        """Keep the block centred by moving the arm while the chassis drives.
+
+        The chassis carries the camera, so a static arm lets the target drift
+        out of frame long before the workspace is reached -- that is what
+        aborted the earlier runs.  This reuses the same J1/J4 pixel-to-angle
+        calibration as pre-sampling centering, but keeps running instead of
+        converging and handing over.
+        """
+        if not self.chassis_track_enabled or now < self.chassis_track_next_command_at:
+            return
+        correction, status = self._auto_center_correction()
+        if correction is None:
+            self.publish_pose_average_status(f"CHASSIS_TRACK_WAITING {status}")
+            return
+        if status == "CENTERED" or not self.current_joints_ready:
+            # Already centred (or no joint feedback yet): nothing to command,
+            # and issuing a zero move would only churn the arm controller.
+            return
+        j1_delta, j4_delta, error = correction
+        current_degrees = self.ros_to_degrees(self.current_joint_ros[:4])
+        target_degrees = list(current_degrees)
+        target_degrees[0] = clamp(target_degrees[0] + j1_delta, 0.0, 270.0)
+        target_degrees[3] = clamp(target_degrees[3] + j4_delta, 0.0, 270.0)
+        self._publish_arm_trajectory(
+            self.degrees_to_ros(target_degrees),
+            duration_sec=self.chassis_track_motion_duration_sec,
+        )
+        self.chassis_track_next_command_at = (
+            now
+            + self.chassis_track_motion_duration_sec
+            + self.chassis_track_margin_sec
+        )
+        self.publish_pose_average_status(
+            "CHASSIS_TRACK "
+            f"px=({error[0]:+.0f},{error[1]:+.0f}) "
+            f"ddeg=({j1_delta:+.2f},{j4_delta:+.2f})"
+        )
+
+    def _advance_chassis_drive(self, now: float) -> None:
+        """Phase 2: one continuous run forward, trimming and tracking as it goes."""
+        bearing = self._chassis_approach_bearing_deg()
+        trim = 0.0
+        if bearing is not None:
+            limit = self._chassis_drive_trim_limit()
+            trim = clamp(self.chassis_drive_trim_gain * bearing, -limit, limit)
+        self.chassis_approach_steer_detail = "前进微调 方位角=%s" % (
+            "不可用" if bearing is None else "%+.1f°" % bearing
+        )
+        self._publish_chassis_approach(self.chassis_drive_speed_mps, trim)
+        self._publish_chassis_approach_active(True)
+        # Hold the target in the middle of the frame while the chassis moves,
+        # so depth and IK remain valid all the way in.
+        self._track_target_with_arm(now)
+        if self._chassis_drive_reached():
+            self._finish_chassis_approach(
+                "已进入机械臂工作空间，一次到位前进结束（%s，ω=%+.4f rad/s）"
+                % (self.chassis_approach_steer_detail, trim)
+            )
+            return
+        if now >= self.chassis_approach_release_at:
+            self._finish_chassis_approach(
+                "前进达到 %.1fs 上限仍未到位，停车重新判距（%s）"
+                % (self.chassis_drive_max_sec, self.chassis_approach_steer_detail),
+                warning=True,
+            )
+
     def _advance_chassis_approach(self) -> None:
         if self.chassis_approach_phase == "idle":
             self._begin_chassis_approach()
             return
         now = time.monotonic()
-        if self.chassis_approach_phase == "moving":
-            if self.latest_detection_center is None or now - self.last_detection_at > self.target_timeout_sec:
-                self._stop_chassis_approach()
-                self.set_state(APPROACH_WITH_CHASSIS, "目标视觉丢失，底盘已停止")
-                return
-            pixel_error = float(self.latest_detection_center[0] - self.auto_center_pixel[0])
-            angular_z = 0.0
-            if abs(pixel_error) > self.chassis_approach_deadband_px:
-                angular_z = clamp(
-                    -pixel_error * self.chassis_approach_steer_gain,
-                    -self.chassis_approach_max_angular_z,
-                    self.chassis_approach_max_angular_z,
-                )
-            self._publish_chassis_approach(self.chassis_approach_speed_mps, angular_z)
-            if now < self.chassis_approach_release_at:
-                return
-            self._publish_chassis_approach()
-            self.chassis_approach_phase = "settling"
-            self.chassis_approach_release_at = now + self.chassis_approach_settle_sec
-            self.set_state(APPROACH_WITH_CHASSIS, "已完成 1s 前进，停车等待相机重新判距")
+        if self.chassis_approach_phase == "aligning":
+            self._advance_chassis_align(now)
+            return
+        if self.chassis_approach_phase == "driving":
+            self._advance_chassis_drive(now)
             return
         if self.chassis_approach_phase == "settling" and now >= self.chassis_approach_release_at:
             if self.latest_observation is None or now - self.latest_observation_at > self.observation_max_age_sec:
@@ -2704,6 +3120,11 @@ class GraspStateMachine(Node):
             if arm_target is None
             else f" arm_target=({arm_target[0]:.3f},{arm_target[1]:.3f},{arm_target[2]:.3f})"
         )
+        # The compensated radius, the IK boundary it is measured against, and
+        # the resulting L0.  Printed so a real run is enough to calibrate the
+        # near/far endpoints against what the arm actually does.
+        if self.tf_compensation_detail:
+            arm_text += " comp(" + self.tf_compensation_detail + ")"
         if reachable:
             self._stop_chassis_approach()
             self.publish_workspace_status(
