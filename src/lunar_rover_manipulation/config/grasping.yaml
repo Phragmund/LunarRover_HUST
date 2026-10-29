@@ -35,10 +35,21 @@ target_fusion_detector:
     tf_target_pixel_topic: /grasp/tf_target_pixel
     tf_timeout_sec: 0.03
     max_inference_hz: 4.0
+    # New wide-search proposal: dominant coherent H/S regions with a visible
+    # chromatic boundary, then registered-depth oriented-size filtering.
+    depth_topic: /camera/depth/image_raw
+    depth_sync_tolerance_sec: 0.08
+    hs_min_saturation: 45
+    hs_min_value: 25
+    hs_hue_tolerance: 10.0
+    hs_saturation_tolerance: 48.0
+    hs_min_boundary_hue_delta: 6.0
+    hs_min_boundary_saturation_delta: 20.0
     min_area_pixels: 300
-    min_saturation: 105
-    min_value: 55
-    max_area_fraction: 0.35
+    # Target blocks are about 50 mm per side; discard larger 3-D regions
+    # before running best.pt confirmation.
+    max_candidate_side_m: 0.05
+    min_candidate_depth_points: 30
     max_candidates: 6
     # Production confirmation: a HSV proposal must spatially agree with a
     # permitted class produced by this local, self-trained checkpoint.

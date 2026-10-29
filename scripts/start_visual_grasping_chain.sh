@@ -83,35 +83,6 @@ start_visual_launch() {
 }
 
 start_camera
-# A connected Gemini can occasionally expose its topics while its UVC stream is
-# stalled.  Do not start a blind visual chain: verify one RGB frame and retry
-# the driver once before declaring the chain ready.
-# A cold start has to clear USB enumeration and the ISP bring-up
-# (about 1.5 s in the driver log) on top of DDS discovery, so the first window
-# is deliberately generous.  Every check is guarded: under `set -e` an
-# unguarded retry probe would abort the launcher and leave the chain half
-# started, with no camera-to-launch teardown and no error message.
-rgb_frame_available() {
-  timeout "$1" ros2 topic echo /camera/color/image_raw \
-    --qos-reliability best_effort --once >/dev/null 2>&1
-}
-
-if ! rgb_frame_available 25; then
-  echo "RGB stream absent after first start; restarting the camera driver once."
-  pkill -TERM -f '[o]rbbec_camera|[c]amera_container' 2>/dev/null || true
-  # Give the USB device time to be released: a 2 s gap was measured to leave
-  # the Gemini initialised but never streaming after the restart, which then
-  # failed the second check and aborted the whole launcher.
-  sleep 5
-  start_camera
-  if ! rgb_frame_available 20; then
-    echo "ERROR: no /camera/color/image_raw frame after a driver restart." >&2
-    echo "ERROR: refusing to start a blind visual chain; see /tmp/orbbec_camera.log" >&2
-    echo "ERROR: if the device is initialised but silent, unplug and replug it." >&2
-    exit 1
-  fi
-fi
-
 bash "$repo_root/scripts/restart_handeye_tf.sh"
 
 start_visual_launch
@@ -126,17 +97,21 @@ overlay_frame_available() {
     --qos-reliability best_effort --once >/dev/null 2>&1
 }
 
-if ! overlay_frame_available 40; then
-  echo "Vision overlay missing after first start; restarting visual nodes once."
+if ! overlay_frame_available 90; then
+  echo "Vision overlay missing after first start; restarting camera and visual nodes once."
   for pattern in '[t]arget_detector_node.py' '[t]arget_fusion_detector_node.py' '[g]rasp_state_machine_node.py' '[m]ission_executive_node.py' '[a]ctive_search_node.py' '[g]rasp_target_localizer'; do
     pkill -TERM -f "$pattern" 2>/dev/null || true
   done
-  sleep 2
   stop_recorded_group "$visual_pid_file"
+  stop_recorded_group "$camera_pid_file"
+  pkill -TERM -f '[o]rbbec_camera|[c]amera_container' 2>/dev/null || true
+  sleep 5
+  start_camera
+  bash "$repo_root/scripts/restart_handeye_tf.sh"
   start_visual_launch
-  if ! overlay_frame_available 30; then
+  if ! overlay_frame_available 90; then
     echo "ERROR: no /perception/debug/fusion_overlay/compressed frame after a restart." >&2
-    echo "ERROR: the console would show no camera picture; see /tmp/visual_grasping.log" >&2
+    echo "ERROR: the console would show no camera picture; see /tmp/visual_grasping.log and /tmp/orbbec_camera.log" >&2
     exit 1
   fi
 fi

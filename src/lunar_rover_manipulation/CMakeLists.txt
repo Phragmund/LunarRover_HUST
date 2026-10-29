@@ -15,11 +15,13 @@ install(
     scripts/foundationpose_result_bridge_node.py
     scripts/grasp_coordinator_node.py
     scripts/grasp_state_machine_node.py
+    scripts/hs_sphere_preview_node.py
     scripts/lidar_gate_node.py
     scripts/mission_executive_node.py
     scripts/target_detector_node.py
     scripts/target_fusion_detector_node.py
     scripts/target_localizer_node.py
+    scripts/sam2_area_preview_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

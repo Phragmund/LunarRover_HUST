@@ -41,10 +41,11 @@ Gemini 335 registered depth + mask
 
 ## 默认链路与可选融合实验
 
-实车 NUC 默认使用 HSV 提议与自训练模型确认的融合链路：
+实车默认使用 H/S 色度区域与注册深度预筛，再由自训练模型确认：
 
 ```text
-HSV 多候选
+全图 H/S 统计与局部色度边界检测
+  -> 注册深度点云估计候选区域三维尺寸（边长上限 50 mm）
   -> weights/best.pt（Ultralytics detect，候选框空间一致性确认）
   -> /perception/debug/fusion_overlay/compressed
   -> /perception/target_mask + /perception/target_detection
@@ -62,7 +63,7 @@ HSV 多候选框
 ```
 
 这条链路的实现节点是 `target_fusion_detector_node.py`。HSV 阶段负责快速找高饱和候选；
-`best.pt` 只做语义确认，不直接替换 HSV mask；SAM 阶段只做像素级抠图，不负责判断类别。
+`best.pt` 只做语义确认，不直接替换 H/S 区域 mask；SAM 阶段只做像素级抠图，不负责判断类别。
 若 `best.pt` 加载或推理失败，节点只会保留 `hsv_candidate`，状态机不会自动锁定；操作者
 可在 `WIDE_SEARCH` 状态使用“跳过 YOLO 确认”进行显式联调确认。
 

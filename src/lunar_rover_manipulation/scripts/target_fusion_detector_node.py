@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""HSV proposal, self-trained YOLO confirmation, and optional SAM masking."""
+"""HS region proposals with RGB-D size gating, YOLO confirmation, and SAM masks."""
 
 import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 
 import cv2
@@ -21,13 +22,16 @@ from vision_msgs.msg import Detection2D, ObjectHypothesisWithPose
 
 
 class HsvProposal:
-    def __init__(self, mask, bbox, score, area):
+    def __init__(self, mask, bbox, score, area, physical_size_m=None, depth_m=None, contrast=0.0):
         self.mask = mask
         self.bbox = bbox
         self.score = score
         self.area = area
+        self.physical_size_m = physical_size_m
+        self.depth_m = depth_m
+        self.contrast = float(contrast)
         self.class_id = "hsv_candidate"
-        self.stage = "hsv"
+        self.stage = "hs_rgbd"
 
 
 class HsvLockProfile:
@@ -82,7 +86,7 @@ def expanded_bbox(bbox, image_shape, scale):
 
 
 def clip_mask_to_bbox(mask, bbox):
-    """Keep a SAM candidate inside the HSV proposal's expanded prompt box."""
+    """Keep a SAM candidate inside the RGB-D-gated proposal's prompt box."""
     x, y, width, height = bbox
     clipped = np.zeros_like(mask)
     clipped[y : y + height, x : x + width] = mask[y : y + height, x : x + width]
@@ -100,6 +104,13 @@ class TargetFusionDetector(Node):
         )
         self.camera_info_topic = str(
             self.declare_parameter("camera_info_topic", "/camera/color/camera_info").value
+        )
+        self.depth_topic = str(
+            self.declare_parameter("depth_topic", "/camera/depth/image_raw").value
+        )
+        self.depth_sync_tolerance_sec = max(
+            0.0,
+            float(self.declare_parameter("depth_sync_tolerance_sec", 0.08).value),
         )
         self.work_center_frame = str(
             self.declare_parameter("work_center_frame", "handeye_tool_frame").value
@@ -124,17 +135,34 @@ class TargetFusionDetector(Node):
         self.max_inference_hz = float(
             self.declare_parameter("max_inference_hz", 4.0).value
         )
-        self.min_saturation = int(
-            self.declare_parameter("min_saturation", 105).value
+        self.hs_min_saturation = int(
+            self.declare_parameter("hs_min_saturation", 45).value
         )
-        self.min_value = int(self.declare_parameter("min_value", 55).value)
+        self.hs_min_value = int(self.declare_parameter("hs_min_value", 25).value)
+        self.hs_hue_tolerance = float(
+            self.declare_parameter("hs_hue_tolerance", 10.0).value
+        )
+        self.hs_saturation_tolerance = float(
+            self.declare_parameter("hs_saturation_tolerance", 48.0).value
+        )
+        self.hs_min_boundary_hue_delta = float(
+            self.declare_parameter("hs_min_boundary_hue_delta", 6.0).value
+        )
+        self.hs_min_boundary_saturation_delta = float(
+            self.declare_parameter("hs_min_boundary_saturation_delta", 20.0).value
+        )
         self.min_area_pixels = int(
             self.declare_parameter("min_area_pixels", 120).value
         )
-        self.max_area_fraction = float(
-            self.declare_parameter("max_area_fraction", 0.35).value
-        )
         self.max_candidates = int(self.declare_parameter("max_candidates", 6).value)
+        self.max_candidate_side_m = max(
+            0.001,
+            float(self.declare_parameter("max_candidate_side_m", 0.05).value),
+        )
+        self.min_candidate_depth_points = max(
+            10,
+            int(self.declare_parameter("min_candidate_depth_points", 30).value),
+        )
         self.crop_expand_ratio = float(
             self.declare_parameter("crop_expand_ratio", 0.10).value
         )
@@ -167,11 +195,10 @@ class TargetFusionDetector(Node):
         self.open_vocab_max_candidates = int(
             self.declare_parameter("open_vocab_max_candidates", 1).value
         )
-        # The production wide-search path is deliberately two-stage: HSV
-        # supplies fast, colour/shape-localised proposals, then the locally
-        # trained detector confirms that the same image region is a permitted
-        # target class.  Keep the old open-vocabulary model available only for
-        # experiments; it is never the default confirmation model.
+        # The production wide-search path is deliberately staged: coherent
+        # image-wide H/S regions are checked against local chromatic boundaries
+        # and registered-depth physical size before best.pt class confirmation.
+        # Keep the old open-vocabulary model available only for experiments.
         self.yolo_confirm_enabled = bool(
             self.declare_parameter("yolo_confirm_enabled", True).value
         )
@@ -246,6 +273,7 @@ class TargetFusionDetector(Node):
         input_qos = sensor_qos
         self.bridge = CvBridge()
         self.camera_info = None
+        self.depth_cache = deque(maxlen=8)
         self.tf_buffer = Buffer(cache_time=Duration(seconds=5.0))
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.mask_publisher = self.create_publisher(
@@ -267,6 +295,7 @@ class TargetFusionDetector(Node):
         self.create_subscription(
             CameraInfo, self.camera_info_topic, self.on_camera_info, sensor_qos
         )
+        self.create_subscription(Image, self.depth_topic, self.on_depth, sensor_qos)
         mode_qos = QoSProfile(
             depth=1,
             reliability=ReliabilityPolicy.RELIABLE,
@@ -307,6 +336,9 @@ class TargetFusionDetector(Node):
     def on_camera_info(self, message):
         self.camera_info = message
 
+    def on_depth(self, message):
+        self.depth_cache.append(message)
+
     def on_tf_target_pixel(self, message):
         values = (float(message.point.x), float(message.point.y), float(message.point.z))
         if not all(np.isfinite(value) for value in values) or values[2] <= 0.0:
@@ -336,7 +368,7 @@ class TargetFusionDetector(Node):
             return model
         except Exception as exc:  # noqa: BLE001
             self.get_logger().warning(
-                f"open-vocabulary model unavailable, using HSV only: {exc}"
+                f"open-vocabulary model unavailable, using H/S+RGB-D proposals: {exc}"
             )
             return None
 
@@ -355,7 +387,7 @@ class TargetFusionDetector(Node):
         except Exception as exc:  # noqa: BLE001
             self.get_logger().warning(
                 "self-trained YOLO confirmation unavailable; wide search will "
-                f"remain HSV-only until restored: {exc}"
+                f"remain at unconfirmed H/S+RGB-D proposals until restored: {exc}"
             )
             return None
 
@@ -367,40 +399,197 @@ class TargetFusionDetector(Node):
 
             return SAM(self.sam_model)
         except Exception as exc:  # noqa: BLE001
-            self.get_logger().warning(f"SAM unavailable, using HSV mask: {exc}")
+            self.get_logger().warning(f"SAM unavailable, using H/S+RGB-D mask: {exc}")
             return None
 
-    def _hsv_proposals(self, image):
-        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(
-            hsv,
-            np.array([0, self.min_saturation, self.min_value], dtype=np.uint8),
-            np.array([179, 255, 255], dtype=np.uint8),
+    @staticmethod
+    def _stamp_seconds(stamp):
+        return float(stamp.sec) + float(stamp.nanosec) * 1e-9
+
+    def _matching_depth(self, color_header):
+        if not self.depth_cache:
+            return None
+        color_stamp = self._stamp_seconds(color_header.stamp)
+        depth_message = min(
+            self.depth_cache,
+            key=lambda message: abs(
+                self._stamp_seconds(message.header.stamp) - color_stamp
+            ),
         )
-        apply_ignore_rois(mask, self.ignore_rois)
-        kernel = np.ones((5, 5), dtype=np.uint8)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-        count, labels, stats, _ = cv2.connectedComponentsWithStats(mask)
-        image_area = image.shape[0] * image.shape[1]
+        delta = abs(self._stamp_seconds(depth_message.header.stamp) - color_stamp)
+        if delta > self.depth_sync_tolerance_sec:
+            return None
+        try:
+            depth = self.bridge.imgmsg_to_cv2(depth_message, desired_encoding="passthrough")
+        except Exception as exc:  # noqa: BLE001
+            self.get_logger().warning(f"depth conversion failed: {exc}")
+            return None
+        depth = np.asarray(depth)
+        if depth.ndim != 2:
+            return None
+        depth_m = depth.astype(np.float32)
+        if depth.dtype == np.uint16:
+            depth_m *= 0.001
+        elif "32f" not in str(depth_message.encoding).lower():
+            # The camera publishes Y16; reject unknown integer encodings rather
+            # than interpreting raw device units as metres.
+            return None
+        return depth_m
+
+    @staticmethod
+    def _circular_hue_center(hues):
+        angles = np.asarray(hues, dtype=np.float64) * (2.0 * np.pi / 180.0)
+        angle = np.arctan2(np.mean(np.sin(angles)), np.mean(np.cos(angles)))
+        return float((angle % (2.0 * np.pi)) * (180.0 / (2.0 * np.pi)))
+
+    def _estimate_candidate_size(self, component_mask, depth_m):
+        if self.camera_info is None or depth_m is None or depth_m.shape != component_mask.shape:
+            return None
+        valid_depth = (
+            (depth_m >= 0.17)
+            & (depth_m <= 1.20)
+            & np.isfinite(depth_m)
+            & (component_mask > 0)
+        )
+        ys, xs = np.nonzero(valid_depth)
+        if len(xs) < self.min_candidate_depth_points:
+            return None
+        z = depth_m[ys, xs].astype(np.float64)
+        fx, fy = float(self.camera_info.k[0]), float(self.camera_info.k[4])
+        cx, cy = float(self.camera_info.k[2]), float(self.camera_info.k[5])
+        if fx <= 1e-6 or fy <= 1e-6:
+            return None
+        points = np.column_stack(
+            ((xs - cx) * z / fx, (ys - cy) * z / fy, z)
+        )
+        # Robust PCA oriented bounds tolerate a block rotated in the image and
+        # ignore a few registered-depth outliers around the mask boundary.
+        center = np.median(points, axis=0)
+        centered = points - center
+        radii = np.linalg.norm(centered, axis=1)
+        cutoff = np.percentile(radii, 98.0)
+        centered = centered[radii <= cutoff]
+        if len(centered) < self.min_candidate_depth_points:
+            return None
+        covariance = np.cov(centered, rowvar=False)
+        _eigenvalues, axes = np.linalg.eigh(covariance)
+        oriented = centered @ axes
+        lower = np.percentile(oriented, 5.0, axis=0)
+        upper = np.percentile(oriented, 95.0, axis=0)
+        sizes = np.maximum(upper - lower, 0.0)
+        return sizes, float(np.median(z)), len(centered)
+
+    def _hs_proposals(self, image, depth_m):
+        """Segment coherent H/S regions, require an HS boundary and RGB-D size."""
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        hue = hsv[:, :, 0].astype(np.float32)
+        saturation = hsv[:, :, 1].astype(np.float32)
+        value = hsv[:, :, 2]
+        eligible = (saturation >= self.hs_min_saturation) & (value >= self.hs_min_value)
+        apply_ignore_rois(eligible, self.ignore_rois)
+        if np.count_nonzero(eligible) < self.min_area_pixels:
+            return []
+
+        # Find dominant local colour modes statistically in the whole frame.
+        # H is circular, so smooth a wrapped histogram before selecting peaks.
+        histogram, _, _ = np.histogram2d(
+            hue[eligible],
+            saturation[eligible],
+            bins=(36, 16),
+            range=((0.0, 180.0), (0.0, 256.0)),
+        )
+        wrapped = np.concatenate((histogram[-2:], histogram, histogram[:2]), axis=0)
+        smooth = cv2.GaussianBlur(wrapped.astype(np.float32), (5, 3), 0)[2:-2]
+        peak_order = np.argsort(smooth.ravel())[::-1]
+        peaks = []
+        for index in peak_order:
+            h_bin, s_bin = np.unravel_index(index, smooth.shape)
+            population = float(smooth[h_bin, s_bin])
+            if population < self.min_area_pixels * 0.25:
+                break
+            center_h = (h_bin + 0.5) * 5.0
+            center_s = (s_bin + 0.5) * 16.0
+            if any(
+                min(abs(center_h - old_h), 180.0 - abs(center_h - old_h)) <= 12.0
+                and abs(center_s - old_s) <= 40.0
+                for old_h, old_s in peaks
+            ):
+                continue
+            peaks.append((center_h, center_s))
+            if len(peaks) >= 16:
+                break
+
         proposals = []
-        for component in range(1, count):
-            area = int(stats[component, cv2.CC_STAT_AREA])
-            if area < self.min_area_pixels:
-                continue
-            if area > self.max_area_fraction * image_area:
-                continue
-            component_mask = (labels == component).astype(np.uint8) * 255
-            x = int(stats[component, cv2.CC_STAT_LEFT])
-            y = int(stats[component, cv2.CC_STAT_TOP])
-            width = int(stats[component, cv2.CC_STAT_WIDTH])
-            height = int(stats[component, cv2.CC_STAT_HEIGHT])
-            saturation = float(np.median(hsv[:, :, 1][labels == component])) / 255.0
-            area_score = min(1.0, area / max(float(self.min_area_pixels * 4), 1.0))
-            score = 0.55 * saturation + 0.45 * area_score
-            proposals.append(
-                HsvProposal(component_mask, (x, y, width, height), score, area)
-            )
+        open_kernel = np.ones((3, 3), dtype=np.uint8)
+        close_kernel = np.ones((5, 5), dtype=np.uint8)
+        for center_h, center_s in peaks:
+            hue_delta = np.abs(hue - center_h)
+            hue_delta = np.minimum(hue_delta, 180.0 - hue_delta)
+            color_mask = (
+                eligible
+                & (hue_delta <= self.hs_hue_tolerance)
+                & (np.abs(saturation - center_s) <= self.hs_saturation_tolerance)
+            ).astype(np.uint8) * 255
+            color_mask = cv2.morphologyEx(color_mask, cv2.MORPH_OPEN, open_kernel)
+            color_mask = cv2.morphologyEx(color_mask, cv2.MORPH_CLOSE, close_kernel)
+            count, labels, stats, _ = cv2.connectedComponentsWithStats(color_mask)
+            for component in range(1, count):
+                area = int(stats[component, cv2.CC_STAT_AREA])
+                if area < self.min_area_pixels:
+                    continue
+                component_mask = (labels == component).astype(np.uint8) * 255
+
+                # Compare the component's median H/S with a narrow surrounding
+                # ring. A region without a clear chromatic edge is background,
+                # even if it forms a large connected colour patch.
+                inner = cv2.dilate(component_mask, np.ones((3, 3), np.uint8)) > 0
+                outer = cv2.dilate(component_mask, np.ones((13, 13), np.uint8)) > 0
+                ring = outer & ~inner & eligible
+                active = component_mask > 0
+                if np.count_nonzero(ring) < max(20, area // 20):
+                    continue
+                region_h = self._circular_hue_center(hue[active])
+                ring_h = self._circular_hue_center(hue[ring])
+                hue_gap = min(abs(region_h - ring_h), 180.0 - abs(region_h - ring_h))
+                region_s = float(np.median(saturation[active]))
+                ring_s = float(np.median(saturation[ring]))
+                saturation_gap = abs(region_s - ring_s)
+                if (
+                    hue_gap < self.hs_min_boundary_hue_delta
+                    and saturation_gap < self.hs_min_boundary_saturation_delta
+                ):
+                    continue
+
+                size_result = self._estimate_candidate_size(component_mask, depth_m)
+                if size_result is None:
+                    continue
+                sizes, depth, valid_points = size_result
+                if float(np.max(sizes)) > self.max_candidate_side_m:
+                    continue
+                bbox = bbox_from_mask(component_mask)
+                if bbox is None:
+                    continue
+                saturation_mad = float(np.median(np.abs(saturation[active] - region_s)))
+                coherence = max(0.0, 1.0 - saturation_mad / 96.0)
+                contrast = max(
+                    hue_gap / max(self.hs_min_boundary_hue_delta * 3.0, 1.0),
+                    saturation_gap / max(self.hs_min_boundary_saturation_delta * 3.0, 1.0),
+                )
+                area_score = min(1.0, area / max(float(self.min_area_pixels * 8), 1.0))
+                score = 0.35 * coherence + 0.35 * min(contrast, 1.0) + 0.30 * area_score
+                proposal = HsvProposal(
+                    component_mask,
+                    bbox,
+                    score,
+                    area,
+                    physical_size_m=tuple(float(side) for side in sizes),
+                    depth_m=depth,
+                    contrast=contrast,
+                )
+                if any(self._iou(proposal.bbox, old.bbox) >= 0.65 for old in proposals):
+                    continue
+                proposals.append(proposal)
+
         proposals.sort(key=lambda proposal: proposal.score, reverse=True)
         return proposals[: self.max_candidates]
 
@@ -417,7 +606,7 @@ class TargetFusionDetector(Node):
         if np.count_nonzero(active) < self.min_area_pixels:
             return None
         return HsvLockProfile(
-            np.median(hsv[:, :, 0][active]),
+            self._circular_hue_center(hsv[:, :, 0][active]),
             np.median(hsv[:, :, 1][active]),
             np.median(hsv[:, :, 2][active]),
         )
@@ -514,7 +703,7 @@ class TargetFusionDetector(Node):
         return confirmed if confirmed else proposals
 
     def _confirm_with_yolo(self, image, proposals):
-        """Confirm HSV proposals only when ``best.pt`` overlaps the proposal.
+        """Confirm H/S+RGB-D proposals only when ``best.pt`` overlaps them.
 
         The detector runs once on the whole RGB frame.  This preserves YOLO's
         normal receptive field while ensuring that its label belongs to the
@@ -817,10 +1006,25 @@ class TargetFusionDetector(Node):
         self.debug_frame_count += 1
         try:
             image = self._message_to_bgr(message)
-            proposals = self._hsv_proposals(image)
+            depth_m = self._matching_depth(message.header)
+            if depth_m is None or depth_m.shape != image.shape[:2]:
+                overlay = image.copy()
+                cv2.putText(
+                    overlay,
+                    "HS+RGBD proposals: waiting for registered depth",
+                    (12, 28),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0, 165, 255),
+                    2,
+                    cv2.LINE_AA,
+                )
+                self._publish_debug_overlay(overlay, message.header)
+                return
+            proposals = self._hs_proposals(image, depth_m)
             if self.debug_frame_count <= 5:
                 self.get_logger().info(
-                    f"fusion frame {self.debug_frame_count}: hsv proposals={len(proposals)}"
+                    f"fusion frame {self.debug_frame_count}: HS+RGBD proposals={len(proposals)}"
                 )
             result = self._apply_mode_pipeline(image, proposals, now)
             if result is None:
@@ -843,7 +1047,8 @@ class TargetFusionDetector(Node):
             if self.grasp_mode == "wide_search":
                 self.last_selected_bbox = None
                 self.last_selected_class_id = ""
-            self._publish_debug_overlay(image, message.header, proposals, None)
+            preview = self._make_debug_overlay(image, proposals, None)
+            self._publish_debug_overlay(preview, message.header, proposals, None)
             return
         self.last_selected_bbox = selected.bbox
         self.last_selected_class_id = selected.class_id
@@ -879,6 +1084,18 @@ class TargetFusionDetector(Node):
         for proposal in proposals:
             x, y, width, height = proposal.bbox
             cv2.rectangle(overlay, (x, y), (x + width, y + height), (255, 180, 0), 3)
+            if proposal.physical_size_m is not None:
+                size_mm = tuple(int(round(side * 1000.0)) for side in proposal.physical_size_m)
+                cv2.putText(
+                    overlay,
+                    "%dx%dx%dmm z=%.2fm edge=%.1f" % (*size_mm, proposal.depth_m, proposal.contrast),
+                    (max(0, x), min(image.shape[0] - 5, y + height + 18)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.42,
+                    (255, 180, 0),
+                    1,
+                    cv2.LINE_AA,
+                )
         work_center = self._project_work_center(image)
         if work_center is not None:
             u, v, depth = work_center

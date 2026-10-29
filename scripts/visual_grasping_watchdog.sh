@@ -48,7 +48,7 @@ overlay_failures=0
 while true; do
   sleep 5
   ensure_handeye_tf
-  if timeout 4 ros2 topic echo /camera/color/image_raw --qos-reliability best_effort --once >/dev/null 2>&1; then
+  if timeout 4 ros2 topic echo /camera/color/image_raw/compressed --qos-reliability best_effort --once >/dev/null 2>&1; then
     camera_failures=0
   else
     camera_failures=$((camera_failures + 1))

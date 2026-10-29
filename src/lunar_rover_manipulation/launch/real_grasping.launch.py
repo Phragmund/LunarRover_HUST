@@ -80,7 +80,11 @@ def generate_launch_description():
                 "segmentation_model", default_value=str(repo_root / "weights" / "best.pt")
             ),
             DeclareLaunchArgument("open_vocab_enabled", default_value="false"),
-            DeclareLaunchArgument("sam_enabled", default_value="false"),
+            DeclareLaunchArgument(
+                "sam_enabled",
+                default_value="true",
+                description="Run low-rate SAM mask refinement after YOLO lock; pass false to disable it.",
+            ),
             DeclareLaunchArgument("active_search", default_value="true"),
             DeclareLaunchArgument("auto_trigger_grasp", default_value="false"),
             DeclareLaunchArgument("periodic_sweep", default_value="false"),
